@@ -1,7 +1,7 @@
 import * as userService from "../services/user.service.js";
 
 //POST
-export const createUser = async (req, res, next) => {
+export const registerUser = async (req, res, next) => {
   try {
     const { username, email, password, role } = req.body;
 
@@ -28,7 +28,7 @@ export const createUser = async (req, res, next) => {
 };
 
 //GET AllUser
-export const getUsers = async (req, res, next) => {
+export const getAllUsers = async (req, res, next) => {
   try {
     const users = await userService.getAllUsers();
     res.json(users);
@@ -38,7 +38,7 @@ export const getUsers = async (req, res, next) => {
 };
 
 //GET user
-export const getUser = async (req, res, next) => {
+export const getUserById = async (req, res, next) => {
   try {
     const user = await userService.getUserById(req.params.id);
 
@@ -47,6 +47,27 @@ export const getUser = async (req, res, next) => {
     }
 
     res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const loginUser = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await userService.login(email);
+
+    if (!user || user.password !== password) {
+      return res.status(401).json({
+        error: "Invalid email or password",
+      });
+    }
+
+    res.json({
+      message: "Login successful",
+      user,
+    });
   } catch (error) {
     next(error);
   }
