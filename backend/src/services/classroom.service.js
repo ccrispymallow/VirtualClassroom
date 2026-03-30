@@ -34,16 +34,47 @@ export const getClassroomById = async (id) => {
   return result.rows[0];
 };
 
-// JOIN classroom (check code + password)
-export const joinClassroom = async ({ room_code, room_password }) => {
+export const joinClassroom = async ({ room_code, room_password, user_id }) => {
   const result = await pool.query(
     `SELECT * FROM classrooms WHERE room_code = $1`,
     [room_code],
   );
+
   const classroom = result.rows[0];
   if (!classroom) return null;
+
   if (classroom.room_password && classroom.room_password !== room_password) {
-    throw new Error("Invalid password");
+    throw new Error("Wrong password");
   }
+
+  const check = await pool.query(
+    `SELECT * FROM room_participants 
+     WHERE room_id = $1 AND user_id = $2 AND left_at IS NULL`,
+    [classroom.id, user_id],
+  );
+
+  if (check.rows.length > 0) {
+    return classroom;
+  }
+
+  await pool.query(
+    `INSERT INTO room_participants (room_id, user_id)
+     VALUES ($1, $2)`,
+    [classroom.id, user_id],
+  );
+
   return classroom;
+};
+
+export const getParticipants = async (room_id) => {
+  const result = await pool.query(
+    `SELECT rp.user_id, u.username, u.email, rp.joined_at
+     FROM room_participants rp
+     JOIN users u ON rp.user_id = u.id
+     WHERE rp.room_id = $1
+       AND rp.left_at IS NULL`,
+    [room_id],
+  );
+
+  return result.rows;
 };

@@ -51,7 +51,7 @@ export default function Login() {
         throw new Error(data.error || "Login failed. Please try again.");
       localStorage.setItem("userSession", JSON.stringify(data.user));
       setLoginStatus({ type: "success", message: "Logged in successfully!" });
-      navigate("/test");
+      navigate("/homepage");
     } catch (error) {
       setLoginStatus({
         type: "error",

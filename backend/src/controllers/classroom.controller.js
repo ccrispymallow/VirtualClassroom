@@ -58,17 +58,18 @@ export const getClassroomById = async (req, res, next) => {
 // JOIN
 export const joinClassroom = async (req, res, next) => {
   try {
-    const { room_code, room_password } = req.body;
+    const { room_code, room_password, user_id } = req.body;
 
-    if (!room_code) {
+    if (!room_code || !user_id) {
       return res.status(400).json({
-        error: "room_code is required",
+        error: "room_code and user_id are required",
       });
     }
 
     const classroom = await classroomService.joinClassroom({
       room_code,
       room_password,
+      user_id,
     });
 
     if (!classroom) {
@@ -80,6 +81,28 @@ export const joinClassroom = async (req, res, next) => {
     res.json({
       message: "Joined classroom successfully",
       classroom,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getParticipants = async (req, res, next) => {
+  try {
+    const { room_id } = req.params;
+
+    if (!room_id) {
+      return res.status(400).json({
+        error: "room_id is required",
+      });
+    }
+
+    const participants = await classroomService.getParticipants(room_id);
+
+    res.json({
+      room_id,
+      total: participants.length,
+      participants,
     });
   } catch (error) {
     next(error);

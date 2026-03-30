@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
-import { IoClose, IoChatboxEllipses, IoSettings } from "react-icons/io5";
+import {
+  IoClose,
+  IoChatboxEllipses,
+  IoSettings,
+  IoPeople,
+} from "react-icons/io5";
 import { ImPhoneHangUp } from "react-icons/im";
 import {
   BsMicFill,
@@ -10,25 +15,26 @@ import {
   BsCameraVideoOffFill,
 } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
+import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const MeetingInterface = () => {
-  // --- shared box state ---
+  const { roomCode } = useParams();
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
+  const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
+
   const [boxes, setBoxes] = useState({
     chat: false,
     settings: false,
     leave: false,
+    participants: false,
   });
-
-  // --- bottom bar state ---
   const [micOn, setMicOn] = useState(false);
   const [videoOn, setVideoOn] = useState(false);
   const [screenOn, setScreenOn] = useState(false);
-
-  // --- chat state ---
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-
-  // --- settings state ---
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({
     audio: false,
@@ -41,6 +47,11 @@ const MeetingInterface = () => {
     audio: null,
     video: null,
   });
+
+  // placeholder participants — will be replaced by socket later
+  const participants = [
+    { id: user.id, username: user.username, role: user.role, mic: micOn },
+  ];
 
   useEffect(() => {
     const check = async () => {
@@ -98,107 +109,229 @@ const MeetingInterface = () => {
     if (!input.trim()) return;
     setMessages((prev) => [
       ...prev,
-      { text: input, time: new Date().toLocaleTimeString() },
+      {
+        text: input,
+        time: new Date().toLocaleTimeString(),
+        username: user.username,
+      },
     ]);
     setInput("");
   };
 
+  const openBox = (name) => {
+    setBoxes({
+      chat: false,
+      settings: false,
+      leave: false,
+      participants: false,
+      [name]: true,
+    });
+  };
+  const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
+
+  const panelClass =
+    "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
+
   return (
     <>
+      {/* ── TOP BAR (room info) ── */}
+      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
+            🎓
+          </div>
+          <span className="text-slate-200 text-sm font-bold">
+            Virtual<span className="text-cyan-400">Class</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-500 text-xs">Room:</span>
+          <span className="text-slate-200 text-xs font-mono bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
+            {roomCode}
+          </span>
+          {room.room_name && (
+            <span className="text-slate-400 text-xs">· {room.room_name}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">
+            {user.username?.[0]?.toUpperCase() || "?"}
+          </div>
+          <span className="text-slate-300 text-xs font-semibold">
+            {user.username}
+          </span>
+        </div>
+      </div>
+
       {/* ── BOTTOM BAR ── */}
-      <div className="fixed w-full bottom-2 flex justify-center z-20">
-        <div className="flex min-w-[15%] justify-between bg-gray-300 px-2 rounded">
-          <div
+      <div className="fixed w-full bottom-3 flex justify-center z-20">
+        <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
+          {/* mic */}
+          <button
             onClick={() => setMicOn((p) => !p)}
-            className="px-1 pt-1 hover:bg-white rounded cursor-pointer"
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
           >
-            {micOn ? (
-              <BsMicFill color="#5c89d1" size={40} className="ml-2" />
-            ) : (
-              <BsMicMuteFill color="#5c89d1" size={40} className="ml-2" />
-            )}
-            <p className="text-xs text-black select-none">Global Mic</p>
-          </div>
-          <div
+            {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
+            <span className="text-[10px] mt-1 select-none">Mic</span>
+          </button>
+
+          {/* screen */}
+          <button
             onClick={() => setScreenOn((p) => !p)}
-            className="px-1 pt-1 rounded hover:bg-white cursor-pointer"
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
           >
-            <LuScreenShare color={screenOn ? "#42f563" : "#5c89d1"} size={40} />
-            <p className="text-xs text-black select-none">Screen</p>
-          </div>
-          <div
+            <LuScreenShare size={22} />
+            <span className="text-[10px] mt-1 select-none">Screen</span>
+          </button>
+
+          {/* video */}
+          <button
             onClick={() => setVideoOn((p) => !p)}
-            className="px-1 pt-1 hover:bg-white rounded cursor-pointer"
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${videoOn ? "text-blue-400" : "text-slate-500"}`}
           >
             {videoOn ? (
-              <BsCameraVideoFill color="#5c89d1" size={40} />
+              <BsCameraVideoFill size={22} />
             ) : (
-              <BsCameraVideoOffFill color="#5c89d1" size={40} />
+              <BsCameraVideoOffFill size={22} />
             )}
-            <p className="text-xs text-black select-none">Video</p>
-          </div>
-        </div>
-      </div>
+            <span className="text-[10px] mt-1 select-none">Video</span>
+          </button>
 
-      {/* ── RIGHT BAR BUTTONS ── */}
-      <div className="fixed bottom-3 right-2 z-20 flex gap-2">
-        <button
-          onClick={() =>
-            setBoxes((p) => ({ settings: false, leave: false, chat: !p.chat }))
-          }
-          className="bg-gray-300 px-2 h-12 rounded-[100px] flex items-center hover:bg-white"
-        >
-          <IoChatboxEllipses size={30} color="#5c89d1" />
-        </button>
-        <button
-          onClick={() =>
-            setBoxes((p) => ({
-              chat: false,
-              leave: false,
-              settings: !p.settings,
-            }))
-          }
-          className="bg-gray-300 px-2 h-12 rounded-[100px] flex items-center hover:bg-white"
-        >
-          <IoSettings size={30} color="#5c89d1" />
-        </button>
-        <button
-          onClick={() =>
-            setBoxes((p) => ({ chat: false, settings: false, leave: !p.leave }))
-          }
-          className="bg-gray-300 px-2 h-12 rounded-[100px] flex items-center hover:bg-white"
-        >
-          <ImPhoneHangUp size={30} color="#db3954" />
-        </button>
-      </div>
+          <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
-      {/* ── CHAT BOX ── */}
-      <div
-        className={`fixed bottom-[70px] right-2 z-20 bg-[#5c89d1] rounded w-64 ${boxes.chat ? "" : "hidden"}`}
-      >
-        <div className="flex justify-between items-center px-3 py-2">
-          <p className="text-white font-semibold text-sm">Chat</p>
-          <button onClick={() => setBoxes((p) => ({ ...p, chat: false }))}>
-            <IoClose size={20} color="#fff" />
+          {/* participants */}
+          <button
+            onClick={() =>
+              boxes.participants
+                ? closeBox("participants")
+                : openBox("participants")
+            }
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
+          >
+            <IoPeople size={22} />
+            <span className="text-[10px] mt-1 select-none">People</span>
+          </button>
+
+          {/* chat */}
+          <button
+            onClick={() => (boxes.chat ? closeBox("chat") : openBox("chat"))}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.chat ? "text-blue-400" : "text-slate-500"}`}
+          >
+            <IoChatboxEllipses size={22} />
+            <span className="text-[10px] mt-1 select-none">Chat</span>
+          </button>
+
+          {/* settings */}
+          <button
+            onClick={() =>
+              boxes.settings ? closeBox("settings") : openBox("settings")
+            }
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.settings ? "text-blue-400" : "text-slate-500"}`}
+          >
+            <IoSettings size={22} />
+            <span className="text-[10px] mt-1 select-none">Settings</span>
+          </button>
+
+          <div className="w-px h-8 bg-[#1e2d45] mx-1" />
+
+          {/* leave */}
+          <button
+            onClick={() => openBox("leave")}
+            className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
+          >
+            <ImPhoneHangUp size={22} />
+            <span className="text-[10px] mt-1 select-none">Leave</span>
           </button>
         </div>
-        <div className="bg-white mx-2 rounded h-48 overflow-y-auto p-2 flex flex-col gap-1">
+      </div>
+
+      {/* ── PARTICIPANTS PANEL ── */}
+      <div
+        className={`${panelClass} w-64 ${boxes.participants ? "" : "hidden"}`}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+          <p className="text-slate-200 font-semibold text-sm">
+            Participants ({participants.length})
+          </p>
+          <button
+            onClick={() => closeBox("participants")}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
+          </button>
+        </div>
+        <div className="p-3 flex flex-col gap-2 max-h-72 overflow-y-auto">
+          {participants.map((p, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                {p.username?.[0]?.toUpperCase() || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-200 text-xs font-semibold truncate">
+                  {p.username}{" "}
+                  {p.id === user.id && (
+                    <span className="text-slate-500">(you)</span>
+                  )}
+                </p>
+                <p className="text-slate-500 text-[11px] capitalize">
+                  {p.role}
+                </p>
+              </div>
+              <div className="flex-shrink-0">
+                {p.mic ? (
+                  <BsMicFill size={12} color="#3b82f6" />
+                ) : (
+                  <BsMicMuteFill size={12} color="#64748b" />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CHAT PANEL ── */}
+      <div
+        className={`${panelClass} w-72 flex flex-col ${boxes.chat ? "" : "hidden"}`}
+        style={{ height: "380px" }}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+          <p className="text-slate-200 font-semibold text-sm">Chat</p>
+          <button
+            onClick={() => closeBox("chat")}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           {messages.length === 0 ? (
-            <p className="text-gray-400 text-xs text-center mt-2">
+            <p className="text-slate-600 text-xs text-center mt-4">
               No messages yet
             </p>
           ) : (
             messages.map((m, i) => (
-              <div key={i} className="text-xs">
-                <span className="text-gray-400">{m.time} </span>
-                <span>{m.text}</span>
+              <div
+                key={i}
+                className={`flex flex-col ${m.username === user.username ? "items-end" : "items-start"}`}
+              >
+                <span className="text-slate-500 text-[10px] mb-0.5">
+                  {m.username} · {m.time}
+                </span>
+                <div
+                  className={`px-3 py-1.5 rounded-xl text-xs max-w-[85%] ${m.username === user.username ? "bg-blue-500 text-white" : "bg-[#1a2235] text-slate-200"}`}
+                >
+                  {m.text}
+                </div>
               </div>
             ))
           )}
         </div>
-        <div className="flex gap-1 p-2">
+        <div className="flex gap-2 p-3 border-t border-[#1e2d45]">
           <input
-            className="flex-1 rounded px-2 text-sm text-black outline-none"
+            className="flex-1 bg-[#1a2235] border border-[#1e2d45] rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-blue-500 placeholder:text-slate-600"
             placeholder="Type a message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -206,35 +339,36 @@ const MeetingInterface = () => {
           />
           <button
             onClick={sendMessage}
-            className="bg-white text-[#5c89d1] text-xs px-2 rounded font-bold"
+            className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs px-3 rounded-xl font-bold hover:opacity-90"
           >
             Send
           </button>
         </div>
       </div>
 
-      {/* ── SETTINGS BOX ── */}
+      {/* ── SETTINGS PANEL ── */}
       <div
-        className={`fixed bottom-[70px] right-2 z-20 bg-[#5c89d1] rounded w-72 h-[55%] flex flex-col ${boxes.settings ? "" : "hidden"}`}
+        className={`${panelClass} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
+        style={{ height: "55%" }}
       >
-        <div className="flex justify-center border-b-2 rounded">
-          <div>Settings</div>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+          <p className="text-slate-200 font-semibold text-sm">Settings</p>
+          <button
+            onClick={() => closeBox("settings")}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
+          </button>
         </div>
-        <button
-          className="absolute right-0 rounded-full hover:bg-gray-400"
-          onClick={() => setBoxes({ ...boxes, settings: false })}
-        >
-          <IoClose size={23} />
-        </button>
-        <div className="mt-1 p-1 flex-col text-center flex-1 overflow-y-scroll">
+        <div className="flex-1 overflow-y-auto p-3">
           <button
             onClick={() => setDeviceDropDown(!deviceDropDown)}
-            className="flex items-center justify-between p-2 rounded-lg w-full bg-[#535a6d] hover:bg-[#6f778f]"
+            className="flex items-center justify-between p-2.5 rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-300 text-sm transition-colors"
           >
-            Change Audio/Video Device &nbsp;
+            Audio / Video Devices
             {deviceDropDown ? <IoMdArrowDropdown /> : <IoMdArrowDropright />}
           </button>
-          <div className={`pl-2 ${deviceDropDown ? "" : "hidden"}`}>
+          <div className={`mt-1 pl-2 ${deviceDropDown ? "" : "hidden"}`}>
             <button
               onClick={() =>
                 setDeviceSections((prev) => ({
@@ -242,9 +376,9 @@ const MeetingInterface = () => {
                   video: false,
                 }))
               }
-              className="flex items-center mt-1 py-1 px-2 justify-between rounded-lg w-full bg-[#535a6d] hover:bg-[#6f778f] text-sm"
+              className="flex items-center mt-1 py-2 px-2.5 justify-between rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-400 text-xs transition-colors"
             >
-              Audio Input Devices
+              Audio Input
               {deviceSections.audio ? (
                 <IoMdArrowDropdown />
               ) : (
@@ -263,15 +397,13 @@ const MeetingInterface = () => {
                       audio: value.deviceId,
                     }))
                   }
-                  className={`flex items-center justify-center bg-[#535a6d] py-1 w-full border hover:bg-[#6f778f] text-xs
-                    ${index === 0 ? "rounded-t-lg" : ""}
-                    ${index === audioDevices.length - 1 ? "rounded-b-lg" : ""}`}
+                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors
+                    ${index === 0 ? "rounded-t-xl" : ""}
+                    ${index === audioDevices.length - 1 ? "rounded-b-xl" : ""}`}
                 >
-                  <div>{value.label}</div>
+                  <span className="truncate">{value.label}</span>
                   {value.deviceId === selectedDevice.audio && (
-                    <div className="mx-1">
-                      <FaCheck color="#39fa73" />
-                    </div>
+                    <FaCheck color="#3b82f6" size={10} />
                   )}
                 </button>
               ))}
@@ -283,9 +415,9 @@ const MeetingInterface = () => {
                   video: !prev.video,
                 }))
               }
-              className="flex items-center mt-1 py-1 px-2 justify-between rounded-lg w-full bg-[#535a6d] hover:bg-[#6f778f] text-sm"
+              className="flex items-center mt-1 py-2 px-2.5 justify-between rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-400 text-xs transition-colors"
             >
-              Video Input Devices
+              Video Input
               {deviceSections.video ? (
                 <IoMdArrowDropdown />
               ) : (
@@ -304,15 +436,13 @@ const MeetingInterface = () => {
                       video: value.deviceId,
                     }))
                   }
-                  className={`flex items-center justify-center bg-[#535a6d] py-1 w-full border hover:bg-[#6f778f] text-xs
-                    ${index === 0 ? "rounded-t-lg" : ""}
-                    ${index === videoDevices.length - 1 ? "rounded-b-lg" : ""}`}
+                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors
+                    ${index === 0 ? "rounded-t-xl" : ""}
+                    ${index === videoDevices.length - 1 ? "rounded-b-xl" : ""}`}
                 >
-                  <div>{value.label}</div>
+                  <span className="truncate">{value.label}</span>
                   {value.deviceId === selectedDevice.video && (
-                    <div className="mx-1">
-                      <FaCheck color="#39fa73" />
-                    </div>
+                    <FaCheck color="#3b82f6" size={10} />
                   )}
                 </button>
               ))}
@@ -321,22 +451,33 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* ── LEAVE BOX ── */}
-      <div
-        className={`fixed bottom-[70px] right-2 z-20 bg-[#5c89d1] rounded w-52 ${boxes.leave ? "" : "hidden"}`}
-      >
-        <button
-          className="absolute top-0 right-0 hover:bg-gray-400 rounded-full"
-          onClick={() => setBoxes((p) => ({ ...p, leave: false }))}
-        >
-          <IoClose size={25} color="#fff" />
-        </button>
-        <div className="py-3 px-8 flex flex-col mt-2 gap-4">
-          <button className="bg-[#db3954] rounded hover:scale-110 duration-300 text-white text-sm py-1">
-            Leave Meeting
+      {/* ── LEAVE PANEL ── */}
+      <div className={`${panelClass} w-56 ${boxes.leave ? "" : "hidden"}`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+          <p className="text-slate-200 font-semibold text-sm">Leave Room</p>
+          <button
+            onClick={() => closeBox("leave")}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
           </button>
-          <button className="bg-[#db3954] rounded px-2 text-white text-sm py-1 hover:scale-110 duration-300">
-            End for All
+        </div>
+        <div className="p-3 flex flex-col gap-2">
+          <button
+            onClick={() => {
+              localStorage.removeItem("currentRoom");
+              navigate("/home");
+            }}
+            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
+          >
+            🚪 Leave Meeting
+          </button>
+          <button
+            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25 opacity-50 cursor-not-allowed"
+            disabled
+            title="Available for room creator"
+          >
+            ⛔ End for All
           </button>
         </div>
       </div>
