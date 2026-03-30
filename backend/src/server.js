@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { pool } from "./config/database.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import userRoutes from "./routes/userRoutes.js";
+import classroomRoutes from "./routes/classroomRoutes.js";
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/users", userRoutes);
+app.use("/api/classrooms", classroomRoutes);
 
 app.get("/api", async (req, res) => {
   try {
