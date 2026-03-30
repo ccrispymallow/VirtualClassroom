@@ -221,7 +221,7 @@ export default function Login() {
                 >
                   <option value="">Select role</option>
                   <option value="student">Student</option>
-                  <option value="teacher">Teacher</option>
+                  <option value="instructor">Instructor</option>
                 </select>
               </div>
               <button

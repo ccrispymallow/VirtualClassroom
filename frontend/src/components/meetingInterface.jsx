@@ -1,4 +1,9 @@
 import { useState, useEffect } from "react";
+import { useMedia } from "../helper/useMedia";
+import { socket } from "../helper/socket";
+import { usePeer } from "../helper/usePeer";
+import { useRoom } from "../components/roomContext";
+import RemoteStream from "./remoteSream";
 import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
 import {
@@ -8,15 +13,9 @@ import {
   IoPeople,
 } from "react-icons/io5";
 import { ImPhoneHangUp } from "react-icons/im";
-import {
-  BsMicFill,
-  BsMicMuteFill,
-  BsCameraVideoFill,
-  BsCameraVideoOffFill,
-} from "react-icons/bs";
+import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 const MeetingInterface = () => {
   const { roomCode } = useParams();
@@ -24,86 +23,101 @@ const MeetingInterface = () => {
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
 
+  const { participants, setParticipants } = useRoom();
+
   const [boxes, setBoxes] = useState({
     chat: false,
     settings: false,
     leave: false,
     participants: false,
   });
-  const [micOn, setMicOn] = useState(false);
-  const [videoOn, setVideoOn] = useState(false);
-  const [screenOn, setScreenOn] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [deviceDropDown, setDeviceDropDown] = useState(false);
-  const [deviceSections, setDeviceSections] = useState({
-    audio: false,
-    video: false,
-  });
+  const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
-  const [videoDevices, setVideoDevices] = useState([]);
-  const [loading, setLoading] = useState({ audio: false, video: false });
-  const [selectedDevice, setSelectedDevice] = useState({
-    audio: null,
-    video: null,
+  const [loading, setLoading] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState({ audio: null });
+
+  const {
+    micStreamRef,
+    screenStreamRef,
+    micOn,
+    screenOn,
+    startMic,
+    stopMic,
+    startScreen,
+    stopScreen,
+  } = useMedia();
+
+  const { remoteStreams, broadcastMic, broadcastScreen } = usePeer({
+    roomCode,
+    user,
+    socket,
+    micStreamRef,
+    screenStreamRef,
   });
 
-  // placeholder participants — will be replaced by socket later
-  const participants = [
-    { id: user.id, username: user.username, role: user.role, mic: micOn },
-  ];
+  useEffect(() => {
+    socket.on("participants-update", (updatedList) => {
+      setParticipants(updatedList);
+    });
+    return () => socket.off("participants-update");
+  }, [setParticipants]);
 
   useEffect(() => {
     const check = async () => {
-      if (deviceSections.audio) {
-        const audioPermission = await navigator.permissions.query({
-          name: "microphone",
+      if (!deviceSections.audio) return;
+      const audioPermission = await navigator.permissions.query({
+        name: "microphone",
+      });
+      if (audioPermission.state === "prompt") {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
         });
-        if (audioPermission.state === "prompt") {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
-          stream.getTracks().forEach((t) => t.stop());
-        } else if (audioPermission.state === "denied") {
-          alert(
-            "Please allow microphone access from browser to see all audio devices.",
-          );
-          setDeviceSections({ ...deviceSections, audio: false });
-          return;
-        }
-        setLoading({ audio: true, video: false });
-        navigator.mediaDevices.enumerateDevices().then((devices) => {
-          setAudioDevices(
-            devices.filter(
-              (d) =>
-                d.kind === "audioinput" && !d.label.includes("Communications"),
-            ),
-          );
-          setLoading({ audio: false, video: false });
-        });
-      } else if (deviceSections.video) {
-        const cameraPermission = await navigator.permissions.query({
-          name: "camera",
-        });
-        if (cameraPermission.state === "prompt") {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-          });
-          stream.getTracks().forEach((t) => t.stop());
-        } else if (cameraPermission.state === "denied") {
-          alert(
-            "Please allow camera access from browser to see all video devices.",
-          );
-        }
-        setLoading({ audio: false, video: true });
-        navigator.mediaDevices.enumerateDevices().then((devices) => {
-          setVideoDevices(devices.filter((d) => d.kind === "videoinput"));
-          setLoading({ audio: false, video: false });
-        });
+        stream.getTracks().forEach((t) => t.stop());
+      } else if (audioPermission.state === "denied") {
+        alert(
+          "Please allow microphone access from browser to see all audio devices.",
+        );
+        setDeviceSections({ audio: false });
+        return;
       }
+      setLoading(true);
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setAudioDevices(
+        devices.filter(
+          (d) => d.kind === "audioinput" && !d.label.includes("Communications"),
+        ),
+      );
+      setLoading(false);
     };
     check();
   }, [deviceSections]);
+
+  const handleMicToggle = async () => {
+    if (micOn) {
+      stopMic();
+    } else {
+      const stream = await startMic();
+      if (stream) broadcastMic(stream);
+    }
+  };
+
+  const handleScreenToggle = async () => {
+    if (screenOn) {
+      stopScreen();
+    } else {
+      const stream = await startScreen();
+      if (stream) broadcastScreen(stream);
+    }
+  };
+
+  const handleLeave = () => {
+    socket.emit("leave-room", { roomCode, userId: user.id });
+    localStorage.removeItem("currentRoom");
+    navigate("/home");
+  };
 
   const sendMessage = () => {
     if (!input.trim()) return;
@@ -118,7 +132,7 @@ const MeetingInterface = () => {
     setInput("");
   };
 
-  const openBox = (name) => {
+  const openBox = (name) =>
     setBoxes({
       chat: false,
       settings: false,
@@ -126,7 +140,6 @@ const MeetingInterface = () => {
       participants: false,
       [name]: true,
     });
-  };
   const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
 
   const panelClass =
@@ -134,7 +147,16 @@ const MeetingInterface = () => {
 
   return (
     <>
-      {/* ── TOP BAR (room info) ── */}
+      {remoteStreams.map((s, i) => (
+        <RemoteStream
+          key={i}
+          stream={s.stream}
+          type={s.type}
+          username={s.username}
+        />
+      ))}
+
+      {/* ── TOP BAR ── */}
       <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
@@ -166,40 +188,24 @@ const MeetingInterface = () => {
       {/* ── BOTTOM BAR ── */}
       <div className="fixed w-full bottom-3 flex justify-center z-20">
         <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
-          {/* mic */}
           <button
-            onClick={() => setMicOn((p) => !p)}
+            onClick={handleMicToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
           >
             {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
             <span className="text-[10px] mt-1 select-none">Mic</span>
           </button>
 
-          {/* screen */}
           <button
-            onClick={() => setScreenOn((p) => !p)}
+            onClick={handleScreenToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
           >
             <LuScreenShare size={22} />
             <span className="text-[10px] mt-1 select-none">Screen</span>
           </button>
 
-          {/* video */}
-          <button
-            onClick={() => setVideoOn((p) => !p)}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${videoOn ? "text-blue-400" : "text-slate-500"}`}
-          >
-            {videoOn ? (
-              <BsCameraVideoFill size={22} />
-            ) : (
-              <BsCameraVideoOffFill size={22} />
-            )}
-            <span className="text-[10px] mt-1 select-none">Video</span>
-          </button>
-
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
-          {/* participants */}
           <button
             onClick={() =>
               boxes.participants
@@ -212,7 +218,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">People</span>
           </button>
 
-          {/* chat */}
           <button
             onClick={() => (boxes.chat ? closeBox("chat") : openBox("chat"))}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.chat ? "text-blue-400" : "text-slate-500"}`}
@@ -221,7 +226,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">Chat</span>
           </button>
 
-          {/* settings */}
           <button
             onClick={() =>
               boxes.settings ? closeBox("settings") : openBox("settings")
@@ -234,7 +238,6 @@ const MeetingInterface = () => {
 
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
-          {/* leave */}
           <button
             onClick={() => openBox("leave")}
             className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
@@ -349,7 +352,6 @@ const MeetingInterface = () => {
       {/* ── SETTINGS PANEL ── */}
       <div
         className={`${panelClass} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
-        style={{ height: "55%" }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
           <p className="text-slate-200 font-semibold text-sm">Settings</p>
@@ -365,16 +367,13 @@ const MeetingInterface = () => {
             onClick={() => setDeviceDropDown(!deviceDropDown)}
             className="flex items-center justify-between p-2.5 rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-300 text-sm transition-colors"
           >
-            Audio / Video Devices
+            Audio Devices
             {deviceDropDown ? <IoMdArrowDropdown /> : <IoMdArrowDropright />}
           </button>
           <div className={`mt-1 pl-2 ${deviceDropDown ? "" : "hidden"}`}>
             <button
               onClick={() =>
-                setDeviceSections((prev) => ({
-                  audio: !prev.audio,
-                  video: false,
-                }))
+                setDeviceSections((prev) => ({ audio: !prev.audio }))
               }
               className="flex items-center mt-1 py-2 px-2.5 justify-between rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-400 text-xs transition-colors"
             >
@@ -386,7 +385,7 @@ const MeetingInterface = () => {
               )}
             </button>
             <div
-              className={`${deviceSections.audio && !loading.audio ? "" : "hidden"} w-full p-1`}
+              className={`${deviceSections.audio && !loading ? "" : "hidden"} w-full p-1`}
             >
               {audioDevices.map((value, index) => (
                 <button
@@ -403,45 +402,6 @@ const MeetingInterface = () => {
                 >
                   <span className="truncate">{value.label}</span>
                   {value.deviceId === selectedDevice.audio && (
-                    <FaCheck color="#3b82f6" size={10} />
-                  )}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() =>
-                setDeviceSections((prev) => ({
-                  audio: false,
-                  video: !prev.video,
-                }))
-              }
-              className="flex items-center mt-1 py-2 px-2.5 justify-between rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-400 text-xs transition-colors"
-            >
-              Video Input
-              {deviceSections.video ? (
-                <IoMdArrowDropdown />
-              ) : (
-                <IoMdArrowDropright />
-              )}
-            </button>
-            <div
-              className={`${deviceSections.video && !loading.video ? "" : "hidden"} w-full p-1`}
-            >
-              {videoDevices.map((value, index) => (
-                <button
-                  key={index}
-                  onClick={() =>
-                    setSelectedDevice((prev) => ({
-                      ...prev,
-                      video: value.deviceId,
-                    }))
-                  }
-                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors
-                    ${index === 0 ? "rounded-t-xl" : ""}
-                    ${index === videoDevices.length - 1 ? "rounded-b-xl" : ""}`}
-                >
-                  <span className="truncate">{value.label}</span>
-                  {value.deviceId === selectedDevice.video && (
                     <FaCheck color="#3b82f6" size={10} />
                   )}
                 </button>
@@ -464,18 +424,15 @@ const MeetingInterface = () => {
         </div>
         <div className="p-3 flex flex-col gap-2">
           <button
-            onClick={() => {
-              localStorage.removeItem("currentRoom");
-              navigate("/home");
-            }}
+            onClick={handleLeave}
             className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
           >
             🚪 Leave Meeting
           </button>
           <button
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25 opacity-50 cursor-not-allowed"
             disabled
             title="Available for room creator"
+            className="w-full py-2.5 bg-rose-500/10 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/25 opacity-50 cursor-not-allowed"
           >
             ⛔ End for All
           </button>
