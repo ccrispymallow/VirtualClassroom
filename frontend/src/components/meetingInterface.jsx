@@ -22,6 +22,7 @@ const MeetingInterface = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
+  const isInstructor = user.role === "instructor";
 
   const { participants, setParticipants } = useRoom();
 
@@ -116,7 +117,13 @@ const MeetingInterface = () => {
   const handleLeave = () => {
     socket.emit("leave-room", { roomCode, userId: user.id });
     localStorage.removeItem("currentRoom");
-    navigate("/home");
+    navigate("/homepage");
+  };
+
+  const handleEndForAll = () => {
+    socket.emit("end-room", { roomCode, userId: user.id });
+    localStorage.removeItem("currentRoom");
+    navigate("/homepage");
   };
 
   const sendMessage = () => {
@@ -176,6 +183,11 @@ const MeetingInterface = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {isInstructor && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
+              Instructor
+            </span>
+          )}
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">
             {user.username?.[0]?.toUpperCase() || "?"}
           </div>
@@ -279,8 +291,12 @@ const MeetingInterface = () => {
                     <span className="text-slate-500">(you)</span>
                   )}
                 </p>
-                <p className="text-slate-500 text-[11px] capitalize">
-                  {p.role}
+                <p className="text-[11px] capitalize">
+                  {p.role === "instructor" ? (
+                    <span className="text-violet-400">{p.role}</span>
+                  ) : (
+                    <span className="text-slate-500">{p.role}</span>
+                  )}
                 </p>
               </div>
               <div className="flex-shrink-0">
@@ -427,15 +443,17 @@ const MeetingInterface = () => {
             onClick={handleLeave}
             className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
           >
-            🚪 Leave Meeting
+            Leave Meeting
           </button>
-          <button
-            disabled
-            title="Available for room creator"
-            className="w-full py-2.5 bg-rose-500/10 text-rose-400 text-xs font-semibold rounded-xl border border-rose-500/25 opacity-50 cursor-not-allowed"
-          >
-            ⛔ End for All
-          </button>
+
+          {isInstructor && (
+            <button
+              onClick={handleEndForAll}
+              className="w-full py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
+            >
+              End for All
+            </button>
+          )}
         </div>
       </div>
     </>

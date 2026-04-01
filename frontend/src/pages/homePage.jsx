@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
-  console.log(user);
+  const isInstructor = user.role === "instructor"; // 👈
+
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("join");
   const [joinForm, setJoinForm] = useState({
@@ -48,17 +49,14 @@ export default function Home() {
   const handleCreate = async (e) => {
     e.preventDefault();
     setStatus({ type: "loading", message: "Creating classroom..." });
-
-    // generate room code here before sending
     const room_code = Math.random().toString(36).substring(2, 8).toUpperCase();
-
     try {
       const res = await fetch("/api/classrooms/createClassroom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           room_name: createForm.room_name,
-          room_code, // generated here
+          room_code,
           room_password: createForm.room_password,
           capacity: createForm.capacity || 5,
           creator_id: user.id,
@@ -94,7 +92,6 @@ export default function Home() {
           </span>
         </div>
 
-        {/* user button */}
         <div className="relative">
           <button
             onClick={() => setShowUserPanel(!showUserPanel)}
@@ -126,10 +123,8 @@ export default function Home() {
             </svg>
           </button>
 
-          {/* user panel dropdown */}
           {showUserPanel && (
             <div className="absolute right-0 top-14 w-64 bg-[#111827] border border-[#1e2d45] rounded-2xl p-4 z-50 shadow-xl">
-              {/* avatar preview */}
               <div className="flex flex-col items-center mb-4 pb-4 border-b border-[#1e2d45]">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-2xl mb-2">
                   {user.username?.[0]?.toUpperCase() || "?"}
@@ -142,8 +137,6 @@ export default function Home() {
                   {user.role}
                 </span>
               </div>
-
-              {/* actions */}
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => navigate("/profile")}
@@ -172,7 +165,9 @@ export default function Home() {
           </span>
         </h1>
         <p className="text-slate-500 text-sm">
-          Create or join a 3D classroom and learn together in real time
+          {isInstructor
+            ? "Create or join a 3D classroom and teach in real time"
+            : "Join a classroom and learn together in real time"}
         </p>
       </div>
 
@@ -181,25 +176,27 @@ export default function Home() {
         <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl px-9 py-10 relative overflow-hidden">
           <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-blue-500/10 pointer-events-none" />
 
-          {/* tabs */}
-          <div className="flex gap-1 bg-[#0b0f1a] rounded-xl p-1 mb-7">
-            {["join", "create"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setStatus(null);
-                }}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
-                  activeTab === tab
-                    ? "bg-blue-500 text-white"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
-              </button>
-            ))}
-          </div>
+          {/* tabs — only show Create tab for instructors 👇 */}
+          {isInstructor && (
+            <div className="flex gap-1 bg-[#0b0f1a] rounded-xl p-1 mb-7">
+              {["join", "create"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setStatus(null);
+                  }}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
+                    activeTab === tab
+                      ? "bg-blue-500 text-white"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* status */}
           {status && (
@@ -219,7 +216,8 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === "join" ? (
+          {/* students always see join form, instructors see based on activeTab 👇 */}
+          {!isInstructor || activeTab === "join" ? (
             <form onSubmit={handleJoin} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
@@ -294,7 +292,7 @@ export default function Home() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                  Capacity{" "}
+                  Capacity
                 </label>
                 <input
                   type="number"
