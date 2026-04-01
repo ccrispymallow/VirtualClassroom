@@ -1,4 +1,4 @@
-const rooms = {}; // { roomCode: [{ id, username, role, peerId }] }
+const rooms = {};
 
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
@@ -6,13 +6,16 @@ export const initSocket = (io) => {
       socket.join(roomCode);
       if (!rooms[roomCode]) rooms[roomCode] = [];
       rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== user.id);
-      rooms[roomCode].push({ ...user, socketId: socket.id, peerId }); // ✅ store peerId
+      rooms[roomCode].push({
+        ...user,
+        socketId: socket.id,
+        peerId,
+        position: [0, 0, 0],
+      });
 
-      // Tell the NEW user about everyone already in the room
       const others = rooms[roomCode].filter((p) => p.id !== user.id);
-      socket.emit("existing-peers", others); // ✅ so new user calls them
+      socket.emit("existing-peers", others);
 
-      // Tell EVERYONE ELSE about the new user
       socket.to(roomCode).emit("user-joined", {
         ...user,
         socketId: socket.id,
@@ -20,6 +23,15 @@ export const initSocket = (io) => {
       });
 
       io.to(roomCode).emit("participants-update", rooms[roomCode]);
+    });
+
+    // ── Receive position from one user, broadcast to everyone else ──
+    socket.on("position-update", ({ roomCode, userId, position }) => {
+      if (rooms[roomCode]) {
+        const p = rooms[roomCode].find((p) => p.id === userId);
+        if (p) p.position = position;
+      }
+      socket.to(roomCode).emit("peer-moved", { userId, position });
     });
 
     socket.on("leave-room", ({ roomCode, userId }) => {

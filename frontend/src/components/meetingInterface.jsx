@@ -6,12 +6,7 @@ import { useRoom } from "../components/roomContext";
 import RemoteStream from "./remoteSream";
 import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
-import {
-  IoClose,
-  IoChatboxEllipses,
-  IoSettings,
-  IoPeople,
-} from "react-icons/io5";
+import { IoClose, IoSettings, IoPeople } from "react-icons/io5";
 import { ImPhoneHangUp } from "react-icons/im";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
@@ -24,16 +19,14 @@ const MeetingInterface = () => {
   const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
   const isInstructor = user.role === "instructor";
 
-  const { participants, setParticipants } = useRoom();
+  const { participants, setParticipants, setScreenStream } = useRoom();
 
   const [boxes, setBoxes] = useState({
-    chat: false,
     settings: false,
     leave: false,
     participants: false,
   });
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
@@ -58,6 +51,14 @@ const MeetingInterface = () => {
     micStreamRef,
     screenStreamRef,
   });
+
+  const remoteScreen = remoteStreams.find((s) => s.type === "screen");
+
+  useEffect(() => {
+    const activeStream =
+      remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
+    setScreenStream(activeStream);
+  }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
 
   useEffect(() => {
     socket.on("participants-update", (updatedList) => {
@@ -126,22 +127,8 @@ const MeetingInterface = () => {
     navigate("/homepage");
   };
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        text: input,
-        time: new Date().toLocaleTimeString(),
-        username: user.username,
-      },
-    ]);
-    setInput("");
-  };
-
   const openBox = (name) =>
     setBoxes({
-      chat: false,
       settings: false,
       leave: false,
       participants: false,
@@ -149,19 +136,28 @@ const MeetingInterface = () => {
     });
   const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
 
+  // Stop pointer-lock and blur from canvas when a UI panel is open
+  // so WASD doesn't move the avatar while you're clicking UI
+  const handlePanelMouseEnter = () => {
+    if (document.pointerLockElement) document.exitPointerLock();
+  };
+
   const panelClass =
     "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
 
   return (
     <>
-      {remoteStreams.map((s, i) => (
-        <RemoteStream
-          key={i}
-          stream={s.stream}
-          type={s.type}
-          username={s.username}
-        />
-      ))}
+      {/* Remote audio streams */}
+      {remoteStreams
+        .filter((s) => s.type === "mic")
+        .map((s, i) => (
+          <RemoteStream
+            key={i}
+            stream={s.stream}
+            type={s.type}
+            username={s.username}
+          />
+        ))}
 
       {/* ── TOP BAR ── */}
       <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
@@ -202,7 +198,9 @@ const MeetingInterface = () => {
         <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
           <button
             onClick={handleMicToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
+              micOn ? "text-blue-400" : "text-slate-500"
+            }`}
           >
             {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
             <span className="text-[10px] mt-1 select-none">Mic</span>
@@ -210,10 +208,14 @@ const MeetingInterface = () => {
 
           <button
             onClick={handleScreenToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
+              screenOn ? "text-emerald-400" : "text-slate-500"
+            }`}
           >
             <LuScreenShare size={22} />
-            <span className="text-[10px] mt-1 select-none">Screen</span>
+            <span className="text-[10px] mt-1 select-none">
+              {screenOn ? "Sharing" : "Screen"}
+            </span>
           </button>
 
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
@@ -224,25 +226,21 @@ const MeetingInterface = () => {
                 ? closeBox("participants")
                 : openBox("participants")
             }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
+              boxes.participants ? "text-blue-400" : "text-slate-500"
+            }`}
           >
             <IoPeople size={22} />
             <span className="text-[10px] mt-1 select-none">People</span>
           </button>
 
           <button
-            onClick={() => (boxes.chat ? closeBox("chat") : openBox("chat"))}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.chat ? "text-blue-400" : "text-slate-500"}`}
-          >
-            <IoChatboxEllipses size={22} />
-            <span className="text-[10px] mt-1 select-none">Chat</span>
-          </button>
-
-          <button
             onClick={() =>
               boxes.settings ? closeBox("settings") : openBox("settings")
             }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.settings ? "text-blue-400" : "text-slate-500"}`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
+              boxes.settings ? "text-blue-400" : "text-slate-500"
+            }`}
           >
             <IoSettings size={22} />
             <span className="text-[10px] mt-1 select-none">Settings</span>
@@ -263,6 +261,7 @@ const MeetingInterface = () => {
       {/* ── PARTICIPANTS PANEL ── */}
       <div
         className={`${panelClass} w-64 ${boxes.participants ? "" : "hidden"}`}
+        onMouseEnter={handlePanelMouseEnter}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
           <p className="text-slate-200 font-semibold text-sm">
@@ -311,63 +310,10 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* ── CHAT PANEL ── */}
-      <div
-        className={`${panelClass} w-72 flex flex-col ${boxes.chat ? "" : "hidden"}`}
-        style={{ height: "380px" }}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-          <p className="text-slate-200 font-semibold text-sm">Chat</p>
-          <button
-            onClick={() => closeBox("chat")}
-            className="text-slate-500 hover:text-slate-300"
-          >
-            <IoClose size={18} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-          {messages.length === 0 ? (
-            <p className="text-slate-600 text-xs text-center mt-4">
-              No messages yet
-            </p>
-          ) : (
-            messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex flex-col ${m.username === user.username ? "items-end" : "items-start"}`}
-              >
-                <span className="text-slate-500 text-[10px] mb-0.5">
-                  {m.username} · {m.time}
-                </span>
-                <div
-                  className={`px-3 py-1.5 rounded-xl text-xs max-w-[85%] ${m.username === user.username ? "bg-blue-500 text-white" : "bg-[#1a2235] text-slate-200"}`}
-                >
-                  {m.text}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="flex gap-2 p-3 border-t border-[#1e2d45]">
-          <input
-            className="flex-1 bg-[#1a2235] border border-[#1e2d45] rounded-xl px-3 py-2 text-slate-200 text-xs outline-none focus:border-blue-500 placeholder:text-slate-600"
-            placeholder="Type a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button
-            onClick={sendMessage}
-            className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs px-3 rounded-xl font-bold hover:opacity-90"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-
       {/* ── SETTINGS PANEL ── */}
       <div
         className={`${panelClass} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
+        onMouseEnter={handlePanelMouseEnter}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
           <p className="text-slate-200 font-semibold text-sm">Settings</p>
@@ -401,7 +347,9 @@ const MeetingInterface = () => {
               )}
             </button>
             <div
-              className={`${deviceSections.audio && !loading ? "" : "hidden"} w-full p-1`}
+              className={`${
+                deviceSections.audio && !loading ? "" : "hidden"
+              } w-full p-1`}
             >
               {audioDevices.map((value, index) => (
                 <button
@@ -428,7 +376,10 @@ const MeetingInterface = () => {
       </div>
 
       {/* ── LEAVE PANEL ── */}
-      <div className={`${panelClass} w-56 ${boxes.leave ? "" : "hidden"}`}>
+      <div
+        className={`${panelClass} w-56 ${boxes.leave ? "" : "hidden"}`}
+        onMouseEnter={handlePanelMouseEnter}
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
           <p className="text-slate-200 font-semibold text-sm">Leave Room</p>
           <button
@@ -445,7 +396,6 @@ const MeetingInterface = () => {
           >
             Leave Meeting
           </button>
-
           {isInstructor && (
             <button
               onClick={handleEndForAll}

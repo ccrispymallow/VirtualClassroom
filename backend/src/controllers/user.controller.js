@@ -72,3 +72,35 @@ export const loginUser = async (req, res, next) => {
     next(error);
   }
 };
+
+// PUT
+export const updateUser = async (req, res, next) => {
+  try {
+    const { username, avatar } = req.body;
+    const userId = req.params.id;
+
+    if (!username && !avatar) {
+      return res.status(400).json({
+        error: "At least username or avatar is required to update",
+      });
+    }
+
+    const updatedUser = await userService.updateUserProfile(userId, {
+      username,
+      avatar,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
+
+    res.json({
+      message: "User updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

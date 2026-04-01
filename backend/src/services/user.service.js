@@ -35,3 +35,16 @@ export const login = async (email) => {
   );
   return result.rows[0];
 };
+
+export const updateUser = async (id, { username, avatar }) => {
+  const result = await pool.query(
+    `UPDATE users
+     SET username = COALESCE($1, username),
+         avatar = COALESCE($2, avatar)
+     WHERE id = $3
+     RETURNING id, username, email, role, avatar`,
+    [username, avatar, id],
+  );
+
+  return result.rows[0];
+};
