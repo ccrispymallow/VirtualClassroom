@@ -107,10 +107,8 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
     height: "340px",
     boxSizing: "border-box",
     overflow: "hidden",
-    // Only allow interaction when close enough
     pointerEvents: isNear ? "auto" : "none",
   };
-
   const headerStyle = {
     display: "flex",
     alignItems: "center",
@@ -122,7 +120,6 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
     borderBottom: "1px solid #1e2d45",
     flexShrink: 0,
   };
-
   const listStyle = {
     flex: 1,
     overflowY: "auto",
@@ -144,7 +141,7 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
         gap: "10px",
       }}
     >
-      {/* ── NOTES COLUMN ── */}
+      {/* NOTES */}
       <div style={colStyle}>
         <div style={headerStyle}>
           <BsStickyFill size={12} /> Notes
@@ -226,7 +223,7 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
         </div>
       </div>
 
-      {/* ── FILES COLUMN ── */}
+      {/* FILES */}
       <div style={colStyle}>
         <div style={headerStyle}>
           <LuUpload size={12} /> Files
@@ -335,7 +332,7 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
         </div>
       </div>
 
-      {/* ── ANNOUNCEMENTS COLUMN ── */}
+      {/* ANNOUNCEMENTS */}
       <div style={colStyle}>
         <div style={headerStyle}>
           <MdAnnouncement size={12} /> Announcements
@@ -440,7 +437,10 @@ const BoardUI = ({ user, isInstructor, isNear }) => {
   );
 };
 
-export default function ClassBoard({ position = [0, 2, -8] }) {
+export default function ClassBoard({
+  position = [-3, 1.8, 0],
+  rotation = [0, Math.PI / 2, 0],
+}) {
   const meshRef = useRef();
   const [isNear, setIsNear] = useState(false);
   const { avatarPosition } = useRoom();
@@ -451,16 +451,14 @@ export default function ClassBoard({ position = [0, 2, -8] }) {
     if (!meshRef.current || !avatarPosition) return;
     const boardPos = new THREE.Vector3(...position);
     const pos = new THREE.Vector3(...avatarPosition);
-    const dist = pos.distanceTo(boardPos);
-    setIsNear(dist < INTERACT_DISTANCE);
+    setIsNear(pos.distanceTo(boardPos) < INTERACT_DISTANCE);
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
+    <mesh ref={meshRef} position={position} rotation={rotation}>
       <planeGeometry args={[5, 3]} />
       <meshStandardMaterial color="#1a2235" />
 
-      {/* Full UI always visible at all distances — Html scales it naturally */}
       <Html
         transform
         occlude
@@ -471,7 +469,6 @@ export default function ClassBoard({ position = [0, 2, -8] }) {
         <BoardUI user={user} isInstructor={isInstructor} isNear={isNear} />
       </Html>
 
-      {/* Distance hint */}
       <Html
         transform
         occlude
