@@ -6,6 +6,7 @@ import {
   getClassroomById,
   getParticipants,
   joinClassroom,
+  endClassroom,
 } from "../controllers/classroom.controller.js";
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get("/getAllClassrooms", getAllClassrooms);
 router.get("/:id/participants", getParticipants);
 router.get("/:id", getClassroomById);
 router.post("/join", joinClassroom);
+router.post("/end", endClassroom);
 
 export default router;

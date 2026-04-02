@@ -42,6 +42,38 @@ export const initSocket = (io) => {
       socket.leave(roomCode);
     });
 
+    socket.on("end-room", async ({ roomCode, userId }) => {
+      try {
+        // Call the end classroom service
+        const { endClassroom } =
+          await import("./services/classroom.service.js");
+        await endClassroom(roomCode, userId);
+
+        // Notify all participants in the room that it's ended (except the instructor)
+        socket.to(roomCode).emit("room-ended", {
+          message: "This room has been ended by the instructor",
+          roomCode,
+        });
+
+        // Send a different message to the instructor
+        socket.emit("room-ended-by-you", {
+          message:
+            "You have successfully ended the meeting for all participants",
+          roomCode,
+        });
+
+        // Remove all participants from the room
+        if (rooms[roomCode]) {
+          rooms[roomCode] = [];
+          io.to(roomCode).emit("participants-update", []);
+        }
+      } catch (error) {
+        socket.emit("room-end-error", {
+          message: error.message,
+        });
+      }
+    });
+
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
         const before = rooms[roomCode].length;
