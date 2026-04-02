@@ -140,3 +140,34 @@ export const endClassroom = async (room_code, user_id) => {
 
   return { ...classroom, ended_at: new Date() };
 };
+
+// DELETE classroom
+export const deleteClassroom = async (id, user_id) => {
+  const roomResult = await pool.query(
+    `SELECT * FROM classrooms WHERE id = $1`,
+    [id],
+  );
+  const classroom = roomResult.rows[0];
+
+  if (!classroom) throw new Error("Classroom not found");
+  if (classroom.creator_id !== user_id)
+    throw new Error("Only the room creator can delete the classroom");
+
+  // Remove participants
+  await pool.query(`DELETE FROM room_participants WHERE room_id = $1`, [id]);
+
+  // End any active sessions
+  await pool.query(
+    `UPDATE sessions SET end_time = CURRENT_TIMESTAMP 
+     WHERE room_id = $1 AND end_time IS NULL`,
+    [id],
+  );
+
+  // Delete the classroom
+  const deleted = await pool.query(
+    `DELETE FROM classrooms WHERE id = $1 RETURNING *`,
+    [id],
+  );
+
+  return deleted.rows[0];
+};

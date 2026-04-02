@@ -1,21 +1,22 @@
-// src/routes/classroomRoutes.js
 import express from "express";
 import {
   createClassroom,
   getAllClassrooms,
   getClassroomById,
   getParticipants,
+  deleteClassroom,
   joinClassroom,
   endClassroom,
 } from "../controllers/classroom.controller.js";
 
 const router = express.Router();
 
-router.post("/createClassroom", createClassroom);
-router.get("/getAllClassrooms", getAllClassrooms);
-router.get("/:id/participants", getParticipants);
-router.get("/:id", getClassroomById);
+router.post("/", createClassroom);
+router.get("/", getAllClassrooms);
 router.post("/join", joinClassroom);
-router.post("/end", endClassroom);
+router.patch("/end", endClassroom);
+router.get("/:id", getClassroomById);
+router.get("/:id/participants", getParticipants);
+router.delete("/:id", deleteClassroom);
 
 export default router;
