@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 
-const boyModelPath = new URL("../assets/boy.glb", import.meta.url).href;
-const girlModelPath = new URL("../assets/girl.glb", import.meta.url).href;
+const boyModelPath = "/boy.glb";
+const girlModelPath = "/girl.glb";
 
 // Fallback avatar models
 const BoyAvatar = () => {
