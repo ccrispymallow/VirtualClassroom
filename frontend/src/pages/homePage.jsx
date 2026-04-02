@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
-  const isInstructor = user.role === "instructor"; // 👈
+  const isInstructor = user.role === "instructor";
 
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("join");
@@ -36,6 +36,9 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to join.");
+
+      localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
+
       setStatus({ type: "success", message: "Joined! Entering classroom..." });
       setTimeout(
         () => navigate("/classroom/" + data.classroom.room_code),
@@ -64,6 +67,14 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create.");
+
+      const roomData = data.classroom || {
+        id: data.id || data.room_id || null,
+        room_code,
+        room_name: createForm.room_name,
+      };
+      localStorage.setItem("currentRoom", JSON.stringify(roomData));
+
       setStatus({
         type: "success",
         message: `Created! Room code: ${room_code}`,
@@ -76,6 +87,7 @@ export default function Home() {
 
   const handleLogout = () => {
     localStorage.removeItem("userSession");
+    localStorage.removeItem("currentRoom");
     navigate("/");
   };
 
@@ -176,7 +188,6 @@ export default function Home() {
         <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl px-9 py-10 relative overflow-hidden">
           <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-blue-500/10 pointer-events-none" />
 
-          {/* tabs — only show Create tab for instructors 👇 */}
           {isInstructor && (
             <div className="flex gap-1 bg-[#0b0f1a] rounded-xl p-1 mb-7">
               {["join", "create"].map((tab) => (
@@ -198,7 +209,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* status */}
           {status && (
             <div
               className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium mb-4 border ${
@@ -216,7 +226,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* students always see join form, instructors see based on activeTab 👇 */}
           {!isInstructor || activeTab === "join" ? (
             <form onSubmit={handleJoin} className="space-y-4">
               <div>
@@ -312,9 +321,7 @@ export default function Home() {
                 disabled={status?.type === "loading"}
                 className="w-full py-3 mt-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl text-white text-sm font-bold hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {status?.type === "loading"
-                  ? "Creating…"
-                  : "Create Classroom"}
+                {status?.type === "loading" ? "Creating…" : "Create Classroom"}
               </button>
             </form>
           )}

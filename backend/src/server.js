@@ -5,6 +5,7 @@ import { pool } from "./config/database.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import userRoutes from "./routes/userRoutes.js";
 import classroomRoutes from "./routes/classroomRoutes.js";
+import boardRouter from "./routes/boardRoutes.js";
 import { Server } from "socket.io";
 import { PeerServer } from "peer";
 import { initSocket } from "./socket.js";
@@ -27,6 +28,7 @@ console.log("PeerJS server running on port 9000");
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/classrooms", classroomRoutes);
+app.use("/api/board", boardRouter);
 
 app.get("/api", async (req, res) => {
   try {

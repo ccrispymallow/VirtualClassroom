@@ -1,6 +1,6 @@
 import { pool } from "../config/database.js";
 
-// ── Notes ──
+// Notes
 export const createNote = async ({ room_id, user_id, text, color }) => {
   const result = await pool.query(
     `INSERT INTO board_notes (room_id, user_id, text, color)
@@ -31,7 +31,7 @@ export const deleteNote = async (id) => {
   return result.rows[0];
 };
 
-// ── Announcements ──
+// Announcements
 export const createAnnouncement = async ({ room_id, user_id, text }) => {
   const result = await pool.query(
     `INSERT INTO board_announcements (room_id, user_id, text)
@@ -62,7 +62,7 @@ export const deleteAnnouncement = async (id) => {
   return result.rows[0];
 };
 
-// ── Files ──
+// Files
 export const createFile = async ({
   room_id,
   uploaded_by,

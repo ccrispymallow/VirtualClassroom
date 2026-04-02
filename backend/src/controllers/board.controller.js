@@ -2,7 +2,7 @@ import * as boardService from "../services/board.service.js";
 import path from "path";
 import fs from "fs";
 
-// ── Notes ──
+// Notes
 export const createNote = async (req, res, next) => {
   try {
     const { room_id, text, color } = req.body;
@@ -41,7 +41,7 @@ export const deleteNote = async (req, res, next) => {
   }
 };
 
-// ── Announcements ──
+// Announcements
 export const createAnnouncement = async (req, res, next) => {
   try {
     const { room_id, text } = req.body;
@@ -82,7 +82,7 @@ export const deleteAnnouncement = async (req, res, next) => {
   }
 };
 
-// ── Files ──
+// Files
 export const uploadFile = async (req, res, next) => {
   try {
     const { room_id, uploaded_by } = req.body;
