@@ -11,6 +11,7 @@ export const initSocket = (io) => {
         socketId: socket.id,
         peerId,
         position: [0, 0, 0],
+        mic: false,
       });
 
       const others = rooms[roomCode].filter((p) => p.id !== user.id);
@@ -32,6 +33,16 @@ export const initSocket = (io) => {
         if (p) p.position = position;
       }
       socket.to(roomCode).emit("peer-moved", { userId, position });
+    });
+
+    socket.on("mic-status", ({ roomCode, userId, mic }) => {
+      if (rooms[roomCode]) {
+        const p = rooms[roomCode].find((p) => p.id === userId);
+        if (p) {
+          p.mic = mic;
+          io.to(roomCode).emit("participants-update", rooms[roomCode]);
+        }
+      }
     });
 
     socket.on("leave-room", ({ roomCode, userId }) => {

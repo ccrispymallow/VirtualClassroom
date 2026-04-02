@@ -5,7 +5,7 @@ import * as THREE from "three";
 
 const MOUSE_SENSITIVITY = 0.002;
 const KEY_TURN_SPEED = 2.0;
-const CAM_HEIGHT = 1.6;
+const EYE_HEIGHT = 1.6;
 
 export default function FollowCamera() {
   const { posRef, keysRef, yawRef, pitchRef } = useRoom();
@@ -69,15 +69,17 @@ export default function FollowCamera() {
 
     const [x, , z] = posRef.current;
 
-    camera.position.set(x, CAM_HEIGHT, z);
+    // First-person camera: at player eye level
+    camera.position.set(x, EYE_HEIGHT, z);
 
+    // Look direction based on yaw and pitch
     const dir = new THREE.Vector3(
       Math.sin(yawRef.current) * Math.cos(pitchRef.current),
       Math.sin(pitchRef.current),
       -Math.cos(yawRef.current) * Math.cos(pitchRef.current)
     );
 
-    camera.lookAt(x + dir.x, CAM_HEIGHT + dir.y, z + dir.z);
+    camera.lookAt(x + dir.x, EYE_HEIGHT + dir.y, z + dir.z);
   });
 
   return null;
