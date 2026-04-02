@@ -130,3 +130,19 @@ export const endClassroom = async (req, res, next) => {
     next(error);
   }
 };
+
+// DELETE
+export const deleteClassroom = async (req, res, next) => {
+  try {
+    const { id, user_id } = req.body;
+
+    if (!id || !user_id) {
+      return res.status(400).json({ error: "id and user_id are required" });
+    }
+
+    const deleted = await classroomService.deleteClassroom(id, user_id);
+    res.json({ message: "Classroom deleted successfully", classroom: deleted });
+  } catch (error) {
+    next(error);
+  }
+};
