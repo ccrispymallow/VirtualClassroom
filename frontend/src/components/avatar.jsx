@@ -31,27 +31,30 @@ export default function Avatar() {
     const [x, y, z] = posRef.current;
 
     const yaw = yawRef.current;
-    const sinY = Math.sin(yaw);
-    const cosY = Math.cos(yaw);
-
     let dx = 0;
     let dz = 0;
 
+    const forwardX = Math.sin(yaw);
+    const forwardZ = -Math.cos(yaw);
+
+    const rightX = Math.cos(yaw);
+    const rightZ = Math.sin(yaw);
+
     if (keys["w"] || keys["arrowup"]) {
-      dx -= sinY * speed * delta;
-      dz -= cosY * speed * delta;
+      dx += forwardX * speed * delta;
+      dz += forwardZ * speed * delta;
     }
     if (keys["s"] || keys["arrowdown"]) {
-      dx += sinY * speed * delta;
-      dz += cosY * speed * delta;
+      dx -= forwardX * speed * delta;
+      dz -= forwardZ * speed * delta;
     }
     if (keys["a"] || keys["arrowleft"]) {
-      dx -= cosY * speed * delta;
-      dz += sinY * speed * delta;
+      dx -= rightX * speed * delta;
+      dz -= rightZ * speed * delta;
     }
     if (keys["d"] || keys["arrowright"]) {
-      dx += cosY * speed * delta;
-      dz -= sinY * speed * delta;
+      dx += rightX * speed * delta;
+      dz += rightZ * speed * delta;
     }
 
     if (dx !== 0 || dz !== 0) {
