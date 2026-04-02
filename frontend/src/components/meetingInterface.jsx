@@ -11,6 +11,7 @@ import { ImPhoneHangUp } from "react-icons/im";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
 import { useParams, useNavigate } from "react-router-dom";
+import copyIcon from "../assets/copy.svg";
 
 const MeetingInterface = () => {
   const { roomCode } = useParams();
@@ -26,6 +27,7 @@ const MeetingInterface = () => {
     leave: false,
     participants: false,
   });
+  const [copyMessage, setCopyMessage] = useState("");
 
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
@@ -66,6 +68,32 @@ const MeetingInterface = () => {
     });
     return () => socket.off("participants-update");
   }, [setParticipants]);
+
+  useEffect(() => {
+    socket.on("room-ended", ({ message, roomCode }) => {
+      alert(message);
+      // Navigate back to homepage
+      localStorage.removeItem("currentRoom");
+      navigate("/homepage");
+    });
+
+    socket.on("room-ended-by-you", ({ message, roomCode }) => {
+      alert(message);
+      // Navigate back to homepage
+      localStorage.removeItem("currentRoom");
+      navigate("/homepage");
+    });
+
+    socket.on("room-end-error", ({ message }) => {
+      alert(`Failed to end room: ${message}`);
+    });
+
+    return () => {
+      socket.off("room-ended");
+      socket.off("room-ended-by-you");
+      socket.off("room-end-error");
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const check = async () => {
@@ -116,15 +144,24 @@ const MeetingInterface = () => {
   };
 
   const handleLeave = () => {
-    socket.emit("leave-room", { roomCode, userId: user.id });
-    localStorage.removeItem("currentRoom");
-    navigate("/homepage");
+    const confirmed = window.confirm(
+      "Are you sure you want to leave the meeting?",
+    );
+    if (confirmed) {
+      socket.emit("leave-room", { roomCode, userId: user.id });
+      localStorage.removeItem("currentRoom");
+      navigate("/homepage");
+    }
   };
 
   const handleEndForAll = () => {
-    socket.emit("end-room", { roomCode, userId: user.id });
-    localStorage.removeItem("currentRoom");
-    navigate("/homepage");
+    const confirmed = window.confirm(
+      "Are you sure you want to end the meeting for everyone?",
+    );
+    if (confirmed) {
+      socket.emit("end-room", { roomCode, userId: user.id });
+      // Navigation will be handled by the "room-ended" socket event
+    }
   };
 
   const openBox = (name) =>
@@ -171,9 +208,28 @@ const MeetingInterface = () => {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-slate-500 text-xs">Room:</span>
-          <span className="text-slate-200 text-xs font-mono bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
-            {roomCode}
-          </span>
+          <div className="flex items-center gap-1 bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
+            <span className="text-slate-200 text-xs font-mono">{roomCode}</span>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(roomCode);
+                  setCopyMessage("Copied!");
+                  setTimeout(() => setCopyMessage(""), 2000);
+                } catch {
+                  setCopyMessage("Copy failed");
+                  setTimeout(() => setCopyMessage(""), 2000);
+                }
+              }}
+              className="bg-[#1a2235] text-slate-400 hover:text-slate-300 transition-colors p-0.5 rounded"
+              title="Copy room code"
+            >
+              <img src={copyIcon} alt="Copy" className="w-3 h-3" />
+            </button>
+          </div>
+          {copyMessage && (
+            <span className="text-slate-400 text-[10px]">{copyMessage}</span>
+          )}
           {room.room_name && (
             <span className="text-slate-400 text-xs">· {room.room_name}</span>
           )}

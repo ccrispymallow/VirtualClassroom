@@ -108,3 +108,25 @@ export const getParticipants = async (req, res, next) => {
     next(error);
   }
 };
+
+export const endClassroom = async (req, res, next) => {
+  try {
+    const { room_code } = req.body;
+    const user_id = req.body.user_id;
+
+    if (!room_code || !user_id) {
+      return res.status(400).json({
+        error: "room_code and user_id are required",
+      });
+    }
+
+    const classroom = await classroomService.endClassroom(room_code, user_id);
+
+    res.json({
+      message: "Classroom ended successfully",
+      classroom,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -34,6 +34,25 @@ export const getClassroomById = async (id) => {
   return result.rows[0];
 };
 
+// Ensure there is an active session for a room, used by room joins
+const getOrCreateSession = async (room_id) => {
+  const sessionResult = await pool.query(
+    `SELECT * FROM sessions WHERE room_id = $1 AND end_time IS NULL`,
+    [room_id],
+  );
+
+  if (sessionResult.rows[0]) {
+    return sessionResult.rows[0];
+  }
+
+  const insert = await pool.query(
+    `INSERT INTO sessions (room_id, start_time) VALUES ($1, CURRENT_TIMESTAMP) RETURNING *`,
+    [room_id],
+  );
+
+  return insert.rows[0];
+};
+
 export const joinClassroom = async ({ room_code, room_password, user_id }) => {
   const result = await pool.query(
     `SELECT * FROM classrooms WHERE room_code = $1`,
@@ -43,9 +62,17 @@ export const joinClassroom = async ({ room_code, room_password, user_id }) => {
   const classroom = result.rows[0];
   if (!classroom) return null;
 
+  // Check if room has been ended
+  if (classroom.ended_at) {
+    throw new Error("This room has ended and is no longer available");
+  }
+
   if (classroom.room_password && classroom.room_password !== room_password) {
     throw new Error("Wrong password");
   }
+
+  // Create (or reuse) an active session for this classroom. This keeps track of start/end times.
+  await getOrCreateSession(classroom.id);
 
   const check = await pool.query(
     `SELECT * FROM room_participants 
@@ -77,4 +104,39 @@ export const getParticipants = async (room_id) => {
   );
 
   return result.rows;
+};
+
+export const endClassroom = async (room_code, user_id) => {
+  // First check if user is the creator of the room
+  const roomResult = await pool.query(
+    `SELECT * FROM classrooms WHERE room_code = $1`,
+    [room_code],
+  );
+
+  const classroom = roomResult.rows[0];
+  if (!classroom) {
+    throw new Error("Classroom not found");
+  }
+
+  if (classroom.creator_id !== user_id) {
+    throw new Error("Only the room creator can end the room");
+  }
+
+  if (classroom.ended_at) {
+    throw new Error("Room has already been ended");
+  }
+
+  // End the room
+  await pool.query(
+    `UPDATE classrooms SET ended_at = CURRENT_TIMESTAMP WHERE room_code = $1`,
+    [room_code],
+  );
+
+  // Mark associated active session as ended
+  await pool.query(
+    `UPDATE sessions SET end_time = CURRENT_TIMESTAMP WHERE room_id = $1 AND end_time IS NULL`,
+    [classroom.id],
+  );
+
+  return { ...classroom, ended_at: new Date() };
 };

@@ -208,7 +208,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#0b0f1a] px-4 py-6">
-      {/* Top bar */}
       <div className="flex items-center justify-between max-w-6xl mx-auto mb-12">
         <button
           onClick={() => navigate("/homepage")}
@@ -222,7 +221,7 @@ export default function ProfilePage() {
           </span>
         </button>
         <h1 className="text-2xl font-bold text-slate-100">Edit Profile</h1>
-        <div className="w-9" /> {/* Spacer for alignment */}
+        <div className="w-9" />
       </div>
 
       {/* Main content */}
