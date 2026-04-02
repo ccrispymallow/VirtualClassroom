@@ -2,7 +2,8 @@ import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
 import { useRef, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useGLTF, useAnimations } from "@react-three/drei";
+import { useGLTF, useAnimations, Html } from "@react-three/drei";
+import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { SkeletonUtils } from "three-stdlib";
 
 const COLLISION_RADIUS = 0.8;
@@ -19,8 +20,9 @@ const SPAWN_SLOTS = [
   [-1, 0, 5],
 ];
 
-function BoyModel({ position, yaw = 0 }) {
-  const { scene, animations } = useGLTF("/boy.glb");
+function AvatarModel({ position, yaw = 0, avatarType = "boy" }) {
+  const modelUrl = avatarType === "boy" ? "/boy.glb" : "/girl.glb";
+  const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
 
@@ -41,6 +43,7 @@ function BoyModel({ position, yaw = 0 }) {
 }
 
 useGLTF.preload("/boy.glb");
+useGLTF.preload("/girl.glb");
 
 export default function Avatar() {
   const { roomCode } = useParams();
@@ -55,13 +58,21 @@ export default function Avatar() {
   } = useRoom();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
+    // Only initialize spawn position once, on first load
+    if (initializedRef.current) return;
+    if (participants.length === 0) return;
+    
     const myIndex = participants.findIndex((p) => p.id === user.id);
+    if (myIndex === -1) return;
+    
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
     posRef.current = [...slot];
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
+    initializedRef.current = true;
 
     if (socket && roomCode) {
       socket.emit("position-update", {
@@ -70,7 +81,7 @@ export default function Avatar() {
         position: posRef.current,
       });
     }
-  }, [socket, roomCode]);
+  }, [participants, socket, roomCode, user.id, posRef, setAvatarPosition, yawRef]);
 
   useFrame((_, delta) => {
     const speed = 5;
@@ -143,7 +154,45 @@ export default function Avatar() {
         .map((p) => {
           if (!peerPositions[p.id]) return null;
           const [px, py, pz] = peerPositions[p.id];
-          return <BoyModel key={p.id} position={[px, py, pz]} />;
+          const name = p.username || "Guest";
+          const micActive = !!p.mic;
+
+          return (
+            <group key={p.id}>
+              <AvatarModel position={[px, py, pz]} avatarType={p.avatar || "boy"} />
+
+              <Html
+                transform
+                occlude
+                distanceFactor={8}
+                position={[px, py + 2.4, pz]}
+                center
+              >
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "3px",
+                    background: "rgba(17, 24, 39, 0.8)",
+                    padding: "2px 5px",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontSize: "10px",
+                    whiteSpace: "nowrap",
+                    boxShadow: "0 1px 8px rgba(0,0,0,0.5)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span>{name}</span>
+                  {micActive ? (
+                    <BsMicFill size={10} color="#22c55e" />
+                  ) : (
+                    <BsMicMuteFill size={10} color="#f87171" />
+                  )}
+                </div>
+              </Html>
+            </group>
+          );
         })}
     </>
   );

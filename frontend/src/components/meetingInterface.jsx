@@ -126,12 +126,31 @@ const MeetingInterface = () => {
   }, [deviceSections]);
 
   const handleMicToggle = async () => {
-    if (micOn) {
-      stopMic();
-    } else {
+    const nextMic = !micOn;
+
+    if (nextMic) {
       const stream = await startMic();
       if (stream) broadcastMic(stream);
+    } else {
+      stopMic();
     }
+
+    socket.emit("mic-status", {
+      roomCode,
+      userId: user.id,
+      mic: nextMic,
+    });
+
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === user.id
+          ? {
+              ...p,
+              mic: nextMic,
+            }
+          : p,
+      ),
+    );
   };
 
   const handleScreenToggle = async () => {
