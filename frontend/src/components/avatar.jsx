@@ -1,21 +1,68 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { useGLTF, useAnimations } from "@react-three/drei";
+import { SkeletonUtils } from "three-stdlib";
 
 const COLLISION_RADIUS = 0.8;
-const EMIT_INTERVAL = 50; // ms — 20x per second
+const EMIT_INTERVAL = 50;
+
+const SPAWN_SLOTS = [
+  [-3, 0, 4],
+  [-2, 0, 4],
+  [-4, 0, 4],
+  [-3, 0, 5],
+  [-2, 0, 5],
+  [-4, 0, 5],
+  [-1, 0, 4],
+  [-1, 0, 5],
+];
+
+function BoyModel({ position, yaw = 0 }) {
+  const { scene, animations } = useGLTF("/boy.glb");
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+  const { actions, names } = useAnimations(animations, clone);
+
+  useEffect(() => {
+    if (names.length > 0) {
+      actions[names[0]]?.reset().fadeIn(0.2).play();
+    }
+  }, [animations, actions, names]);
+
+  return (
+    <primitive
+      object={clone}
+      position={position}
+      rotation={[0, yaw, 0]}
+      scale={1}
+    />
+  );
+}
+
+useGLTF.preload("/boy.glb");
 
 export default function Avatar() {
   const { roomCode } = useParams();
-  const { participants, peerPositions, socket, keysRef, yawRef, posRef } =
-    useRoom();
-
+  const {
+    participants,
+    peerPositions,
+    socket,
+    keysRef,
+    yawRef,
+    posRef,
+    setAvatarPosition,
+  } = useRoom();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
 
-  // Broadcast our starting position immediately so peers don't see us at 0,0,0
   useEffect(() => {
+    const myIndex = participants.findIndex((p) => p.id === user.id);
+    const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
+    posRef.current = [...slot];
+    setAvatarPosition([...slot]);
+    yawRef.current = Math.PI / 2;
+
     if (socket && roomCode) {
       socket.emit("position-update", {
         roomCode,
@@ -29,32 +76,30 @@ export default function Avatar() {
     const speed = 5;
     const keys = keysRef.current;
     const [x, y, z] = posRef.current;
-
     const yaw = yawRef.current;
+
+    // ── define sinY and cosY from yaw (this was missing before) ──
+    const sinY = Math.sin(yaw);
+    const cosY = Math.cos(yaw);
+
     let dx = 0;
     let dz = 0;
 
-    const forwardX = Math.sin(yaw);
-    const forwardZ = -Math.cos(yaw);
-
-    const rightX = Math.cos(yaw);
-    const rightZ = Math.sin(yaw);
-
     if (keys["w"] || keys["arrowup"]) {
-      dx += forwardX * speed * delta;
-      dz += forwardZ * speed * delta;
+      dx += sinY * speed * delta;
+      dz -= cosY * speed * delta;
     }
     if (keys["s"] || keys["arrowdown"]) {
-      dx -= forwardX * speed * delta;
-      dz -= forwardZ * speed * delta;
+      dx -= sinY * speed * delta;
+      dz += cosY * speed * delta;
     }
     if (keys["a"] || keys["arrowleft"]) {
-      dx -= rightX * speed * delta;
-      dz -= rightZ * speed * delta;
+      dx -= cosY * speed * delta;
+      dz -= sinY * speed * delta;
     }
     if (keys["d"] || keys["arrowright"]) {
-      dx += rightX * speed * delta;
-      dz += rightZ * speed * delta;
+      dx += cosY * speed * delta;
+      dz += sinY * speed * delta;
     }
 
     if (dx !== 0 || dz !== 0) {
@@ -64,7 +109,6 @@ export default function Avatar() {
       const others = participants.filter((p) => p.id !== user.id);
       let blocked = false;
       for (const other of others) {
-        // Skip peers whose position we haven't received yet
         if (!peerPositions[other.id]) continue;
         const [ox, , oz] = peerPositions[other.id];
         const cdx = nx - ox;
@@ -77,10 +121,10 @@ export default function Avatar() {
 
       if (!blocked) {
         posRef.current = [nx, y, nz];
+        setAvatarPosition([nx, y, nz]);
       }
     }
 
-    // Throttled position emit
     const now = Date.now();
     if (socket && roomCode && now - lastEmitRef.current >= EMIT_INTERVAL) {
       lastEmitRef.current = now;
@@ -94,27 +138,12 @@ export default function Avatar() {
 
   return (
     <>
-      {/* Render other participants' avatars */}
       {participants
         .filter((p) => p.id !== user.id)
         .map((p) => {
-          // Don't render until we have a real position for this peer
           if (!peerPositions[p.id]) return null;
-          const [px, , pz] = peerPositions[p.id];
-          return (
-            <group key={p.id} position={[px, 0, pz]}>
-              {/* Body */}
-              <mesh position={[0, 0.8, 0]}>
-                <boxGeometry args={[0.6, 1.2, 0.3]} />
-                <meshStandardMaterial color="#64748b" />
-              </mesh>
-              {/* Head */}
-              <mesh position={[0, 1.7, 0]}>
-                <boxGeometry args={[0.4, 0.4, 0.4]} />
-                <meshStandardMaterial color="#94a3b8" />
-              </mesh>
-            </group>
-          );
+          const [px, py, pz] = peerPositions[p.id];
+          return <BoyModel key={p.id} position={[px, py, pz]} />;
         })}
     </>
   );

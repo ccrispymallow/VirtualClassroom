@@ -64,12 +64,11 @@ function FullscreenOverlay({ stream, onClose }) {
   );
 }
 
-export default function ScreenMesh({ position = [0, 2, -8] }) {
+export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   const { screenStream } = useRoom();
   const meshRef = useRef();
   const [fullscreen, setFullscreen] = useState(false);
 
-  // F key toggles fullscreen
   useEffect(() => {
     const onKey = (e) => {
       if (e.key.toLowerCase() === "f") {
@@ -82,7 +81,6 @@ export default function ScreenMesh({ position = [0, 2, -8] }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  // 3D mesh texture
   useEffect(() => {
     if (!screenStream || !meshRef.current) return;
     const video = document.createElement("video");
@@ -109,16 +107,13 @@ export default function ScreenMesh({ position = [0, 2, -8] }) {
     };
   }, [screenStream]);
 
-  // Mount/unmount fullscreen overlay completely outside R3F
   useEffect(() => {
     if (!fullscreen || !screenStream) return;
-
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
     const close = () => setFullscreen(false);
     root.render(<FullscreenOverlay stream={screenStream} onClose={close} />);
-
     return () => {
       root.unmount();
       document.body.removeChild(container);
@@ -128,14 +123,13 @@ export default function ScreenMesh({ position = [0, 2, -8] }) {
   const isActive = !!screenStream;
 
   return (
-    <mesh ref={meshRef} position={position}>
-      <planeGeometry args={[6, 3.375]} />
+    <mesh ref={meshRef} position={position} rotation={[0, Math.PI, 0]}>
+      <planeGeometry args={[4.5, 2.2]} />
       <meshStandardMaterial
-        color={isActive ? "#ffffff" : "#0b0f1a"}
+        color={isActive ? "#ffffff" : "#0a0a0a"}
         toneMapped={false}
       />
 
-      {/* Only render 3D labels when NOT in fullscreen */}
       {!fullscreen && !isActive && (
         <Html
           transform
@@ -146,7 +140,7 @@ export default function ScreenMesh({ position = [0, 2, -8] }) {
         >
           <div
             style={{
-              color: "#334155",
+              color: "#475569",
               fontSize: "13px",
               fontFamily: "sans-serif",
               textAlign: "center",
@@ -163,7 +157,7 @@ export default function ScreenMesh({ position = [0, 2, -8] }) {
           transform
           occlude
           distanceFactor={8}
-          position={[0, -1.9, 0.01]}
+          position={[0, -1.2, 0.01]}
           center
         >
           <div

@@ -12,11 +12,6 @@ export default function MainEngine() {
   return (
     <RoomProvider>
       <div style={{ width: "100vw", height: "100vh" }}>
-        {/*
-          tabIndex={0} makes the Canvas focusable so keyboard events fire.
-          outline: "none" removes the focus ring.
-          The canvas must be clicked once to enable pointer lock + keyboard.
-        */}
         <Canvas
           camera={{ position: [0, 1.6, 0] }}
           tabIndex={0}
@@ -29,8 +24,8 @@ export default function MainEngine() {
           <Suspense fallback={null}>
             <Classroom />
             <Avatar />
-            <BoardMesh position={[-3, 2, -8]} />
-            <ScreenMesh position={[3, 2, -8]} />
+            <BoardMesh position={[-4, 2, -2.25]} />
+            <ScreenMesh position={[0, 2, 4.5]} />
           </Suspense>
           <FollowCamera />
         </Canvas>
