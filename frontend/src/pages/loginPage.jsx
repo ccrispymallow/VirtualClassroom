@@ -161,7 +161,7 @@ export default function Login() {
                 disabled={loginStatus?.type === "loading"}
                 className="w-full py-3 mt-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl text-white text-sm font-bold hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Sign In →
+                Sign In
               </button>
             </form>
           ) : (
@@ -231,7 +231,7 @@ export default function Login() {
               >
                 {loginStatus?.type === "loading"
                   ? "Creating…"
-                  : "Create Account →"}
+                  : "Create Account"}
               </button>
             </form>
           )}

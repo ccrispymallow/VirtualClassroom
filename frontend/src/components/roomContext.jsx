@@ -12,6 +12,7 @@ export const RoomProvider = ({ children }) => {
 
   const keysRef = useRef({});
   const yawRef = useRef(0);
+  const pitchRef = useRef(0);
   const posRef = useRef([0, 0, 0]); // shared position ref — no re-renders
 
   // Key listeners live in FollowCamera (on `document`) so they work
@@ -57,6 +58,7 @@ export const RoomProvider = ({ children }) => {
         socket,
         keysRef,
         yawRef,
+        pitchRef,
         posRef,
       }}
     >

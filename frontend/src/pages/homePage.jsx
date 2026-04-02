@@ -254,7 +254,7 @@ export default function Home() {
                 disabled={status?.type === "loading"}
                 className="w-full py-3 mt-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl text-white text-sm font-bold hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Join Classroom →
+                Join Classroom
               </button>
             </form>
           ) : (
@@ -314,7 +314,7 @@ export default function Home() {
               >
                 {status?.type === "loading"
                   ? "Creating…"
-                  : "Create Classroom →"}
+                  : "Create Classroom"}
               </button>
             </form>
           )}

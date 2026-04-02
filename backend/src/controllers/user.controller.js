@@ -85,7 +85,7 @@ export const updateUser = async (req, res, next) => {
       });
     }
 
-    const updatedUser = await userService.updateUserProfile(userId, {
+    const updatedUser = await userService.updateUser(userId, {
       username,
       avatar,
     });
