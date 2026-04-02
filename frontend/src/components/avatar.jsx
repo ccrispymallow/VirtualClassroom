@@ -8,7 +8,6 @@ import { SkeletonUtils } from "three-stdlib";
 const COLLISION_RADIUS = 0.8;
 const EMIT_INTERVAL = 50;
 
-// Staggered spawn slots
 const SPAWN_SLOTS = [
   [-3, 0, 4],
   [-2, 0, 4],
@@ -23,19 +22,11 @@ const SPAWN_SLOTS = [
 function BoyModel({ position, yaw = 0 }) {
   const { scene, animations } = useGLTF("/boy.glb");
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
-
   const { actions, names } = useAnimations(animations, clone);
 
   useEffect(() => {
-    console.log("Animations array:", animations);
-
     if (names.length > 0) {
-      console.log("Animation names:", names);
-
-      const first = names[0];
-      actions[first]?.reset().fadeIn(0.2).play();
-    } else {
-      console.log("No animations found in model");
+      actions[names[0]]?.reset().fadeIn(0.2).play();
     }
   }, [animations, actions, names]);
 
@@ -53,16 +44,23 @@ useGLTF.preload("/boy.glb");
 
 export default function Avatar() {
   const { roomCode } = useParams();
-  const { participants, peerPositions, socket, keysRef, yawRef, posRef } =
-    useRoom();
+  const {
+    participants,
+    peerPositions,
+    socket,
+    keysRef,
+    yawRef,
+    posRef,
+    setAvatarPosition,
+  } = useRoom();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
 
   useEffect(() => {
     const myIndex = participants.findIndex((p) => p.id === user.id);
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
-
-    posRef.current = slot;
+    posRef.current = [...slot];
+    setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
 
     if (socket && roomCode) {
@@ -79,14 +77,13 @@ export default function Avatar() {
     const keys = keysRef.current;
     const [x, y, z] = posRef.current;
     const yaw = yawRef.current;
+
+    // ── define sinY and cosY from yaw (this was missing before) ──
+    const sinY = Math.sin(yaw);
+    const cosY = Math.cos(yaw);
+
     let dx = 0;
     let dz = 0;
-
-    const forwardX = Math.sin(yaw);
-    const forwardZ = -Math.cos(yaw);
-
-    const rightX = Math.cos(yaw);
-    const rightZ = Math.sin(yaw);
 
     if (keys["w"] || keys["arrowup"]) {
       dx += sinY * speed * delta;
@@ -96,7 +93,6 @@ export default function Avatar() {
       dx -= sinY * speed * delta;
       dz += cosY * speed * delta;
     }
-
     if (keys["a"] || keys["arrowleft"]) {
       dx -= cosY * speed * delta;
       dz -= sinY * speed * delta;
@@ -112,20 +108,21 @@ export default function Avatar() {
 
       const others = participants.filter((p) => p.id !== user.id);
       let blocked = false;
-
       for (const other of others) {
         if (!peerPositions[other.id]) continue;
         const [ox, , oz] = peerPositions[other.id];
         const cdx = nx - ox;
         const cdz = nz - oz;
-
         if (Math.sqrt(cdx * cdx + cdz * cdz) < COLLISION_RADIUS) {
           blocked = true;
           break;
         }
       }
 
-      if (!blocked) posRef.current = [nx, y, nz];
+      if (!blocked) {
+        posRef.current = [nx, y, nz];
+        setAvatarPosition([nx, y, nz]);
+      }
     }
 
     const now = Date.now();
@@ -146,7 +143,6 @@ export default function Avatar() {
         .map((p) => {
           if (!peerPositions[p.id]) return null;
           const [px, py, pz] = peerPositions[p.id];
-
           return <BoyModel key={p.id} position={[px, py, pz]} />;
         })}
     </>
