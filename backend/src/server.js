@@ -37,7 +37,7 @@ console.log("PeerJS server running on port 9000");
 app.use("/api/users", userRoutes);
 app.use("/api/classrooms", classroomRoutes);
 app.use("/api/board", boardRoutes);
-app.use("/api/session", sessionRoutes);
+app.use("/api/sessions", sessionRoutes);
 
 app.get("/api", async (req, res) => {
   try {
