@@ -46,98 +46,106 @@ export const initSocket = (io) => {
       }
     });
 
-    socket.on("start-understanding-poll", ({ roomCode, initiatedBy, pollId: incomingPollId }) => {
-      if (!rooms[roomCode]) return;
-      const pollId = incomingPollId || `${roomCode}-${Date.now()}`;
-      const studentCount = rooms[roomCode].filter((p) => p.role !== "instructor").length;
-      if (studentCount === 0) {
-        socket.emit("understanding-error", {
-          message: "No students in room to poll.",
+    socket.on(
+      "start-understanding-poll",
+      ({ roomCode, initiatedBy, pollId: incomingPollId }) => {
+        if (!rooms[roomCode]) return;
+        const pollId = incomingPollId || `${roomCode}-${Date.now()}`;
+        const studentCount = rooms[roomCode].filter(
+          (p) => p.role !== "instructor",
+        ).length;
+        if (studentCount === 0) {
+          socket.emit("understanding-error", {
+            message: "No students in room to poll.",
+          });
+          return;
+        }
+
+        // clear previous poll if exists
+        if (roomPolls[roomCode]?.timeout) {
+          clearTimeout(roomPolls[roomCode].timeout);
+        }
+
+        const poll = {
+          pollId,
+          totalExpected: studentCount,
+          responses: { yes: 0, no: 0 },
+          answered: new Set(),
+          timeout: setTimeout(() => {
+            const current = roomPolls[roomCode];
+            if (!current || current.pollId !== pollId) return;
+            const remaining = current.totalExpected - current.answered.size;
+            const result = {
+              pollId,
+              yes: current.responses.yes,
+              no: current.responses.no,
+              remaining,
+              summary:
+                remaining === 0
+                  ? current.responses.no === 0
+                    ? "Everyone understands"
+                    : `${current.responses.no} people don't understand`
+                  : `Waiting for ${remaining} responses`,
+            };
+            io.to(roomCode).emit("understanding-result", result);
+            delete roomPolls[roomCode];
+          }, 20000),
+        };
+
+        roomPolls[roomCode] = poll;
+        io.to(roomCode).emit("understanding-question", {
+          pollId,
+          totalStudents: studentCount,
         });
-        return;
-      }
+        io.to(roomCode).emit("understanding-update", {
+          pollId,
+          yes: 0,
+          no: 0,
+          remaining: studentCount,
+        });
+      },
+    );
 
-      // clear previous poll if exists
-      if (roomPolls[roomCode]?.timeout) {
-        clearTimeout(roomPolls[roomCode].timeout);
-      }
+    socket.on(
+      "understanding-answer",
+      ({ roomCode, userId, pollId, answer }) => {
+        if (!rooms[roomCode] || !roomPolls[roomCode]) return;
+        const current = roomPolls[roomCode];
+        if (current.pollId !== pollId) return;
+        if (current.answered.has(userId)) return;
+        if (!["yes", "no"].includes(answer)) return;
 
-      const poll = {
-        pollId,
-        totalExpected: studentCount,
-        responses: { yes: 0, no: 0 },
-        answered: new Set(),
-        timeout: setTimeout(() => {
-          const current = roomPolls[roomCode];
-          if (!current || current.pollId !== pollId) return;
-          const remaining = current.totalExpected - current.answered.size;
-          const result = {
-            pollId,
-            yes: current.responses.yes,
-            no: current.responses.no,
-            remaining,
-            summary:
-              remaining === 0
-                ? current.responses.no === 0
-                  ? "Everyone understands"
-                  : `${current.responses.no} people don't understand`
-                : `Waiting for ${remaining} responses`,
-          };
-          io.to(roomCode).emit("understanding-result", result);
-          delete roomPolls[roomCode];
-        }, 20000),
-      };
+        current.answered.add(userId);
+        current.responses[answer] += 1;
 
-      roomPolls[roomCode] = poll;
-      io.to(roomCode).emit("understanding-question", {
-        pollId,
-        totalStudents: studentCount,
-      });
-      io.to(roomCode).emit("understanding-update", {
-        pollId,
-        yes: 0,
-        no: 0,
-        remaining: studentCount,
-      });
-    });
+        const remaining = current.totalExpected - current.answered.size;
 
-    socket.on("understanding-answer", ({ roomCode, userId, pollId, answer }) => {
-      if (!rooms[roomCode] || !roomPolls[roomCode]) return;
-      const current = roomPolls[roomCode];
-      if (current.pollId !== pollId) return;
-      if (current.answered.has(userId)) return;
-      if (!["yes", "no"].includes(answer)) return;
-
-      current.answered.add(userId);
-      current.responses[answer] += 1;
-
-      const remaining = current.totalExpected - current.answered.size;
-
-      io.to(roomCode).emit("understanding-update", {
-        pollId,
-        yes: current.responses.yes,
-        no: current.responses.no,
-        remaining,
-      });
-
-      if (remaining === 0) {
-        const summary =
-          current.responses.no === 0
-            ? "Everyone understands"
-            : `${current.responses.no} people don't understand`;
-
-        io.to(roomCode).emit("understanding-result", {
+        io.to(roomCode).emit("understanding-update", {
           pollId,
           yes: current.responses.yes,
           no: current.responses.no,
-          remaining: 0,
-          summary,
+          remaining,
         });
 
-        clearTimeout(current.timeout);
-        delete roomPolls[roomCode];
-      }
-    });
+        if (remaining === 0) {
+          const summary =
+            current.responses.no === 0
+              ? "Everyone understands"
+              : `${current.responses.no} people don't understand`;
+
+          io.to(roomCode).emit("understanding-result", {
+            pollId,
+            yes: current.responses.yes,
+            no: current.responses.no,
+            remaining: 0,
+            summary,
+          });
+
+          clearTimeout(current.timeout);
+          delete roomPolls[roomCode];
+        }
+      },
+    );
 
     socket.on("end-understanding-poll", ({ roomCode, pollId }) => {
       const current = roomPolls[roomCode];
@@ -161,7 +169,7 @@ export const initSocket = (io) => {
       delete roomPolls[roomCode];
     });
 
-    socket.on("leave-room", ({ roomCode, userId }) => {"}
+    socket.on("leave-room", ({ roomCode, userId }) => {
       if (rooms[roomCode]) {
         rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
         io.to(roomCode).emit("participants-update", rooms[roomCode]);
