@@ -179,7 +179,6 @@ const MeetingInterface = () => {
     );
     if (confirmed) {
       socket.emit("end-room", { roomCode, userId: user.id });
-      // Navigation will be handled by the "room-ended" socket event
     }
   };
 
@@ -192,8 +191,6 @@ const MeetingInterface = () => {
     });
   const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
 
-  // Stop pointer-lock and blur from canvas when a UI panel is open
-  // so WASD doesn't move the avatar while you're clicking UI
   const handlePanelMouseEnter = () => {
     if (document.pointerLockElement) document.exitPointerLock();
   };

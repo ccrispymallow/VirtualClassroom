@@ -743,19 +743,37 @@ const BoardUI = ({ user, isInstructor, isNear, roomId }) => {
                       by {file.uploader}
                     </p>
                   </div>
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(file.url);
+                        if (!res.ok) throw new Error("Download failed");
+                        const blob = await res.blob();
+                        const objectUrl = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = objectUrl;
+                        link.download = file.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(objectUrl);
+                      } catch (err) {
+                        window.open(file.url, "_blank");
+                      }
+                    }}
                     style={{
                       color: "#60a5fa",
                       fontSize: "10px",
                       flexShrink: 0,
                       textDecoration: "none",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0",
                     }}
                   >
-                    Open
-                  </a>
+                    Download
+                  </button>
                   {canDelete(role, file.uploader, username) && (
                     <button
                       onClick={() => deleteFile(file.id)}

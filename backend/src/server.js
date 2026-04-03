@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { pool } from "./config/database.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -14,10 +16,15 @@ import { createServer } from "http";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const httpServer = createServer(app);
+
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 const io = new Server(httpServer, { cors: { origin: "*" } });
 initSocket(io);
@@ -47,10 +54,6 @@ app.get("/api", async (req, res) => {
 
 // Error handling middleware
 app.use(errorHandler);
-
-// app.listen(PORT, () => {
-//   console.log(`Backend running on port ${PORT}`);
-// });
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
