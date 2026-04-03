@@ -60,10 +60,15 @@ export const usePeer = ({
   useEffect(() => {
     if (!userId || !roomCode) return;
 
+    const isLocal =
+      !import.meta.env.VITE_PEER_HOST ||
+      import.meta.env.VITE_PEER_HOST === "localhost";
+
     const peer = new Peer(undefined, {
-      host: "localhost",
-      port: 9000,
+      host: import.meta.env.VITE_PEER_HOST || "localhost",
+      port: isLocal ? 9000 : 443,
       path: "/peerjs",
+      secure: !isLocal,
     });
 
     peerRef.current = peer;

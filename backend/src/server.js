@@ -47,7 +47,7 @@ app.get("/api", async (req, res) => {
     res.json({
       status: "Backend is running",
       time: result.rows[0],
-      api: "http://localhost:5001/api",
+      api: `${process.env.VITE_BASE_URL || "http://localhost:5001"}/api`,
     });
   } catch (error) {
     res.status(500).json({ error: "Database connection failed" });
