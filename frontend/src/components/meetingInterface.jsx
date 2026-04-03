@@ -111,6 +111,7 @@ const MeetingInterface = () => {
       navigate("/homepage");
     };
     const handleRoomEndedByYou = ({ message }) => {
+      setChatMessages([]);
       alert(message);
       localStorage.removeItem("currentRoom");
       navigate("/homepage");

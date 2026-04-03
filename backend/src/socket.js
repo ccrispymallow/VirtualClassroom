@@ -184,7 +184,17 @@ export const initSocket = (io) => {
           await import("./services/classroom.service.js");
         await endClassroom(roomCode, userId);
 
-        // Notify all participants in the room that it's ended (except the instructor)
+        const { pool } = await import("./config/database.js");
+        const roomRes = await pool.query(
+          "SELECT id FROM classrooms WHERE room_code = $1",
+          [roomCode],
+        );
+        const roomId = roomRes.rows[0]?.id;
+        if (roomId) {
+          await pool.query("DELETE FROM messages WHERE room_id = $1", [roomId]);
+        }
+
+        // Notify all participants class ended
         socket.to(roomCode).emit("room-ended", {
           message: "This room has been ended by the instructor",
           roomCode,

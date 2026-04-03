@@ -10,3 +10,14 @@ export const getMessages = async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch messages" });
   }
 };
+
+export const deleteMessages = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    await messageService.deleteMessagesByRoom(roomId);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("deleteMessages error:", err);
+    return res.status(500).json({ error: "Failed to delete messages" });
+  }
+};

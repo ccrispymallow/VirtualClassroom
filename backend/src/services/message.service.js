@@ -18,3 +18,7 @@ export const getMessagesByRoom = async (room_id) => {
   );
   return result.rows;
 };
+
+export const deleteMessagesByRoom = async (room_id) => {
+  await pool.query(`DELETE FROM messages WHERE room_id = $1`, [room_id]);
+};
