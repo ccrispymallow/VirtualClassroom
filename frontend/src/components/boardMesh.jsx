@@ -12,7 +12,7 @@ import { useParams } from "react-router-dom";
 const INTERACT_DISTANCE = 12;
 const POLL_INTERVAL = 5000;
 
-const API_BASE = "/api";
+const API_BASE = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 const api = {
   // Notes

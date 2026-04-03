@@ -136,7 +136,7 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     if (!room.id) return;
-    fetch(`/api/messages/${room.id}`)
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/messages/${room.id}`)
       .then((r) => r.json())
       .then((data) => setChatMessages?.(data.messages || []))
       .catch(console.error);
@@ -285,13 +285,18 @@ const MeetingInterface = () => {
     const roomId = room.id;
     if (roomId) {
       try {
-        const liveRes = await fetch(`/api/sessions/live/${roomId}`);
+        const liveRes = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/sessions/live/${roomId}`,
+        );
         if (liveRes.ok) {
           const liveData = await liveRes.json();
           if (liveData?.session?.id) {
-            await fetch(`/api/sessions/end/${liveData.session.id}`, {
-              method: "POST",
-            });
+            await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/sessions/end/${liveData.session.id}`,
+              {
+                method: "POST",
+              },
+            );
           }
         }
       } catch (err) {

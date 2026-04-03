@@ -125,7 +125,9 @@ const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
 // Checks session API
 const checkRoomLive = async (roomId) => {
   try {
-    const res = await fetch(`/api/sessions/live/${roomId}`);
+    const res = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/sessions/live/${roomId}`,
+    );
     if (!res.ok) return false;
     const data = await res.json();
     return data.active === true;
@@ -167,8 +169,8 @@ export default function Home() {
     if (!user.id) return;
     setRoomsLoading(true);
     const url = isInstructor
-      ? `/api/classrooms/user/${user.id}`
-      : `/api/classrooms/user/${user.id}/joined`;
+      ? `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/user/${user.id}`
+      : `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/user/${user.id}/joined`;
     fetch(url)
       .then((r) => r.json())
       .then((data) => setMyRooms(data.rooms || []))
@@ -187,11 +189,14 @@ export default function Home() {
     console.log("Starting session for room:", sessionTarget);
     setSessionStarting(true);
     try {
-      const res = await fetch("/api/sessions/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ room_id: sessionTarget.id }),
-      });
+      const res = await fetch(
+        "${import.meta.env.VITE_BACKEND_URL}/api/sessions/start",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_id: sessionTarget.id }),
+        },
+      );
       if (!res.ok) {
         let msg = "Failed to start session";
         try {
@@ -242,15 +247,18 @@ export default function Home() {
 
     setStatus({ type: "loading", message: "Joining classroom…" });
     try {
-      const joinRes = await fetch("/api/classrooms/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room_code: room.room_code,
-          room_password: passwordOverride || "",
-          user_id: user.id,
-        }),
-      });
+      const joinRes = await fetch(
+        "${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_code: room.room_code,
+            room_password: passwordOverride || "",
+            user_id: user.id,
+          }),
+        },
+      );
       const joinData = await joinRes.json();
       if (!joinRes.ok) {
         setPwError(joinData.error || "Wrong password.");
@@ -280,7 +288,7 @@ export default function Home() {
     setStatus({ type: "loading", message: "Looking up classroom…" });
     try {
       const lookupRes = await fetch(
-        `/api/classrooms/code/${joinForm.room_code.trim().toUpperCase()}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/code/${joinForm.room_code.trim().toUpperCase()}`,
       );
       if (!lookupRes.ok) {
         const err = await lookupRes.json();
@@ -297,11 +305,14 @@ export default function Home() {
     } catch (error) {
       setStatus({ type: "loading", message: "Joining classroom…" });
       try {
-        const res = await fetch("/api/classrooms/join", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...joinForm, user_id: user.id }),
-        });
+        const res = await fetch(
+          "${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...joinForm, user_id: user.id }),
+          },
+        );
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to join.");
         localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
@@ -321,17 +332,20 @@ export default function Home() {
     setStatus({ type: "loading", message: "Creating classroom..." });
     const room_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
-      const res = await fetch("/api/classrooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room_name: createForm.room_name,
-          room_code,
-          room_password: createForm.room_password,
-          capacity: createForm.capacity || 5,
-          creator_id: user.id,
-        }),
-      });
+      const res = await fetch(
+        "${import.meta.env.VITE_BACKEND_URL}/api/classrooms",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_name: createForm.room_name,
+            room_code,
+            room_password: createForm.room_password,
+            capacity: createForm.capacity || 5,
+            creator_id: user.id,
+          }),
+        },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create.");
       const roomData = data.classroom || {
@@ -354,11 +368,14 @@ export default function Home() {
   const handleDeleteRoom = async () => {
     if (!deleteTarget) return;
     try {
-      const res = await fetch(`/api/classrooms/${deleteTarget.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: deleteTarget.id, user_id: user.id }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/${deleteTarget.id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: deleteTarget.id, user_id: user.id }),
+        },
+      );
       if (!res.ok) throw new Error("Failed to delete");
       setMyRooms((prev) => prev.filter((r) => r.id !== deleteTarget.id));
     } catch (err) {
