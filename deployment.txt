@@ -1,0 +1,2 @@
+Backend : https://backend-production-9e37.up.railway.app/api
+Frontend: https://virtual-classroom-phi.vercel.app/
