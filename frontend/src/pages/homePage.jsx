@@ -190,7 +190,7 @@ export default function Home() {
     setSessionStarting(true);
     try {
       const res = await fetch(
-        "${import.meta.env.VITE_BACKEND_URL}/api/sessions/start",
+        `${import.meta.env.VITE_BACKEND_URL}/api/sessions/start`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -248,7 +248,7 @@ export default function Home() {
     setStatus({ type: "loading", message: "Joining classroom…" });
     try {
       const joinRes = await fetch(
-        "${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join",
+        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -306,7 +306,7 @@ export default function Home() {
       setStatus({ type: "loading", message: "Joining classroom…" });
       try {
         const res = await fetch(
-          "${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join",
+          `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/join`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -333,7 +333,7 @@ export default function Home() {
     const room_code = Math.random().toString(36).substring(2, 8).toUpperCase();
     try {
       const res = await fetch(
-        "${import.meta.env.VITE_BACKEND_URL}/api/classrooms",
+        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
