@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LuGalleryHorizontal } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 
 const LiveBadge = () => (
@@ -169,7 +170,7 @@ export default function Home() {
     if (!user.id) return;
     setRoomsLoading(true);
     const url = isInstructor
-      ? `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/user/${user.id}`
+      ? `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/user/${user.id}?role=${user.role}`
       : `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/user/${user.id}/joined`;
     fetch(url)
       .then((r) => r.json())
@@ -177,6 +178,8 @@ export default function Home() {
       .catch(console.error)
       .finally(() => setRoomsLoading(false));
   }, [user.id, isInstructor]);
+
+  console.log(myRooms);
 
   // Instructor: show start session modal
   const handleInstructorEnterRoom = (room, e) => {
