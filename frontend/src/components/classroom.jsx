@@ -1,15 +1,15 @@
 import { useGLTF } from "@react-three/drei";
 
 export default function Classroom() {
-  const { scene } = useGLTF("/ClassroomModel.glb");
+  const { scene } = useGLTF("/ClassroomModel_max40.glb");
 
   return (
     <>
       {/* Your existing floor plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      {/* <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[20, 20]} />
         <meshStandardMaterial color="#1a2235" />
-      </mesh>
+      </mesh> */}
 
       {/* The GLB model */}
       <primitive object={scene} position={[0, 0, 0]} />
@@ -18,4 +18,4 @@ export default function Classroom() {
 }
 
 // Preload for better performance
-useGLTF.preload("/ClassroomModel.glb");
+useGLTF.preload("/ClassroomModel_max40.glb");

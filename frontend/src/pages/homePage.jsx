@@ -85,6 +85,55 @@ const PasswordPrompt = ({ roomName, onConfirm, onCancel, error }) => {
   );
 };
 
+const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-80 shadow-2xl">
+      <div className="flex justify-center mb-3">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-400/10 flex items-center justify-center text-2xl">
+          🏫
+        </div>
+      </div>
+      <p className="text-slate-200 text-sm font-semibold text-center mb-1">
+        Start a New Session?
+      </p>
+      <p className="text-slate-500 text-xs text-center mb-1">
+        <span className="text-slate-300 font-medium">"{room.room_name}"</span>
+      </p>
+      <p className="text-slate-600 text-xs text-center mb-5">
+        This will set the room as live so students can join.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-xl border border-[#1e2d45] text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+        >
+          {loading ? "Starting…" : "Start Session"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Checks session API
+const checkRoomLive = async (roomId) => {
+  try {
+    const res = await fetch(`/api/sessions/live/${roomId}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.active === true;
+  } catch {
+    return false;
+  }
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
@@ -108,6 +157,8 @@ export default function Home() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [pwTarget, setPwTarget] = useState(null);
   const [pwError, setPwError] = useState("");
+  const [sessionTarget, setSessionTarget] = useState(null);
+  const [sessionStarting, setSessionStarting] = useState(false);
 
   const inputClass =
     "w-full px-3.5 py-2.5 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-sm outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600";
@@ -125,14 +176,54 @@ export default function Home() {
       .finally(() => setRoomsLoading(false));
   }, [user.id, isInstructor]);
 
+  // Instructor: show start session modal
   const handleInstructorEnterRoom = (room, e) => {
     if (e.target.closest("[data-menu-btn]")) return;
-    localStorage.setItem("currentRoom", JSON.stringify(room));
-    navigate("/classroom/" + room.room_code);
+    setSessionTarget(room);
   };
 
+  const handleStartSession = async () => {
+    if (!sessionTarget) return;
+    console.log("Starting session for room:", sessionTarget);
+    setSessionStarting(true);
+    try {
+      const res = await fetch("/api/sessions/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room_id: sessionTarget.id }),
+      });
+      if (!res.ok) {
+        let msg = "Failed to start session";
+        try {
+          const err = await res.json();
+          msg = err.error || msg;
+        } catch {
+          msg = `Server error (${res.status})`;
+        }
+        throw new Error(msg);
+      }
+      setMyRooms((prev) =>
+        prev.map((r) =>
+          r.id === sessionTarget.id ? { ...r, live_status: "live" } : r,
+        ),
+      );
+      localStorage.setItem("currentRoom", JSON.stringify(sessionTarget));
+      navigate("/classroom/" + sessionTarget.room_code);
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
+    } finally {
+      setSessionStarting(false);
+      setSessionTarget(null);
+    }
+  };
+
+  // Student: always verify session is live before entering
   const enterRoom = async (room, passwordOverride = null) => {
-    if (room.live_status !== "live") {
+    setStatus({ type: "loading", message: "Checking session status…" });
+
+    // Always check live session from API (not just live_status field)
+    const isLive = await checkRoomLive(room.id);
+    if (!isLive) {
       setStatus({
         type: "error",
         message: `"${room.room_name}" is not currently active. Wait for your instructor to start the session.`,
@@ -141,31 +232,38 @@ export default function Home() {
       return;
     }
 
+    // If password required and not yet provided, show prompt
     if (room.room_password && !passwordOverride) {
+      setStatus(null);
       setPwTarget(room);
       setPwError("");
       return;
     }
 
-    const joinRes = await fetch("/api/classrooms/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        room_code: room.room_code,
-        room_password: passwordOverride || "",
-        user_id: user.id,
-      }),
-    });
-    const joinData = await joinRes.json();
-
-    if (!joinRes.ok) {
-      setPwError(joinData.error || "Wrong password.");
-      return;
+    setStatus({ type: "loading", message: "Joining classroom…" });
+    try {
+      const joinRes = await fetch("/api/classrooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_code: room.room_code,
+          room_password: passwordOverride || "",
+          user_id: user.id,
+        }),
+      });
+      const joinData = await joinRes.json();
+      if (!joinRes.ok) {
+        setPwError(joinData.error || "Wrong password.");
+        setStatus(null);
+        return;
+      }
+      localStorage.setItem("currentRoom", JSON.stringify(joinData.classroom));
+      setPwTarget(null);
+      setStatus(null);
+      navigate("/classroom/" + room.room_code);
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
     }
-
-    localStorage.setItem("currentRoom", JSON.stringify(joinData.classroom));
-    setPwTarget(null);
-    navigate("/classroom/" + room.room_code);
   };
 
   const handlePasswordSubmit = (pw) => {
@@ -176,42 +274,45 @@ export default function Home() {
     enterRoom(pwTarget, pw);
   };
 
-  const handleDeleteRoom = async () => {
-    if (!deleteTarget) return;
-    try {
-      const res = await fetch(`/api/classrooms/${deleteTarget.id}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: deleteTarget.id, user_id: user.id }),
-      });
-      if (!res.ok) throw new Error("Failed to delete");
-      setMyRooms((prev) => prev.filter((r) => r.id !== deleteTarget.id));
-    } catch (err) {
-      setStatus({ type: "error", message: err.message });
-    } finally {
-      setDeleteTarget(null);
-    }
-  };
-
+  // Student: join via form
   const handleJoin = async (e) => {
     e.preventDefault();
-    setStatus({ type: "loading", message: "Joining classroom..." });
+    setStatus({ type: "loading", message: "Looking up classroom…" });
     try {
-      const res = await fetch("/api/classrooms/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...joinForm, user_id: user.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to join.");
-      localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
-      setStatus({ type: "success", message: "Joined! Entering classroom..." });
-      setTimeout(
-        () => navigate("/classroom/" + data.classroom.room_code),
-        1000,
+      const lookupRes = await fetch(
+        `/api/classrooms/code/${joinForm.room_code.trim().toUpperCase()}`,
+      );
+      if (!lookupRes.ok) {
+        const err = await lookupRes.json();
+        // Fallback: try joining directly
+        throw new Error(err.error || "Room not found.");
+      }
+      const lookupData = await lookupRes.json();
+      const room = lookupData.classroom || lookupData;
+
+      await enterRoom(
+        { ...room, room_password: joinForm.room_password ? "yes" : "" },
+        joinForm.room_password || null,
       );
     } catch (error) {
-      setStatus({ type: "error", message: error.message });
+      setStatus({ type: "loading", message: "Joining classroom…" });
+      try {
+        const res = await fetch("/api/classrooms/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...joinForm, user_id: user.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to join.");
+        localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
+        setStatus({ type: "success", message: "Joined! Entering classroom…" });
+        setTimeout(
+          () => navigate("/classroom/" + data.classroom.room_code),
+          1000,
+        );
+      } catch (fallbackError) {
+        setStatus({ type: "error", message: fallbackError.message });
+      }
     }
   };
 
@@ -233,7 +334,6 @@ export default function Home() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create.");
-
       const roomData = data.classroom || {
         id: data.id || data.room_id || null,
         room_code,
@@ -251,6 +351,23 @@ export default function Home() {
     }
   };
 
+  const handleDeleteRoom = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/classrooms/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deleteTarget.id, user_id: user.id }),
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      setMyRooms((prev) => prev.filter((r) => r.id !== deleteTarget.id));
+    } catch (err) {
+      setStatus({ type: "error", message: err.message });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("userSession");
     localStorage.removeItem("currentRoom");
@@ -259,7 +376,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#0b0f1a] px-4 py-6 relative">
-      {/* Dialogs */}
       {deleteTarget && (
         <DeleteConfirm
           roomName={deleteTarget.room_name}
@@ -276,6 +392,14 @@ export default function Home() {
             setPwError("");
           }}
           error={pwError}
+        />
+      )}
+      {sessionTarget && (
+        <StartSessionModal
+          room={sessionTarget}
+          onConfirm={handleStartSession}
+          onCancel={() => setSessionTarget(null)}
+          loading={sessionStarting}
         />
       )}
 
@@ -369,9 +493,8 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Main layout: form card + my rooms side by side */}
       <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 items-start justify-center">
-        {/* ── Form card ── */}
+        {/* Form card */}
         <div className="w-full max-w-[460px]">
           <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl px-9 py-10 relative overflow-hidden">
             <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-blue-500/10 pointer-events-none" />
@@ -529,7 +652,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── My Rooms panel ── */}
+        {/* My Rooms panel */}
         <div className="w-full max-w-[460px]">
           <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-5">
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
@@ -558,16 +681,12 @@ export default function Home() {
                       onClick={(e) =>
                         isInstructor ? handleInstructorEnterRoom(room, e) : null
                       }
-                      className={`relative bg-[#0f172a] border border-[#1e2d45] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-blue-500/30 transition-colors ${
-                        isInstructor ? "cursor-pointer" : ""
-                      }`}
+                      className={`relative bg-[#0f172a] border border-[#1e2d45] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-blue-500/30 transition-colors ${isInstructor ? "cursor-pointer" : ""}`}
                     >
-                      {/* Room icon */}
                       <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-400/10 flex items-center justify-center text-base flex-shrink-0">
                         🏫
                       </div>
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <p className="text-slate-200 text-xs font-semibold truncate">
@@ -624,9 +743,9 @@ export default function Home() {
                           )}
                         </div>
                       ) : (
-                        // Student: join button (only enabled if live)
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setStatus(null);
                             enterRoom(room);
                           }}
@@ -635,7 +754,6 @@ export default function Home() {
                               ? "bg-blue-500 text-white hover:bg-blue-600"
                               : "bg-[#1a2235] text-slate-500 cursor-not-allowed"
                           }`}
-                          disabled={!isLive}
                         >
                           {isLive ? "Join" : "Offline"}
                         </button>

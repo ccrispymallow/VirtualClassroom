@@ -28,7 +28,6 @@ const MeetingInterface = () => {
     participants: false,
   });
   const [copyMessage, setCopyMessage] = useState("");
-
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
@@ -89,28 +88,30 @@ const MeetingInterface = () => {
   }, [setParticipants]);
 
   useEffect(() => {
-    socket.on("room-ended", ({ message }) => {
+    const handleRoomEnded = ({ message }) => {
       alert(message);
-      // Navigate back to homepage
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
-    });
+    };
 
-    socket.on("room-ended-by-you", ({ message }) => {
+    const handleRoomEndedByYou = ({ message }) => {
       alert(message);
-      // Navigate back to homepage
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
-    });
+    };
 
-    socket.on("room-end-error", ({ message }) => {
+    const handleRoomEndError = ({ message }) => {
       alert(`Failed to end room: ${message}`);
-    });
+    };
+
+    socket.on("room-ended", handleRoomEnded);
+    socket.on("room-ended-by-you", handleRoomEndedByYou);
+    socket.on("room-end-error", handleRoomEndError);
 
     return () => {
-      socket.off("room-ended");
-      socket.off("room-ended-by-you");
-      socket.off("room-end-error");
+      socket.off("room-ended", handleRoomEnded);
+      socket.off("room-ended-by-you", handleRoomEndedByYou);
+      socket.off("room-end-error", handleRoomEndError);
     };
   }, [navigate]);
 
@@ -222,29 +223,15 @@ const MeetingInterface = () => {
 
   const handleMicToggle = async () => {
     const nextMic = !micOn;
-
     if (nextMic) {
       const stream = await startMic();
       if (stream) broadcastMic(stream);
     } else {
       stopMic();
     }
-
-    socket.emit("mic-status", {
-      roomCode,
-      userId: user.id,
-      mic: nextMic,
-    });
-
+    socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
     setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === user.id
-          ? {
-              ...p,
-              mic: nextMic,
-            }
-          : p,
-      ),
+      prev.map((p) => (p.id === user.id ? { ...p, mic: nextMic } : p)),
     );
   };
 
@@ -268,13 +255,32 @@ const MeetingInterface = () => {
     }
   };
 
-  const handleEndForAll = () => {
+  // End session
+  const handleEndForAll = async () => {
     const confirmed = window.confirm(
       "Are you sure you want to end the meeting for everyone?",
     );
-    if (confirmed) {
-      socket.emit("end-room", { roomCode, userId: user.id });
+    if (!confirmed) return;
+
+    const roomId = room.id;
+    if (roomId) {
+      try {
+        const liveRes = await fetch(`/api/sessions/live/${roomId}`);
+        if (liveRes.ok) {
+          const liveData = await liveRes.json();
+
+          if (liveData?.session?.id) {
+            await fetch(`/api/sessions/end/${liveData.session.id}`, {
+              method: "POST",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to end session:", err);
+      }
     }
+
+    socket.emit("end-room", { roomCode, userId: user.id });
   };
 
   const startUnderstandingPoll = () => {
@@ -430,7 +436,7 @@ const MeetingInterface = () => {
           />
         ))}
 
-      {/* ── TOP BAR ── */}
+      {/* TOP BAR */}
       <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
@@ -483,14 +489,12 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* ── BOTTOM BAR ── */}
+      {/* BOTTOM BAR */}
       <div className="fixed w-full bottom-3 flex justify-center z-20">
         <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
           <button
             onClick={handleMicToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
-              micOn ? "text-blue-400" : "text-slate-500"
-            }`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
           >
             {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
             <span className="text-[10px] mt-1 select-none">Mic</span>
@@ -498,9 +502,7 @@ const MeetingInterface = () => {
 
           <button
             onClick={handleScreenToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
-              screenOn ? "text-emerald-400" : "text-slate-500"
-            }`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
           >
             <LuScreenShare size={22} />
             <span className="text-[10px] mt-1 select-none">
@@ -528,9 +530,7 @@ const MeetingInterface = () => {
                 ? closeBox("participants")
                 : openBox("participants")
             }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
-              boxes.participants ? "text-blue-400" : "text-slate-500"
-            }`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
           >
             <IoPeople size={22} />
             <span className="text-[10px] mt-1 select-none">People</span>
@@ -540,9 +540,7 @@ const MeetingInterface = () => {
             onClick={() =>
               boxes.settings ? closeBox("settings") : openBox("settings")
             }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
-              boxes.settings ? "text-blue-400" : "text-slate-500"
-            }`}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.settings ? "text-blue-400" : "text-slate-500"}`}
           >
             <IoSettings size={22} />
             <span className="text-[10px] mt-1 select-none">Settings</span>
@@ -646,7 +644,7 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* ── SETTINGS PANEL ── */}
+      {/* SETTINGS PANEL */}
       <div
         className={`${panelClass} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
@@ -683,9 +681,7 @@ const MeetingInterface = () => {
               )}
             </button>
             <div
-              className={`${
-                deviceSections.audio && !loading ? "" : "hidden"
-              } w-full p-1`}
+              className={`${deviceSections.audio && !loading ? "" : "hidden"} w-full p-1`}
             >
               {audioDevices.map((value, index) => (
                 <button
@@ -711,7 +707,7 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* ── LEAVE PANEL ── */}
+      {/* LEAVE PANEL */}
       <div
         className={`${panelClass} w-56 ${boxes.leave ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
