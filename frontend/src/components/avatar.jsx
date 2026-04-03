@@ -240,7 +240,7 @@ export default function Avatar() {
                 key={`${p.id}-${p.avatar || "boy"}`}
                 position={[px, py, pz]}
                 avatarType={p.avatar || "boy"}
-                isMoving={peerMoving?.[p.id] || false} // 👈 use real peer moving state
+                isMoving={peerMoving?.[p.id] || false}
                 emote={peerEmotes?.[p.id] || null}
               />
               <Billboard position={[px, py + 2.4, pz]}>
@@ -249,6 +249,7 @@ export default function Avatar() {
                   occlude
                   distanceFactor={8}
                   center
+                  zIndexRange={[10, 10]}
                 >
                   <div
                     style={{

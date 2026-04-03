@@ -964,10 +964,11 @@ export default function ClassBoard({
       <meshStandardMaterial color="#1a2235" />
       <Html
         transform
-        occlude
+        prepend
         distanceFactor={1.5}
         position={[0, 0, 0.01]}
         center
+        zIndexRange={[0, 0]}
       >
         <BoardUI
           user={user}
@@ -978,10 +979,11 @@ export default function ClassBoard({
       </Html>
       <Html
         transform
-        occlude
+        prepend
         distanceFactor={8}
         position={[0, -1.6, 0.01]}
         center
+        zIndexRange={[0, 0]}
       >
         <div
           style={{
