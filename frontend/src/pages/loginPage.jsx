@@ -17,11 +17,14 @@ export default function Login() {
     e.preventDefault();
     setLoginStatus({ type: "loading", message: "Creating your account..." });
     try {
-      const res = await fetch("/api/users/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(createForm),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/users/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(createForm),
+        },
+      );
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.error || "Registration failed. Please try again.");
@@ -41,11 +44,14 @@ export default function Login() {
     e.preventDefault();
     setLoginStatus({ type: "loading", message: "Signing you in..." });
     try {
-      const res = await fetch("/api/users/loginUser", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginForm),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/users/loginUser`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(loginForm),
+        },
+      );
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.error || "Login failed. Please try again.");
