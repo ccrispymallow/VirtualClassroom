@@ -23,7 +23,13 @@ const io = new Server(httpServer, { cors: { origin: "*" } });
 initSocket(io);
 
 // PeerJS server
-const peerServer = PeerServer({ port: 9000, path: "/peerjs" });
+import { ExpressPeerServer } from "peer";
+
+const peerServer = ExpressPeerServer(httpServer, {
+  path: "/peerjs",
+});
+app.use("/peerjs", peerServer);
+
 console.log("PeerJS server running on port 9000");
 
 // Routes
