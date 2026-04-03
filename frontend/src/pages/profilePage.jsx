@@ -163,14 +163,17 @@ export default function ProfilePage() {
     setStatus({ type: "loading", message: "Saving changes..." });
 
     try {
-      const response = await fetch(`/api/users/users/${user.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.trim(),
-          avatar: selectedAvatar,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/users/users/${user.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: username.trim(),
+            avatar: selectedAvatar,
+          }),
+        },
+      );
 
       const data = await response.json();
 
