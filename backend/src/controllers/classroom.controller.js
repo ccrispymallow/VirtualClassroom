@@ -146,3 +146,39 @@ export const deleteClassroom = async (req, res, next) => {
     next(error);
   }
 };
+
+// GET classrooms by user id
+export const getClassroomsByUserId = async (req, res, next) => {
+  try {
+    const { user_id } = req.params;
+    const { role } = req.query;
+
+    if (!user_id) {
+      return res.status(400).json({ error: "user_id is required" });
+    }
+
+    const rooms =
+      role === "instructor" || role === "prof"
+        ? await classroomService.getClassroomsByUserId(user_id)
+        : await classroomService.getJoinedClassroomsByUserId(user_id);
+
+    res.json({ rooms });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getJoinedClassroomsByUserId = async (req, res, next) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({ error: "user_id is required" });
+    }
+
+    const rooms = await classroomService.getJoinedClassroomsByUserId(user_id);
+    res.json({ rooms });
+  } catch (error) {
+    next(error);
+  }
+};

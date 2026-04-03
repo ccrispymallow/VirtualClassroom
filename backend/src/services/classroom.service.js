@@ -62,16 +62,11 @@ export const joinClassroom = async ({ room_code, room_password, user_id }) => {
   const classroom = result.rows[0];
   if (!classroom) return null;
 
-  // Check if room has been ended
-  if (classroom.ended_at) {
-    throw new Error("This room has ended and is no longer available");
-  }
-
   if (classroom.room_password && classroom.room_password !== room_password) {
     throw new Error("Wrong password");
   }
 
-  // Create (or reuse) an active session for this classroom. This keeps track of start/end times.
+  // Create (or reuse) an active session for this classroom
   await getOrCreateSession(classroom.id);
 
   const check = await pool.query(
@@ -107,7 +102,6 @@ export const getParticipants = async (room_id) => {
 };
 
 export const endClassroom = async (room_code, user_id) => {
-  // First check if user is the creator of the room
   const roomResult = await pool.query(
     `SELECT * FROM classrooms WHERE room_code = $1`,
     [room_code],
@@ -122,23 +116,13 @@ export const endClassroom = async (room_code, user_id) => {
     throw new Error("Only the room creator can end the room");
   }
 
-  if (classroom.ended_at) {
-    throw new Error("Room has already been ended");
-  }
-
-  // End the room
-  await pool.query(
-    `UPDATE classrooms SET ended_at = CURRENT_TIMESTAMP WHERE room_code = $1`,
-    [room_code],
-  );
-
   // Mark associated active session as ended
   await pool.query(
     `UPDATE sessions SET end_time = CURRENT_TIMESTAMP WHERE room_id = $1 AND end_time IS NULL`,
     [classroom.id],
   );
 
-  return { ...classroom, ended_at: new Date() };
+  return classroom;
 };
 
 // DELETE classroom
@@ -170,4 +154,37 @@ export const deleteClassroom = async (id, user_id) => {
   );
 
   return deleted.rows[0];
+};
+
+// GET classrooms created by prof/instructor
+export const getClassroomsByUserId = async (user_id) => {
+  const result = await pool.query(
+    `SELECT c.*, 
+      CASE WHEN EXISTS (
+        SELECT 1 FROM sessions s 
+        WHERE s.room_id = c.id AND s.end_time IS NULL
+      ) THEN 'live' ELSE 'offline' END as live_status
+     FROM classrooms c
+     WHERE c.creator_id = $1
+     ORDER BY c.created_at DESC`,
+    [user_id],
+  );
+  return result.rows;
+};
+
+// GET classrooms a student has previously joined
+export const getJoinedClassroomsByUserId = async (user_id) => {
+  const result = await pool.query(
+    `SELECT DISTINCT c.*,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM sessions s 
+        WHERE s.room_id = c.id AND s.end_time IS NULL
+      ) THEN 'live' ELSE 'offline' END as live_status
+     FROM classrooms c
+     JOIN room_participants rp ON rp.room_id = c.id
+     WHERE rp.user_id = $1
+     ORDER BY c.created_at DESC`,
+    [user_id],
+  );
+  return result.rows;
 };
