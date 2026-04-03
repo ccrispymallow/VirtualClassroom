@@ -23,7 +23,7 @@ export default function FollowCamera() {
         const maxPitch = Math.PI / 3;
         pitchRef.current = Math.max(
           -maxPitch,
-          Math.min(maxPitch, pitchRef.current)
+          Math.min(maxPitch, pitchRef.current),
         );
       }
     };
@@ -76,7 +76,7 @@ export default function FollowCamera() {
     const dir = new THREE.Vector3(
       Math.sin(yawRef.current) * Math.cos(pitchRef.current),
       Math.sin(pitchRef.current),
-      -Math.cos(yawRef.current) * Math.cos(pitchRef.current)
+      -Math.cos(yawRef.current) * Math.cos(pitchRef.current),
     );
 
     camera.lookAt(x + dir.x, EYE_HEIGHT + dir.y, z + dir.z);

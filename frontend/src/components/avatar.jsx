@@ -64,10 +64,10 @@ export default function Avatar() {
     // Only initialize spawn position once, on first load
     if (initializedRef.current) return;
     if (participants.length === 0) return;
-    
+
     const myIndex = participants.findIndex((p) => p.id === user.id);
     if (myIndex === -1) return;
-    
+
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
     posRef.current = [...slot];
     setAvatarPosition([...slot]);
@@ -81,7 +81,15 @@ export default function Avatar() {
         position: posRef.current,
       });
     }
-  }, [participants, socket, roomCode, user.id, posRef, setAvatarPosition, yawRef]);
+  }, [
+    participants,
+    socket,
+    roomCode,
+    user.id,
+    posRef,
+    setAvatarPosition,
+    yawRef,
+  ]);
 
   useFrame((_, delta) => {
     const speed = 5;
@@ -159,7 +167,10 @@ export default function Avatar() {
 
           return (
             <group key={p.id}>
-              <AvatarModel position={[px, py, pz]} avatarType={p.avatar || "boy"} />
+              <AvatarModel
+                position={[px, py, pz]}
+                avatarType={p.avatar || "boy"}
+              />
 
               <Html
                 transform

@@ -35,6 +35,25 @@ const MeetingInterface = () => {
   const [loading, setLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState({ audio: null });
 
+  const [pollQuestion, setPollQuestion] = useState({
+    active: false,
+    pollId: null,
+    totalStudents: 0,
+    answered: false,
+    response: null,
+  });
+
+  const [isPollPanelOpen, setIsPollPanelOpen] = useState(false);
+
+  const [pollResults, setPollResults] = useState({
+    active: false,
+    pollId: null,
+    yes: 0,
+    no: 0,
+    remaining: 0,
+    summary: "",
+  });
+
   const {
     micStreamRef,
     screenStreamRef,
@@ -70,14 +89,14 @@ const MeetingInterface = () => {
   }, [setParticipants]);
 
   useEffect(() => {
-    socket.on("room-ended", ({ message, roomCode }) => {
+    socket.on("room-ended", ({ message }) => {
       alert(message);
       // Navigate back to homepage
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     });
 
-    socket.on("room-ended-by-you", ({ message, roomCode }) => {
+    socket.on("room-ended-by-you", ({ message }) => {
       alert(message);
       // Navigate back to homepage
       localStorage.removeItem("currentRoom");
@@ -94,6 +113,82 @@ const MeetingInterface = () => {
       socket.off("room-end-error");
     };
   }, [navigate]);
+
+  useEffect(() => {
+    socket.on("understanding-question", ({ pollId, totalStudents }) => {
+      setPollQuestion({
+        active: true,
+        pollId,
+        totalStudents,
+        answered: false,
+        response: null,
+      });
+      setPollResults((prev) => ({
+        ...prev,
+        active: true,
+        pollId,
+        yes: 0,
+        no: 0,
+        remaining: totalStudents,
+        summary: "Poll in progress...",
+      }));
+    });
+
+    socket.on("understanding-update", ({ pollId, yes, no, remaining }) => {
+      setPollResults((prev) => {
+        if (prev.pollId !== pollId) return prev;
+        return {
+          ...prev,
+          active: true,
+          yes,
+          no,
+          remaining,
+          summary:
+            remaining === 0
+              ? yes >= 0 && no >= 0
+                ? no === 0
+                  ? "Everyone understands"
+                  : `${no} people don't understand`
+                : ""
+              : `Waiting for ${remaining} student(s)`,
+        };
+      });
+    });
+
+    socket.on(
+      "understanding-result",
+      ({ pollId, yes, no, remaining, summary }) => {
+        setPollResults({
+          active: false,
+          pollId,
+          yes,
+          no,
+          remaining,
+          summary,
+        });
+        setPollQuestion((prev) =>
+          prev.pollId === pollId
+            ? { ...prev, active: false, answered: true }
+            : prev,
+        );
+      },
+    );
+
+    socket.on("understanding-error", ({ message }) => {
+      setPollResults((prev) => ({
+        ...prev,
+        active: false,
+        summary: message,
+      }));
+    });
+
+    return () => {
+      socket.off("understanding-question");
+      socket.off("understanding-update");
+      socket.off("understanding-result");
+      socket.off("understanding-error");
+    };
+  }, []);
 
   useEffect(() => {
     const check = async () => {
@@ -182,6 +277,89 @@ const MeetingInterface = () => {
     }
   };
 
+  const startUnderstandingPoll = () => {
+    if (!isInstructor) return;
+    setIsPollPanelOpen(true);
+
+    const pollId = `${roomCode}-${Date.now()}`;
+    setPollQuestion((prev) => ({
+      ...prev,
+      active: true,
+      pollId,
+      answered: false,
+      response: null,
+    }));
+    setPollResults((prev) => ({
+      ...prev,
+      active: true,
+      pollId,
+      yes: 0,
+      no: 0,
+      remaining: participants.filter((p) => p.role !== "instructor").length,
+      summary: "Poll started, waiting for responses...",
+    }));
+
+    socket.emit("start-understanding-poll", {
+      roomCode,
+      initiatedBy: user.id,
+      pollId,
+    });
+  };
+
+  const submitUnderstandingAnswer = (answer) => {
+    if (!pollQuestion.active || pollQuestion.answered) return;
+    const { pollId } = pollQuestion;
+    socket.emit("understanding-answer", {
+      roomCode,
+      userId: user.id,
+      pollId,
+      answer,
+    });
+    setPollQuestion((prev) => ({
+      ...prev,
+      answered: true,
+      response: answer,
+      active: false,
+    }));
+    setPollResults((prev) => ({
+      ...prev,
+      summary: `You answered: ${answer.toUpperCase()}`,
+    }));
+  };
+
+  const endUnderstandingPoll = () => {
+    if (!isInstructor) return;
+    const pollId = pollResults.pollId || pollQuestion.pollId;
+    if (!pollId) {
+      setPollResults((prev) => ({
+        ...prev,
+        active: false,
+        summary: "No active poll to end",
+      }));
+      return;
+    }
+
+    const yesCount = pollResults.yes ?? 0;
+    const noCount = pollResults.no ?? 0;
+
+    socket.emit("end-understanding-poll", {
+      roomCode,
+      pollId,
+    });
+
+    setPollResults({
+      active: false,
+      pollId,
+      yes: yesCount,
+      no: noCount,
+      remaining: Math.max(0, pollResults.remaining ?? 0),
+      summary:
+        yesCount + noCount > 0
+          ? `Ended: ${yesCount} understand, ${noCount} don't understand`
+          : "Poll ended with no responses",
+    });
+  };
+
   const openBox = (name) =>
     setBoxes({
       settings: false,
@@ -200,6 +378,46 @@ const MeetingInterface = () => {
 
   return (
     <>
+      {pollQuestion.active && !isInstructor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70"
+          onClick={() => {}}
+        >
+          <div className="bg-[#0f172a] border border-[#1e2d45] rounded-xl p-5 w-80">
+            <h3 className="text-white text-sm font-bold mb-3">
+              Quick Check
+            </h3>
+            <p className="text-white text-sm font-bold mb-3">
+              Do you understand this topic?
+            </p>
+            <p className="text-slate-300 text-xs mb-4">
+              This is anonymous and just for the instructor.
+            </p>
+            <div className="flex justify-between gap-2">
+              <button
+                className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white"
+                onClick={() => submitUnderstandingAnswer("yes")}
+                disabled={pollQuestion.answered}
+              >
+                Yes
+              </button>
+              <button
+                className="flex-1 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white"
+                onClick={() => submitUnderstandingAnswer("no")}
+                disabled={pollQuestion.answered}
+              >
+                No
+              </button>
+            </div>
+            {pollQuestion.answered && (
+              <p className="text-slate-300 text-[11px] mt-3">
+                Thanks! Your answer has been recorded.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Remote audio streams */}
       {remoteStreams
         .filter((s) => s.type === "mic")
@@ -290,6 +508,18 @@ const MeetingInterface = () => {
             </span>
           </button>
 
+          {isInstructor && (
+            <button
+              onClick={() => setIsPollPanelOpen((p) => !p)}
+              className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${
+                isPollPanelOpen ? "text-blue-400" : "text-slate-500"
+              }`}
+            >
+              <FaCheck size={22} />
+              <span className="text-[10px] mt-1 select-none">Start Check</span>
+            </button>
+          )}
+
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
           <button
@@ -329,6 +559,40 @@ const MeetingInterface = () => {
           </button>
         </div>
       </div>
+
+      {isInstructor && isPollPanelOpen && (
+        <div className="fixed bottom-20 right-4 z-30 w-72 p-3 bg-[#0f172a] border border-[#1e2d45] rounded-xl shadow-xl">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-white text-sm font-semibold">
+              Start understanding check
+            </p>
+            <button
+              onClick={() => setIsPollPanelOpen(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            onClick={startUnderstandingPoll}
+            className="w-full py-2 mb-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black text-xs font-semibold"
+          >
+            Check Understanding
+          </button>
+          <button
+            onClick={endUnderstandingPoll}
+            className="w-full py-2 mb-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
+            disabled={!pollResults.pollId && !pollResults.active}
+          >
+            End poll early
+          </button>
+          <div className="text-slate-300 text-[11px] space-y-1">
+            <div>Yes: {pollResults.yes}</div>
+            <div>No: {pollResults.no}</div>
+            <div>{pollResults.summary}</div>
+          </div>
+        </div>
+      )}
 
       {/* ── PARTICIPANTS PANEL ── */}
       <div
