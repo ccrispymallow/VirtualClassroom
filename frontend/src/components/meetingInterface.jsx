@@ -53,6 +53,23 @@ const MeetingInterface = () => {
   const [loading, setLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState({ audio: null });
 
+  const [pollQuestion, setPollQuestion] = useState({
+    active: false,
+    pollId: null,
+    totalStudents: 0,
+    answered: false,
+    response: null,
+  });
+  const [isPollPanelOpen, setIsPollPanelOpen] = useState(false);
+  const [pollResults, setPollResults] = useState({
+    active: false,
+    pollId: null,
+    yes: 0,
+    no: 0,
+    remaining: 0,
+    summary: "",
+  });
+
   const {
     micStreamRef,
     screenStreamRef,
@@ -111,7 +128,6 @@ const MeetingInterface = () => {
     };
   }, [navigate]);
 
-  // Load chat history on mount
   useEffect(() => {
     if (!room.id) return;
     fetch(`/api/messages/${room.id}`)
@@ -120,12 +136,10 @@ const MeetingInterface = () => {
       .catch(console.error);
   }, [room.id]);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [safeChatMessages]);
 
-  // Unread badge when chat is closed
   useEffect(() => {
     if (!showChat && safeChatMessages.length > 0) {
       setUnreadCount((prev) => prev + 1);
@@ -135,6 +149,65 @@ const MeetingInterface = () => {
   useEffect(() => {
     if (showChat) setUnreadCount(0);
   }, [showChat]);
+
+  useEffect(() => {
+    socket.on("understanding-question", ({ pollId, totalStudents }) => {
+      setPollQuestion({
+        active: true,
+        pollId,
+        totalStudents,
+        answered: false,
+        response: null,
+      });
+      setPollResults((prev) => ({
+        ...prev,
+        active: true,
+        pollId,
+        yes: 0,
+        no: 0,
+        remaining: totalStudents,
+        summary: "Poll in progress...",
+      }));
+    });
+    socket.on("understanding-update", ({ pollId, yes, no, remaining }) => {
+      setPollResults((prev) => {
+        if (prev.pollId !== pollId) return prev;
+        return {
+          ...prev,
+          active: true,
+          yes,
+          no,
+          remaining,
+          summary:
+            remaining === 0
+              ? no === 0
+                ? "Everyone understands"
+                : `${no} people don't understand`
+              : `Waiting for ${remaining} student(s)`,
+        };
+      });
+    });
+    socket.on(
+      "understanding-result",
+      ({ pollId, yes, no, remaining, summary }) => {
+        setPollResults({ active: false, pollId, yes, no, remaining, summary });
+        setPollQuestion((prev) =>
+          prev.pollId === pollId
+            ? { ...prev, active: false, answered: true }
+            : prev,
+        );
+      },
+    );
+    socket.on("understanding-error", ({ message }) => {
+      setPollResults((prev) => ({ ...prev, active: false, summary: message }));
+    });
+    return () => {
+      socket.off("understanding-question");
+      socket.off("understanding-update");
+      socket.off("understanding-result");
+      socket.off("understanding-error");
+    };
+  }, []);
 
   useEffect(() => {
     const check = async () => {
@@ -165,6 +238,8 @@ const MeetingInterface = () => {
     };
     check();
   }, [deviceSections]);
+
+  // ── Handlers (all at component scope, NOT nested) ──
 
   const handleMicToggle = async () => {
     const nextMic = !micOn;
@@ -243,6 +318,82 @@ const MeetingInterface = () => {
     setChatInput("");
   };
 
+  // ── Poll handlers ──
+
+  const startUnderstandingPoll = () => {
+    if (!isInstructor) return;
+    setIsPollPanelOpen(true);
+    const pollId = `${roomCode}-${Date.now()}`;
+    setPollQuestion({
+      active: true,
+      pollId,
+      answered: false,
+      response: null,
+      totalStudents: 0,
+    });
+    setPollResults({
+      active: true,
+      pollId,
+      yes: 0,
+      no: 0,
+      remaining: participants.filter((p) => p.role !== "instructor").length,
+      summary: "Poll started, waiting for responses...",
+    });
+    socket.emit("start-understanding-poll", {
+      roomCode,
+      initiatedBy: user.id,
+      pollId,
+    });
+  };
+
+  const submitUnderstandingAnswer = (answer) => {
+    if (!pollQuestion.active || pollQuestion.answered) return;
+    const { pollId } = pollQuestion;
+    socket.emit("understanding-answer", {
+      roomCode,
+      userId: user.id,
+      pollId,
+      answer,
+    });
+    setPollQuestion((prev) => ({
+      ...prev,
+      answered: true,
+      response: answer,
+      active: false,
+    }));
+    setPollResults((prev) => ({
+      ...prev,
+      summary: `You answered: ${answer.toUpperCase()}`,
+    }));
+  };
+
+  const endUnderstandingPoll = () => {
+    if (!isInstructor) return;
+    const pollId = pollResults.pollId || pollQuestion.pollId;
+    if (!pollId) {
+      setPollResults((prev) => ({
+        ...prev,
+        active: false,
+        summary: "No active poll to end",
+      }));
+      return;
+    }
+    socket.emit("end-understanding-poll", { roomCode, pollId });
+    setPollResults({
+      active: false,
+      pollId,
+      yes: pollResults.yes ?? 0,
+      no: pollResults.no ?? 0,
+      remaining: Math.max(0, pollResults.remaining ?? 0),
+      summary:
+        (pollResults.yes ?? 0) + (pollResults.no ?? 0) > 0
+          ? `Ended: ${pollResults.yes} understand, ${pollResults.no} don't understand`
+          : "Poll ended with no responses",
+    });
+  };
+
+  // ── Box helpers ──
+
   const openBox = (name) => {
     setShowEmotes(false);
     setShowChat(false);
@@ -253,6 +404,7 @@ const MeetingInterface = () => {
       [name]: true,
     });
   };
+
   const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
 
   const handlePanelMouseEnter = () => {
@@ -264,6 +416,43 @@ const MeetingInterface = () => {
 
   return (
     <>
+      {/* Understanding poll modal for students */}
+      {pollQuestion.active && !isInstructor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+          <div className="bg-[#0f172a] border border-[#1e2d45] rounded-xl p-5 w-80">
+            <h3 className="text-white text-sm font-bold mb-3">Quick Check</h3>
+            <p className="text-white text-sm font-bold mb-3">
+              Do you understand this topic?
+            </p>
+            <p className="text-slate-300 text-xs mb-4">
+              This is anonymous and just for the instructor.
+            </p>
+            <div className="flex justify-between gap-2">
+              <button
+                className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white"
+                onClick={() => submitUnderstandingAnswer("yes")}
+                disabled={pollQuestion.answered}
+              >
+                Yes
+              </button>
+              <button
+                className="flex-1 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white"
+                onClick={() => submitUnderstandingAnswer("no")}
+                disabled={pollQuestion.answered}
+              >
+                No
+              </button>
+            </div>
+            {pollQuestion.answered && (
+              <p className="text-slate-300 text-[11px] mt-3">
+                Thanks! Your answer has been recorded.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Remote audio streams */}
       {remoteStreams
         .filter((s) => s.type === "mic")
         .map((s, i) => (
@@ -331,7 +520,6 @@ const MeetingInterface = () => {
       {/* BOTTOM BAR */}
       <div className="fixed w-full bottom-3 flex justify-center z-20">
         <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
-          {/* Mic */}
           <button
             onClick={handleMicToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
@@ -340,7 +528,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">Mic</span>
           </button>
 
-          {/* Screen */}
           <button
             onClick={handleScreenToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
@@ -351,9 +538,18 @@ const MeetingInterface = () => {
             </span>
           </button>
 
+          {isInstructor && (
+            <button
+              onClick={() => setIsPollPanelOpen((p) => !p)}
+              className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${isPollPanelOpen ? "text-blue-400" : "text-slate-500"}`}
+            >
+              <FaCheck size={22} />
+              <span className="text-[10px] mt-1 select-none">Start Check</span>
+            </button>
+          )}
+
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
-          {/* People */}
           <button
             onClick={() =>
               boxes.participants
@@ -366,7 +562,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">People</span>
           </button>
 
-          {/* Chat */}
           <button
             onClick={() => {
               setShowChat(!showChat);
@@ -384,7 +579,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">Chat</span>
           </button>
 
-          {/* React / Emotes */}
           <button
             onClick={() => {
               setShowEmotes(!showEmotes);
@@ -397,7 +591,6 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">React</span>
           </button>
 
-          {/* Settings */}
           <button
             onClick={() =>
               boxes.settings ? closeBox("settings") : openBox("settings")
@@ -410,7 +603,6 @@ const MeetingInterface = () => {
 
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
-          {/* Leave */}
           <button
             onClick={() => openBox("leave")}
             className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
@@ -420,6 +612,41 @@ const MeetingInterface = () => {
           </button>
         </div>
       </div>
+
+      {/* INSTRUCTOR POLL PANEL */}
+      {isInstructor && isPollPanelOpen && (
+        <div className="fixed bottom-20 right-4 z-30 w-72 p-3 bg-[#0f172a] border border-[#1e2d45] rounded-xl shadow-xl">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-white text-sm font-semibold">
+              Start understanding check
+            </p>
+            <button
+              onClick={() => setIsPollPanelOpen(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            onClick={startUnderstandingPoll}
+            className="w-full py-2 mb-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black text-xs font-semibold"
+          >
+            Check Understanding
+          </button>
+          <button
+            onClick={endUnderstandingPoll}
+            className="w-full py-2 mb-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
+            disabled={!pollResults.pollId && !pollResults.active}
+          >
+            End poll early
+          </button>
+          <div className="text-slate-300 text-[11px] space-y-1">
+            <div>Yes: {pollResults.yes}</div>
+            <div>No: {pollResults.no}</div>
+            <div>{pollResults.summary}</div>
+          </div>
+        </div>
+      )}
 
       {/* PARTICIPANTS PANEL */}
       <div
@@ -505,11 +732,7 @@ const MeetingInterface = () => {
                   {msg.username || (isMe ? user.username : "Guest")}
                 </span>
                 <div
-                  className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${
-                    isMe
-                      ? "bg-blue-500 text-white rounded-tr-sm"
-                      : "bg-[#1a2235] text-slate-200 rounded-tl-sm"
-                  }`}
+                  className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${isMe ? "bg-blue-500 text-white rounded-tr-sm" : "bg-[#1a2235] text-slate-200 rounded-tl-sm"}`}
                 >
                   {msg.message}
                 </div>
@@ -554,11 +777,7 @@ const MeetingInterface = () => {
             <button
               key={e.key}
               onClick={() => handleEmote(e.key)}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold transition-colors border ${
-                myEmote === e.key
-                  ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                  : "bg-[#1a2235] text-slate-300 border-[#1e2d45] hover:bg-[#1e2d45]"
-              }`}
+              className={`py-2 px-3 rounded-xl text-xs font-semibold transition-colors border ${myEmote === e.key ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-[#1a2235] text-slate-300 border-[#1e2d45] hover:bg-[#1e2d45]"}`}
             >
               {e.label}
             </button>
@@ -614,9 +833,7 @@ const MeetingInterface = () => {
                       audio: value.deviceId,
                     }))
                   }
-                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors
-                    ${index === 0 ? "rounded-t-xl" : ""}
-                    ${index === audioDevices.length - 1 ? "rounded-b-xl" : ""}`}
+                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors ${index === 0 ? "rounded-t-xl" : ""} ${index === audioDevices.length - 1 ? "rounded-b-xl" : ""}`}
                 >
                   <span className="truncate">{value.label}</span>
                   {value.deviceId === selectedDevice.audio && (
