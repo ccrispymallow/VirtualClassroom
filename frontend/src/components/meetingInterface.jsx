@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMedia } from "../helper/useMedia";
 import { socket } from "../helper/socket";
 import { usePeer } from "../helper/usePeer";
@@ -8,10 +8,13 @@ import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
 import { IoClose, IoSettings, IoPeople } from "react-icons/io5";
 import { ImPhoneHangUp } from "react-icons/im";
-import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
+import { BsMicFill, BsMicMuteFill, BsChatFill } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
+import { MdEmojiEmotions } from "react-icons/md";
 import { useParams, useNavigate } from "react-router-dom";
 import copyIcon from "../assets/copy.svg";
+
+const EMOTES = [{ label: "✋ Raise Hand", key: "raise" }];
 
 const MeetingInterface = () => {
   const { roomCode } = useParams();
@@ -20,13 +23,29 @@ const MeetingInterface = () => {
   const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
   const isInstructor = user.role === "instructor";
 
-  const { participants, setParticipants, setScreenStream } = useRoom();
+  const {
+    participants,
+    setParticipants,
+    setScreenStream,
+    myEmote,
+    setMyEmote,
+    chatMessages,
+    setChatMessages,
+  } = useRoom();
+
+  const safeChatMessages = chatMessages ?? [];
 
   const [boxes, setBoxes] = useState({
     settings: false,
     leave: false,
     participants: false,
   });
+  const [showEmotes, setShowEmotes] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  const chatEndRef = useRef(null);
+
   const [copyMessage, setCopyMessage] = useState("");
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
@@ -82,17 +101,40 @@ const MeetingInterface = () => {
     const handleRoomEndError = ({ message }) => {
       alert(`Failed to end room: ${message}`);
     };
-
     socket.on("room-ended", handleRoomEnded);
     socket.on("room-ended-by-you", handleRoomEndedByYou);
     socket.on("room-end-error", handleRoomEndError);
-
     return () => {
       socket.off("room-ended", handleRoomEnded);
       socket.off("room-ended-by-you", handleRoomEndedByYou);
       socket.off("room-end-error", handleRoomEndError);
     };
   }, [navigate]);
+
+  // Load chat history on mount
+  useEffect(() => {
+    if (!room.id) return;
+    fetch(`/api/messages/${room.id}`)
+      .then((r) => r.json())
+      .then((data) => setChatMessages?.(data.messages || []))
+      .catch(console.error);
+  }, [room.id]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [safeChatMessages]);
+
+  // Unread badge when chat is closed
+  useEffect(() => {
+    if (!showChat && safeChatMessages.length > 0) {
+      setUnreadCount((prev) => prev + 1);
+    }
+  }, [safeChatMessages.length]);
+
+  useEffect(() => {
+    if (showChat) setUnreadCount(0);
+  }, [showChat]);
 
   useEffect(() => {
     const check = async () => {
@@ -158,20 +200,17 @@ const MeetingInterface = () => {
     }
   };
 
-  // End session
   const handleEndForAll = async () => {
     const confirmed = window.confirm(
       "Are you sure you want to end the meeting for everyone?",
     );
     if (!confirmed) return;
-
     const roomId = room.id;
     if (roomId) {
       try {
         const liveRes = await fetch(`/api/sessions/live/${roomId}`);
         if (liveRes.ok) {
           const liveData = await liveRes.json();
-
           if (liveData?.session?.id) {
             await fetch(`/api/sessions/end/${liveData.session.id}`, {
               method: "POST",
@@ -182,17 +221,38 @@ const MeetingInterface = () => {
         console.error("Failed to end session:", err);
       }
     }
-
     socket.emit("end-room", { roomCode, userId: user.id });
   };
 
-  const openBox = (name) =>
+  const handleEmote = (emoteKey) => {
+    setMyEmote?.(emoteKey);
+    setShowEmotes(false);
+    socket.emit("emote", { roomCode, userId: user.id, emote: emoteKey });
+    setTimeout(() => setMyEmote?.(null), 8000);
+  };
+
+  const handleSendChat = () => {
+    const msg = chatInput.trim();
+    if (!msg) return;
+    socket.emit("send-message", {
+      roomCode,
+      userId: user.id,
+      username: user.username,
+      message: msg,
+    });
+    setChatInput("");
+  };
+
+  const openBox = (name) => {
+    setShowEmotes(false);
+    setShowChat(false);
     setBoxes({
       settings: false,
       leave: false,
       participants: false,
       [name]: true,
     });
+  };
   const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
 
   const handlePanelMouseEnter = () => {
@@ -271,6 +331,7 @@ const MeetingInterface = () => {
       {/* BOTTOM BAR */}
       <div className="fixed w-full bottom-3 flex justify-center z-20">
         <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
+          {/* Mic */}
           <button
             onClick={handleMicToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
@@ -279,6 +340,7 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">Mic</span>
           </button>
 
+          {/* Screen */}
           <button
             onClick={handleScreenToggle}
             className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
@@ -291,6 +353,7 @@ const MeetingInterface = () => {
 
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
+          {/* People */}
           <button
             onClick={() =>
               boxes.participants
@@ -303,6 +366,38 @@ const MeetingInterface = () => {
             <span className="text-[10px] mt-1 select-none">People</span>
           </button>
 
+          {/* Chat */}
+          <button
+            onClick={() => {
+              setShowChat(!showChat);
+              setShowEmotes(false);
+              setBoxes({ settings: false, leave: false, participants: false });
+            }}
+            className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showChat ? "text-blue-400" : "text-slate-500"}`}
+          >
+            <BsChatFill size={20} />
+            {unreadCount > 0 && !showChat && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+            <span className="text-[10px] mt-1 select-none">Chat</span>
+          </button>
+
+          {/* React / Emotes */}
+          <button
+            onClick={() => {
+              setShowEmotes(!showEmotes);
+              setShowChat(false);
+              setBoxes({ settings: false, leave: false, participants: false });
+            }}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showEmotes ? "text-yellow-400" : "text-slate-500"}`}
+          >
+            <MdEmojiEmotions size={22} />
+            <span className="text-[10px] mt-1 select-none">React</span>
+          </button>
+
+          {/* Settings */}
           <button
             onClick={() =>
               boxes.settings ? closeBox("settings") : openBox("settings")
@@ -315,6 +410,7 @@ const MeetingInterface = () => {
 
           <div className="w-px h-8 bg-[#1e2d45] mx-1" />
 
+          {/* Leave */}
           <button
             onClick={() => openBox("leave")}
             className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
@@ -373,6 +469,99 @@ const MeetingInterface = () => {
                 )}
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CHAT PANEL */}
+      <div
+        className={`fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col ${showChat ? "" : "hidden"}`}
+        style={{ height: "360px" }}
+        onMouseEnter={handlePanelMouseEnter}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45] flex-shrink-0">
+          <p className="text-slate-200 font-semibold text-sm">Chat</p>
+          <button
+            onClick={() => setShowChat(false)}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+          {safeChatMessages.length === 0 && (
+            <p className="text-slate-600 text-xs text-center mt-4">
+              No messages yet
+            </p>
+          )}
+          {safeChatMessages.map((msg, i) => {
+            const isMe = msg.user_id === user.id || msg.userId === user.id;
+            return (
+              <div
+                key={i}
+                className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+              >
+                <span className="text-[10px] text-slate-500 mb-0.5 px-1">
+                  {msg.username || (isMe ? user.username : "Guest")}
+                </span>
+                <div
+                  className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${
+                    isMe
+                      ? "bg-blue-500 text-white rounded-tr-sm"
+                      : "bg-[#1a2235] text-slate-200 rounded-tl-sm"
+                  }`}
+                >
+                  {msg.message}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={chatEndRef} />
+        </div>
+        <div className="flex-shrink-0 p-3 border-t border-[#1e2d45] flex gap-2">
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
+            placeholder="Type a message…"
+            className="flex-1 px-3 py-2 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-xs outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+          />
+          <button
+            onClick={handleSendChat}
+            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition-colors"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+
+      {/* EMOTE PICKER PANEL */}
+      <div
+        className={`${panelClass} w-56 ${showEmotes ? "" : "hidden"}`}
+        onMouseEnter={handlePanelMouseEnter}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+          <p className="text-slate-200 font-semibold text-sm">Reactions</p>
+          <button
+            onClick={() => setShowEmotes(false)}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <IoClose size={18} />
+          </button>
+        </div>
+        <div className="p-3 grid grid-cols-2 gap-2">
+          {EMOTES.map((e) => (
+            <button
+              key={e.key}
+              onClick={() => handleEmote(e.key)}
+              className={`py-2 px-3 rounded-xl text-xs font-semibold transition-colors border ${
+                myEmote === e.key
+                  ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                  : "bg-[#1a2235] text-slate-300 border-[#1e2d45] hover:bg-[#1e2d45]"
+              }`}
+            >
+              {e.label}
+            </button>
           ))}
         </div>
       </div>

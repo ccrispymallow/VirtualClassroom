@@ -85,6 +85,46 @@ export const initSocket = (io) => {
       }
     });
 
+    socket.on("moving-update", ({ roomCode, userId, isMoving }) => {
+      socket.to(roomCode).emit("peer-moving", { userId, isMoving });
+    });
+
+    // Chat messages
+    socket.on(
+      "send-message",
+      async ({ roomCode, userId, username, message }) => {
+        const { pool } = await import("./config/database.js");
+        // Get room_id from room_code
+        try {
+          const roomRes = await pool.query(
+            "SELECT id FROM classrooms WHERE room_code = $1",
+            [roomCode],
+          );
+          const room_id = roomRes.rows[0]?.id;
+          if (room_id) {
+            await pool.query(
+              "INSERT INTO messages (room_id, user_id, message) VALUES ($1, $2, $3)",
+              [room_id, userId, message],
+            );
+          }
+        } catch (e) {
+          console.error("save message error:", e);
+        }
+        // Broadcast to everyone in the room including sender
+        io.to(roomCode).emit("receive-message", {
+          userId,
+          username,
+          message,
+          sent_at: new Date().toISOString(),
+        });
+      },
+    );
+
+    // Emote sync
+    socket.on("emote", ({ roomCode, userId, emote }) => {
+      socket.to(roomCode).emit("peer-emote", { userId, emote });
+    });
+
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
         const before = rooms[roomCode].length;

@@ -1,6 +1,6 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
@@ -8,6 +8,16 @@ import { SkeletonUtils } from "three-stdlib";
 
 const COLLISION_RADIUS = 0.8;
 const EMIT_INTERVAL = 50;
+const MOVE_KEYS = [
+  "w",
+  "a",
+  "s",
+  "d",
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+];
 
 const SPAWN_SLOTS = [
   [-3, 0, 4],
@@ -20,17 +30,63 @@ const SPAWN_SLOTS = [
   [-1, 0, 8],
 ];
 
-function AvatarModel({ position, yaw = 0, avatarType = "boy" }) {
+function AvatarModel({
+  position,
+  yaw = 0,
+  avatarType = "boy",
+  isMoving = false,
+  emote = null,
+}) {
   const modelUrl = avatarType === "boy" ? "/boy.glb" : "/girl.glb";
   const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
+  const currentActionRef = useRef(null);
 
   useEffect(() => {
-    if (names.length > 0) {
-      actions[names[0]]?.reset().fadeIn(0.2).play();
+    if (names.length === 0) return;
+
+    let targetAnim = null;
+
+    if (emote === "raise") {
+      targetAnim = "Raising Hand";
+    } else if (emote === "speaking") {
+      targetAnim = "Speaking";
+    } else if (isMoving) {
+      targetAnim = "Walking";
+    } else {
+      targetAnim = "Standing";
     }
-  }, [animations, actions, names]);
+
+    console.log(
+      "AvatarModel animating:",
+      targetAnim,
+      "isMoving:",
+      isMoving,
+      "emote:",
+      emote,
+    );
+
+    if (!names.includes(targetAnim)) {
+      console.warn("Animation not found:", targetAnim, "available:", names);
+      return;
+    }
+    if (currentActionRef.current === targetAnim) return;
+
+    const prev = currentActionRef.current
+      ? actions[currentActionRef.current]
+      : null;
+    const next = actions[targetAnim];
+    if (!next) return;
+
+    if (prev) {
+      next.reset().fadeIn(0.2).play();
+      prev.fadeOut(0.2);
+    } else {
+      next.reset().fadeIn(0.2).play();
+    }
+    currentActionRef.current = targetAnim;
+  }, [isMoving, emote, actions, names]);
 
   return (
     <primitive
@@ -50,30 +106,32 @@ export default function Avatar() {
   const {
     participants,
     peerPositions,
+    peerMoving,
     socket,
     keysRef,
     yawRef,
     posRef,
     setAvatarPosition,
+    myEmote,
+    peerEmotes,
   } = useRoom();
+
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
   const initializedRef = useRef(false);
+  const isMovingRef = useRef(false);
+  const lastMovingEmitRef = useRef(false);
 
   useEffect(() => {
-    // Only initialize spawn position once, on first load
     if (initializedRef.current) return;
     if (participants.length === 0) return;
-
     const myIndex = participants.findIndex((p) => p.id === user.id);
     if (myIndex === -1) return;
-
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
     posRef.current = [...slot];
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
     initializedRef.current = true;
-
     if (socket && roomCode) {
       socket.emit("position-update", {
         roomCode,
@@ -96,14 +154,11 @@ export default function Avatar() {
     const keys = keysRef.current;
     const [x, y, z] = posRef.current;
     const yaw = yawRef.current;
-
-    // ── define sinY and cosY from yaw (this was missing before) ──
     const sinY = Math.sin(yaw);
     const cosY = Math.cos(yaw);
 
-    let dx = 0;
-    let dz = 0;
-
+    let dx = 0,
+      dz = 0;
     if (keys["w"] || keys["arrowup"]) {
       dx += sinY * speed * delta;
       dz -= cosY * speed * delta;
@@ -121,23 +176,37 @@ export default function Avatar() {
       dz += sinY * speed * delta;
     }
 
-    if (dx !== 0 || dz !== 0) {
+    const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
+
+    // Emit moving state to peers when it changes
+    if (anyMoveKeyHeld !== isMovingRef.current) {
+      isMovingRef.current = anyMoveKeyHeld;
+      // Broadcast moving state so other clients can animate us
+      if (socket && roomCode) {
+        socket.emit("moving-update", {
+          roomCode,
+          userId: user.id,
+          isMoving: anyMoveKeyHeld,
+        });
+      }
+    }
+
+    const moving = dx !== 0 || dz !== 0;
+    if (moving) {
       const nx = x + dx;
       const nz = z + dz;
-
       const others = participants.filter((p) => p.id !== user.id);
       let blocked = false;
       for (const other of others) {
         if (!peerPositions[other.id]) continue;
         const [ox, , oz] = peerPositions[other.id];
-        const cdx = nx - ox;
-        const cdz = nz - oz;
+        const cdx = nx - ox,
+          cdz = nz - oz;
         if (Math.sqrt(cdx * cdx + cdz * cdz) < COLLISION_RADIUS) {
           blocked = true;
           break;
         }
       }
-
       if (!blocked) {
         posRef.current = [nx, y, nz];
         setAvatarPosition([nx, y, nz]);
@@ -170,8 +239,9 @@ export default function Avatar() {
               <AvatarModel
                 position={[px, py, pz]}
                 avatarType={p.avatar || "boy"}
+                isMoving={peerMoving?.[p.id] || false} // 👈 use real peer moving state
+                emote={peerEmotes?.[p.id] || null}
               />
-
               <Html
                 transform
                 occlude
@@ -184,7 +254,7 @@ export default function Avatar() {
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "3px",
-                    background: "rgba(17, 24, 39, 0.8)",
+                    background: "rgba(17,24,39,0.8)",
                     padding: "2px 5px",
                     borderRadius: "8px",
                     color: "#fff",

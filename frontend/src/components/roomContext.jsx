@@ -9,21 +9,27 @@ export const RoomProvider = ({ children }) => {
   const [screenStream, setScreenStream] = useState(null);
   const [avatarPosition, setAvatarPosition] = useState([0, 0, 0]);
   const [peerPositions, setPeerPositions] = useState({});
-
+  const [peerMoving, setPeerMoving] = useState({});
+  const [myEmote, setMyEmote] = useState(null);
+  const [peerEmotes, setPeerEmotes] = useState({});
+  const [chatMessages, setChatMessages] = useState([]);
   const keysRef = useRef({});
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
-  const posRef = useRef([0, 0, 0]); // shared position ref — no re-renders
+  const posRef = useRef([0, 0, 0]);
 
-  // Key listeners live in FollowCamera (on `document`) so they work
-  // both with and without pointer lock. Nothing needed here.
+  useEffect(() => {
+    setMyEmote(null);
+    setPeerEmotes({});
+    setPeerPositions({});
+    setPeerMoving({});
+    keysRef.current = {};
+  }, []);
 
-  // Listen for peer movement and participant updates
   useEffect(() => {
     const handlePeerMoved = ({ userId, position }) => {
       setPeerPositions((prev) => ({ ...prev, [userId]: position }));
     };
-
     const handleParticipantsUpdate = (updatedList) => {
       setParticipants(updatedList);
       setPeerPositions((prev) => {
@@ -36,11 +42,34 @@ export const RoomProvider = ({ children }) => {
       });
     };
 
+    const handlePeerMoving = ({ userId, isMoving }) => {
+      setPeerMoving((prev) => ({ ...prev, [userId]: isMoving }));
+    };
+
     socket.on("peer-moved", handlePeerMoved);
     socket.on("participants-update", handleParticipantsUpdate);
+    socket.on("peer-moving", handlePeerMoving);
     return () => {
       socket.off("peer-moved", handlePeerMoved);
       socket.off("participants-update", handleParticipantsUpdate);
+      socket.off("peer-moving", handlePeerMoving);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("peer-emote", ({ userId, emote }) => {
+      setPeerEmotes((prev) => ({ ...prev, [userId]: emote }));
+      setTimeout(() => {
+        setPeerEmotes((prev) => ({ ...prev, [userId]: null }));
+      }, 8000);
+    });
+    socket.on("receive-message", (msg) => {
+      setChatMessages((prev) => [...prev, msg]);
+    });
+    return () => {
+      socket.off("peer-emote");
+      socket.off("receive-message");
     };
   }, []);
 
@@ -55,11 +84,18 @@ export const RoomProvider = ({ children }) => {
         setAvatarPosition,
         peerPositions,
         setPeerPositions,
+        peerMoving,
         socket,
         keysRef,
         yawRef,
         pitchRef,
         posRef,
+        myEmote,
+        setMyEmote,
+        peerEmotes,
+        setPeerEmotes,
+        chatMessages,
+        setChatMessages,
       }}
     >
       {children}

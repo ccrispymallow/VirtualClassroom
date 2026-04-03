@@ -9,6 +9,7 @@ import userRoutes from "./routes/userRoutes.js";
 import classroomRoutes from "./routes/classroomRoutes.js";
 import boardRoutes from "./routes/boardRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
 import { PeerServer } from "peer";
 import { initSocket } from "./socket.js";
@@ -38,6 +39,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/classrooms", classroomRoutes);
 app.use("/api/board", boardRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/messages", messageRoutes);
 
 app.get("/api", async (req, res) => {
   try {
