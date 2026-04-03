@@ -45,6 +45,7 @@ const MeetingInterface = () => {
   const [chatInput, setChatInput] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const chatEndRef = useRef(null);
+  const showChatRef = useRef(showChat);
 
   const [copyMessage, setCopyMessage] = useState("");
   const [deviceDropDown, setDeviceDropDown] = useState(false);
@@ -90,6 +91,11 @@ const MeetingInterface = () => {
   });
 
   const remoteScreen = remoteStreams.find((s) => s.type === "screen");
+
+  // Keep showChatRef in sync so the socket listener always sees the latest value
+  useEffect(() => {
+    showChatRef.current = showChat;
+  }, [showChat]);
 
   useEffect(() => {
     const activeStream =
@@ -137,15 +143,21 @@ const MeetingInterface = () => {
       .catch(console.error);
   }, [room.id]);
 
+  // ── THE FIX: listen for incoming messages in real time ──
+  useEffect(() => {
+    const handleReceiveMessage = (msg) => {
+      setChatMessages?.((prev) => [...(prev ?? []), msg]);
+      if (!showChatRef.current) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    };
+    socket.on("receive-message", handleReceiveMessage);
+    return () => socket.off("receive-message", handleReceiveMessage);
+  }, [setChatMessages]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [safeChatMessages]);
-
-  useEffect(() => {
-    if (!showChat && safeChatMessages.length > 0) {
-      setUnreadCount((prev) => prev + 1);
-    }
-  }, [safeChatMessages.length]);
 
   useEffect(() => {
     if (showChat) setUnreadCount(0);
@@ -240,7 +252,7 @@ const MeetingInterface = () => {
     check();
   }, [deviceSections]);
 
-  // ── Handlers (all at component scope, NOT nested) ──
+  // ── Handlers ──
 
   const handleMicToggle = async () => {
     const nextMic = !micOn;
