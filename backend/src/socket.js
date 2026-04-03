@@ -228,7 +228,6 @@ export const initSocket = (io) => {
       "send-message",
       async ({ roomCode, userId, username, message }) => {
         const { pool } = await import("./config/database.js");
-        // Get room_id from room_code
         try {
           const roomRes = await pool.query(
             "SELECT id FROM classrooms WHERE room_code = $1",
@@ -244,8 +243,8 @@ export const initSocket = (io) => {
         } catch (e) {
           console.error("save message error:", e);
         }
-        // Broadcast to everyone in the room including sender
-        io.to(roomCode).emit("receive-message", {
+
+        socket.broadcast.to(roomCode).emit("receive-message", {
           userId,
           username,
           message,

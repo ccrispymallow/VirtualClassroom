@@ -92,7 +92,6 @@ const MeetingInterface = () => {
 
   const remoteScreen = remoteStreams.find((s) => s.type === "screen");
 
-  // Keep showChatRef in sync so the socket listener always sees the latest value
   useEffect(() => {
     showChatRef.current = showChat;
   }, [showChat]);
@@ -143,21 +142,11 @@ const MeetingInterface = () => {
       .catch(console.error);
   }, [room.id]);
 
-  // ── THE FIX: listen for incoming messages in real time ──
   useEffect(() => {
-    const handleReceiveMessage = (msg) => {
-      setChatMessages?.((prev) => [...(prev ?? []), msg]);
-      if (!showChatRef.current) {
-        setUnreadCount((prev) => prev + 1);
-      }
-    };
-    socket.on("receive-message", handleReceiveMessage);
-    return () => socket.off("receive-message", handleReceiveMessage);
-  }, [setChatMessages]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [safeChatMessages]);
+    if (showChat) {
+      chatEndRef.current?.scrollIntoView({ behavior: "instant" });
+    }
+  }, [safeChatMessages, showChat]);
 
   useEffect(() => {
     if (showChat) setUnreadCount(0);
@@ -252,7 +241,7 @@ const MeetingInterface = () => {
     check();
   }, [deviceSections]);
 
-  // ── Handlers ──
+  // Handlers
 
   const handleMicToggle = async () => {
     const nextMic = !micOn;
@@ -322,6 +311,20 @@ const MeetingInterface = () => {
   const handleSendChat = () => {
     const msg = chatInput.trim();
     if (!msg) return;
+
+    console.log("SENDING:", msg);
+
+    setChatMessages?.((prev) => [
+      ...(prev ?? []),
+      {
+        userId: user.id,
+        user_id: user.id,
+        username: user.username,
+        message: msg,
+        sent_at: new Date().toISOString(),
+      },
+    ]);
+
     socket.emit("send-message", {
       roomCode,
       userId: user.id,
@@ -331,7 +334,7 @@ const MeetingInterface = () => {
     setChatInput("");
   };
 
-  // ── Poll handlers ──
+  // Poll handlers
 
   const startUnderstandingPoll = () => {
     if (!isInstructor) return;
@@ -405,7 +408,7 @@ const MeetingInterface = () => {
     });
   };
 
-  // ── Box helpers ──
+  // Box helpers
 
   const openBox = (name) => {
     setShowEmotes(false);
@@ -426,6 +429,22 @@ const MeetingInterface = () => {
 
   const panelClass =
     "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
+
+  const prevMessageCountRef = useRef(0);
+
+  useEffect(() => {
+    const newCount = safeChatMessages.length;
+    if (newCount > prevMessageCountRef.current && !showChatRef.current) {
+      const newMessages = safeChatMessages.slice(prevMessageCountRef.current);
+      const othersCount = newMessages.filter(
+        (msg) => msg.user_id !== user.id && msg.userId !== user.id,
+      ).length;
+      if (othersCount > 0) {
+        setUnreadCount((prev) => prev + othersCount);
+      }
+    }
+    prevMessageCountRef.current = newCount;
+  }, [safeChatMessages.length]);
 
   return (
     <>
