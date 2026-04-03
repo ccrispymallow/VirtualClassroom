@@ -2,7 +2,7 @@ import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
 import { useRef, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useGLTF, useAnimations, Html } from "@react-three/drei";
+import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { SkeletonUtils } from "three-stdlib";
 
@@ -237,41 +237,43 @@ export default function Avatar() {
           return (
             <group key={p.id}>
               <AvatarModel
+                key={`${p.id}-${p.avatar || "boy"}`}
                 position={[px, py, pz]}
                 avatarType={p.avatar || "boy"}
                 isMoving={peerMoving?.[p.id] || false} // 👈 use real peer moving state
                 emote={peerEmotes?.[p.id] || null}
               />
-              <Html
-                transform
-                occlude
-                distanceFactor={8}
-                position={[px, py + 2.4, pz]}
-                center
-              >
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "3px",
-                    background: "rgba(17,24,39,0.8)",
-                    padding: "2px 5px",
-                    borderRadius: "8px",
-                    color: "#fff",
-                    fontSize: "10px",
-                    whiteSpace: "nowrap",
-                    boxShadow: "0 1px 8px rgba(0,0,0,0.5)",
-                    pointerEvents: "none",
-                  }}
+              <Billboard position={[px, py + 2.4, pz]}>
+                <Html
+                  transform
+                  occlude
+                  distanceFactor={8}
+                  center
                 >
-                  <span>{name}</span>
-                  {micActive ? (
-                    <BsMicFill size={10} color="#22c55e" />
-                  ) : (
-                    <BsMicMuteFill size={10} color="#f87171" />
-                  )}
-                </div>
-              </Html>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      background: "rgba(17,24,39,0.8)",
+                      padding: "2px 5px",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontSize: "10px",
+                      whiteSpace: "nowrap",
+                      boxShadow: "0 1px 8px rgba(0,0,0,0.5)",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <span>{name}</span>
+                    {micActive ? (
+                      <BsMicFill size={10} color="#22c55e" />
+                    ) : (
+                      <BsMicMuteFill size={10} color="#f87171" />
+                    )}
+                  </div>
+                </Html>
+              </Billboard>
             </group>
           );
         })}

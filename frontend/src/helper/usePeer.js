@@ -15,6 +15,7 @@ export const usePeer = ({
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
+  const userAvatar = user?.avatar ?? "boy";
 
   const addStream = useCallback((peerId, stream, type, uname) => {
     setRemoteStreams((prev) => {
@@ -72,7 +73,7 @@ export const usePeer = ({
       console.log("PeerJS connected, my peerId:", peerId);
       socket.emit("join-room", {
         roomCode,
-        user: { id: userId, username, role: userRole },
+        user: { id: userId, username, role: userRole, avatar: userAvatar },
         peerId,
       });
     });
@@ -136,6 +137,7 @@ export const usePeer = ({
     userId,
     username,
     userRole,
+    userAvatar,
     callPeer,
     addStream,
     removeStreams,

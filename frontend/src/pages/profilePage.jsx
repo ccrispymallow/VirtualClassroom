@@ -110,7 +110,7 @@ const Avatar3DViewer = ({ avatarType }) => {
       <pointLight position={[-5, 5, 5]} intensity={0.5} />
 
       <Suspense fallback={null}>
-        <AvatarModel avatarType={avatarType} />
+        <AvatarModel key={avatarType} avatarType={avatarType} />
       </Suspense>
 
       <OrbitControls
