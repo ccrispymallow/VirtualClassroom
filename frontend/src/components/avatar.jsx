@@ -260,6 +260,17 @@ export default function Avatar() {
     peerPositions,
   ]);
 
+  // ── Sit rejected by server ─────────────────────────────────────────────────
+  useEffect(() => {
+    const handleSitRejected = () => {
+      sittingChairRef.current = null;
+      setIsSitting(false);
+      setNearChair(false);
+    };
+    socket?.on("sit-rejected", handleSitRejected);
+    return () => socket?.off("sit-rejected", handleSitRejected);
+  }, [socket, setIsSitting, setNearChair]);
+
   // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
     const now = Date.now();
