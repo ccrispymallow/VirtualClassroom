@@ -30,7 +30,8 @@ const SPAWN_SLOTS = [
   [-1, 0, 8],
 ];
 
-// ─── AvatarModel ─────────────────────────────────────────────────────────────
+// ─── AvatarModel ──────────────────────────────────────────────────────────────
+
 function AvatarModel({
   position,
   yaw = 0,
@@ -44,7 +45,6 @@ function AvatarModel({
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
-
   const hasInitialized = useRef(false);
 
   useEffect(() => {
@@ -98,7 +98,23 @@ function AvatarModel({
 useGLTF.preload("/boy.glb");
 useGLTF.preload("/girl.glb");
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Returns the chair ID that a peer is currently occupying, or null.
+function getOccupiedChairId(peerPos) {
+  if (!peerPos) return null;
+  const [px, , pz] = peerPos;
+  for (const chair of CHAIR_POSITIONS) {
+    const [cx, , cz] = chair.position;
+    if (Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < 0.1) {
+      return chair.id;
+    }
+  }
+  return null;
+}
+
 // ─── Avatar ───────────────────────────────────────────────────────────────────
+
 export default function Avatar() {
   const { roomCode } = useParams();
   const {
@@ -128,13 +144,20 @@ export default function Avatar() {
   // ── Spawn ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (initializedRef.current || participants.length === 0) return;
-    const myIndex = participants.findIndex((p) => p.id === user.id);
+
+    // Sort by ID so every client assigns the same slot to the same person
+    const sorted = [...participants].sort((a, b) =>
+      String(a.id).localeCompare(String(b.id)),
+    );
+    const myIndex = sorted.findIndex((p) => p.id === user.id);
     if (myIndex === -1) return;
+
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
     posRef.current = [...slot];
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
     initializedRef.current = true;
+
     if (socket && roomCode) {
       socket.emit("position-update", {
         roomCode,
@@ -165,10 +188,8 @@ export default function Avatar() {
         setIsSitting(false);
         setNearChair(false);
         isMovingRef.current = false;
-
         posRef.current = [posRef.current[0], 0, posRef.current[2]];
         setAvatarPosition([posRef.current[0], 0, posRef.current[2]]);
-
         socket?.emit("sit-update", {
           roomCode,
           userId: user.id,
@@ -178,11 +199,23 @@ export default function Avatar() {
         return;
       }
 
-      // Find nearest chair
+      // Find nearest unoccupied chair
       const [px, , pz] = posRef.current;
+
+      // Build set of occupied chair IDs from peer positions
+      const occupiedChairIds = new Set(
+        participants
+          .filter((p) => p.id !== user.id && peerSitting?.[p.id])
+          .map((p) => getOccupiedChairId(peerPositions[p.id]))
+          .filter(Boolean),
+      );
+
       let nearest = null;
       let nearestDist = Infinity;
       for (const chair of CHAIR_POSITIONS) {
+        // Skip chairs already occupied by another player
+        if (occupiedChairIds.has(chair.id)) continue;
+
         const [cx, , cz] = chair.position;
         const dist = Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2);
         if (dist < CHAIR_SNAP_RADIUS && dist < nearestDist) {
@@ -217,17 +250,29 @@ export default function Avatar() {
     setAvatarPosition,
     setIsSitting,
     setNearChair,
+    participants,
+    peerSitting,
+    peerPositions,
   ]);
 
   // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
-    // Proximity check — writes to context so SitPrompt outside Canvas reacts
+    // Proximity check — only show prompt for unoccupied chairs
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
-      const close = CHAIR_POSITIONS.some(
-        ({ position: [cx, , cz] }) =>
-          Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < CHAIR_SNAP_RADIUS,
+
+      const occupiedChairIds = new Set(
+        participants
+          .filter((p) => p.id !== user.id && peerSitting?.[p.id])
+          .map((p) => getOccupiedChairId(peerPositions[p.id]))
+          .filter(Boolean),
       );
+
+      const close = CHAIR_POSITIONS.some(({ id, position: [cx, , cz] }) => {
+        if (occupiedChairIds.has(id)) return false;
+        return Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < CHAIR_SNAP_RADIUS;
+      });
+
       setNearChair((prev) => (prev !== close ? close : prev));
     }
 
@@ -272,17 +317,24 @@ export default function Avatar() {
     }
 
     if (dx !== 0 || dz !== 0) {
-      const nx = x + dx,
-        nz = z + dz;
+      const nx = x + dx;
+      const nz = z + dz;
       let blocked = false;
+
       for (const other of participants.filter((p) => p.id !== user.id)) {
-        if (!peerPositions[other.id]) continue;
-        const [ox, , oz] = peerPositions[other.id];
+        const otherPos = peerPositions[other.id];
+        if (!otherPos) continue;
+        const [ox, , oz] = otherPos;
+
+        // Skip peers still at origin — not yet spawned
+        if (ox === 0 && oz === 0) continue;
+
         if (Math.sqrt((nx - ox) ** 2 + (nz - oz) ** 2) < COLLISION_RADIUS) {
           blocked = true;
           break;
         }
       }
+
       if (!blocked) {
         posRef.current = [nx, y, nz];
         setAvatarPosition([nx, y, nz]);
