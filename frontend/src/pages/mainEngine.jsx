@@ -68,10 +68,12 @@ export default function MainEngine() {
           tabIndex={0}
           style={{ outline: "none" }}
         >
-          <ambientLight intensity={0.4} />
-          <directionalLight position={[5, 8, 5]} intensity={1} castShadow />
-          <directionalLight position={[-5, 5, -5]} intensity={0.5} />
-          <pointLight position={[0, 3, 0]} intensity={0.8} distance={10} />
+          <ambientLight intensity={1.2} />
+          <directionalLight position={[5, 8, 5]} intensity={1.5} castShadow />
+          <directionalLight position={[-5, 5, -5]} intensity={1.0} />
+          <pointLight position={[0, 3, 0]} intensity={1.5} distance={15} />
+          <pointLight position={[0, 3, -10]} intensity={1.2} distance={15} />
+          <pointLight position={[0, 3, -20]} intensity={1.2} distance={15} />
           <Suspense fallback={null}>
             <Classroom />
             <Avatar />
