@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { LuGalleryHorizontal } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 
 const LiveBadge = () => (
@@ -123,7 +122,6 @@ const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
   </div>
 );
 
-// Checks session API
 const checkRoomLive = async (roomId) => {
   try {
     const res = await fetch(
@@ -154,7 +152,6 @@ export default function Home() {
     capacity: "",
   });
   const [status, setStatus] = useState(null);
-
   const [myRooms, setMyRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -179,9 +176,6 @@ export default function Home() {
       .finally(() => setRoomsLoading(false));
   }, [user.id, isInstructor]);
 
-  console.log(myRooms);
-
-  // Instructor: show start session modal
   const handleInstructorEnterRoom = (room, e) => {
     if (e.target.closest("[data-menu-btn]")) return;
     setSessionTarget(room);
@@ -189,7 +183,6 @@ export default function Home() {
 
   const handleStartSession = async () => {
     if (!sessionTarget) return;
-    console.log("Starting session for room:", sessionTarget);
     setSessionStarting(true);
     try {
       const res = await fetch(
@@ -225,11 +218,8 @@ export default function Home() {
     }
   };
 
-  // Student: always verify session is live before entering
   const enterRoom = async (room, passwordOverride = null) => {
     setStatus({ type: "loading", message: "Checking session status…" });
-
-    // Always check live session from API (not just live_status field)
     const isLive = await checkRoomLive(room.id);
     if (!isLive) {
       setStatus({
@@ -239,15 +229,12 @@ export default function Home() {
       setPwTarget(null);
       return;
     }
-
-    // If password required and not yet provided, show prompt
     if (room.room_password && !passwordOverride) {
       setStatus(null);
       setPwTarget(room);
       setPwError("");
       return;
     }
-
     setStatus({ type: "loading", message: "Joining classroom…" });
     try {
       const joinRes = await fetch(
@@ -285,7 +272,6 @@ export default function Home() {
     enterRoom(pwTarget, pw);
   };
 
-  // Student: join via form
   const handleJoin = async (e) => {
     e.preventDefault();
     setStatus({ type: "loading", message: "Looking up classroom…" });
@@ -295,12 +281,10 @@ export default function Home() {
       );
       if (!lookupRes.ok) {
         const err = await lookupRes.json();
-        // Fallback: try joining directly
         throw new Error(err.error || "Room not found.");
       }
       const lookupData = await lookupRes.json();
       const room = lookupData.classroom || lookupData;
-
       await enterRoom(
         { ...room, room_password: joinForm.room_password ? "yes" : "" },
         joinForm.room_password || null,
@@ -433,7 +417,6 @@ export default function Home() {
             Virtual<span className="text-cyan-400">Class</span>
           </span>
         </div>
-
         <div className="relative">
           <button
             onClick={() => setShowUserPanel(!showUserPanel)}
@@ -464,7 +447,6 @@ export default function Home() {
               />
             </svg>
           </button>
-
           {showUserPanel && (
             <div className="absolute right-0 top-14 w-64 bg-[#111827] border border-[#1e2d45] rounded-2xl p-4 z-50 shadow-xl">
               <div className="flex flex-col items-center mb-4 pb-4 border-b border-[#1e2d45]">
@@ -518,7 +500,6 @@ export default function Home() {
         <div className="w-full max-w-[460px]">
           <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl px-9 py-10 relative overflow-hidden">
             <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-blue-500/10 pointer-events-none" />
-
             {isInstructor && (
               <div className="flex gap-1 bg-[#0b0f1a] rounded-xl p-1 mb-7">
                 {["join", "create"].map((tab) => (
@@ -528,18 +509,13 @@ export default function Home() {
                       setActiveTab(tab);
                       setStatus(null);
                     }}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
-                      activeTab === tab
-                        ? "bg-blue-500 text-white"
-                        : "text-slate-500 hover:text-slate-300"
-                    }`}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${activeTab === tab ? "bg-blue-500 text-white" : "text-slate-500 hover:text-slate-300"}`}
                   >
                     {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
                   </button>
                 ))}
               </div>
             )}
-
             {status && (
               <div
                 className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium mb-4 border ${
@@ -556,7 +532,6 @@ export default function Home() {
                 {status.message}
               </div>
             )}
-
             {!isInstructor || activeTab === "join" ? (
               <form onSubmit={handleJoin} className="space-y-4">
                 <div>
@@ -680,7 +655,6 @@ export default function Home() {
                 ? "🏫 My Created Rooms"
                 : "📚 Previously Joined Rooms"}
             </h2>
-
             {roomsLoading ? (
               <div className="flex justify-center py-8">
                 <div className="w-5 h-5 border-2 border-[#1e2d45] border-t-blue-500 rounded-full animate-spin" />
@@ -720,27 +694,29 @@ export default function Home() {
                         </p>
                       </div>
 
-                      {isInstructor ? (
-                        <div className="relative" data-menu-btn>
-                          <button
-                            data-menu-btn
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMyRooms((prev) =>
-                                prev.map((r) =>
-                                  r.id === room.id
-                                    ? { ...r, _menuOpen: !r._menuOpen }
-                                    : { ...r, _menuOpen: false },
-                                ),
-                              );
-                            }}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1a2235] transition-colors text-lg font-bold leading-none"
-                            title="Options"
-                          >
-                            ···
-                          </button>
-                          {room._menuOpen && (
-                            <div className="absolute right-0 top-9 w-36 bg-[#111827] border border-[#1e2d45] rounded-xl shadow-xl z-20 overflow-hidden">
+                      <div className="relative" data-menu-btn>
+                        <button
+                          data-menu-btn
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMyRooms((prev) =>
+                              prev.map((r) =>
+                                r.id === room.id
+                                  ? { ...r, _menuOpen: !r._menuOpen }
+                                  : { ...r, _menuOpen: false },
+                              ),
+                            );
+                          }}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1a2235] transition-colors text-lg font-bold leading-none"
+                          title="Options"
+                        >
+                          ···
+                        </button>
+
+                        {room._menuOpen && (
+                          <div className="absolute right-0 top-9 w-44 bg-[#111827] border border-[#1e2d45] rounded-xl shadow-xl z-20 overflow-hidden">
+                            {isInstructor ? (
+                              // Instructor: delete room
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -759,25 +735,62 @@ export default function Home() {
                               >
                                 🗑️ Delete Room
                               </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setStatus(null);
-                            enterRoom(room);
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${
-                            isLive
-                              ? "bg-blue-500 text-white hover:bg-blue-600"
-                              : "bg-[#1a2235] text-slate-500 cursor-not-allowed"
-                          }`}
-                        >
-                          {isLive ? "Join" : "Offline"}
-                        </button>
-                      )}
+                            ) : (
+                              <>
+                                {isLive && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMyRooms((prev) =>
+                                        prev.map((r) => ({
+                                          ...r,
+                                          _menuOpen: false,
+                                        })),
+                                      );
+                                      setStatus(null);
+                                      enterRoom(room);
+                                    }}
+                                    className="w-full px-3 py-2.5 text-left text-blue-400 text-xs font-semibold hover:bg-blue-500/10 transition-colors flex items-center gap-2 border-b border-[#1e2d45]"
+                                  >
+                                    🚪 Join Room
+                                  </button>
+                                )}
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+
+                                    setMyRooms((prev) =>
+                                      prev.filter((r) => r.id !== room.id),
+                                    );
+                                    try {
+                                      await fetch(
+                                        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/${room.id}/leave`,
+                                        {
+                                          method: "DELETE",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            user_id: user.id,
+                                          }),
+                                        },
+                                      );
+                                    } catch (err) {
+                                      console.error(
+                                        "Failed to remove from room:",
+                                        err,
+                                      );
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2.5 text-left text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors flex items-center gap-2"
+                                >
+                                  ✕ Remove from list
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

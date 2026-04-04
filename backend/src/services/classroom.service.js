@@ -188,3 +188,13 @@ export const getJoinedClassroomsByUserId = async (user_id) => {
   );
   return result.rows;
 };
+
+export const leaveClassroom = async (room_id, user_id) => {
+  const result = await pool.query(
+    `DELETE FROM room_participants 
+     WHERE room_id = $1 AND user_id = $2
+     RETURNING *`,
+    [room_id, user_id],
+  );
+  return result.rows[0] ?? null;
+};
