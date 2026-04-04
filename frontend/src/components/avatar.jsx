@@ -35,7 +35,6 @@ const SPAWN_SLOTS = [
 ];
 
 // ─── AvatarModel ──────────────────────────────────────────────────────────────
-
 function AvatarModel({
   position,
   yaw = 0,
@@ -67,8 +66,10 @@ function AvatarModel({
       return () => cancelAnimationFrame(raf);
     }
 
+    // ── Pick target animation ──────────────────────────────────────────────
     let targetAnim = "Standing";
-    if (emote === "raise") targetAnim = "Raising Hand";
+    if (isSitting) targetAnim = "Sitting";
+    else if (emote === "raise") targetAnim = "Raising Hand";
     else if (emote === "speaking") targetAnim = "Speaking";
     else if (isMoving) targetAnim = "Walking";
 
@@ -86,7 +87,7 @@ function AvatarModel({
       target.reset().fadeIn(0.2).play();
     }
     currentActionRef.current = targetAnim;
-  }, [isMoving, emote, actions, names]);
+  }, [isSitting, isMoving, emote, actions, names]); // ← isSitting in deps
 
   return (
     <primitive
@@ -102,21 +103,16 @@ useGLTF.preload("/boy.glb");
 useGLTF.preload("/girl.glb");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// Returns the chair ID that a peer is currently occupying, or null.
 function getOccupiedChairId(peerPos) {
   if (!peerPos) return null;
   const [px, , pz] = peerPos;
   for (const chair of CHAIR_POSITIONS) {
     const [cx, , cz] = chair.position;
-    if (Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < 0.1) {
-      return chair.id;
-    }
+    if (Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < 0.1) return chair.id;
   }
   return null;
 }
 
-// Returns a Set of chair IDs currently occupied by peers.
 function getOccupiedChairIds(participants, userId, peerSitting, peerPositions) {
   return new Set(
     participants
@@ -127,7 +123,6 @@ function getOccupiedChairIds(participants, userId, peerSitting, peerPositions) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
-
 export default function Avatar() {
   const { roomCode } = useParams();
   const {
@@ -154,31 +149,25 @@ export default function Avatar() {
   const isMovingRef = useRef(false);
   const sittingChairRef = useRef(null);
 
-  // ── Spawn ──────────────────────────────────────────────────────────────────
+  // ── Spawn ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (initializedRef.current || participants.length === 0) return;
-
-    // Sort by ID so every client assigns the same slot to the same person
     const sorted = [...participants].sort((a, b) =>
       String(a.id).localeCompare(String(b.id)),
     );
     const myIndex = sorted.findIndex((p) => p.id === user.id);
     if (myIndex === -1) return;
-
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
     posRef.current = [...slot];
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
     initializedRef.current = true;
-
-    if (socket && roomCode) {
-      socket.emit("position-update", {
-        roomCode,
-        userId: user.id,
-        position: posRef.current,
-        yaw: yawRef.current,
-      });
-    }
+    socket?.emit("position-update", {
+      roomCode,
+      userId: user.id,
+      position: posRef.current,
+      yaw: yawRef.current,
+    });
   }, [
     participants,
     socket,
@@ -189,7 +178,7 @@ export default function Avatar() {
     yawRef,
   ]);
 
-  // ── Spacebar — sit / stand ─────────────────────────────────────────────────
+  // ── Spacebar — sit / stand ───────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code !== "Space") return;
@@ -220,9 +209,8 @@ export default function Avatar() {
         peerSitting,
         peerPositions,
       );
-
-      let nearest = null;
-      let nearestDist = Infinity;
+      let nearest = null,
+        nearestDist = Infinity;
       for (const chair of CHAIR_POSITIONS) {
         if (occupiedChairIds.has(chair.id)) continue;
         const [cx, , cz] = chair.position;
@@ -264,7 +252,7 @@ export default function Avatar() {
     peerPositions,
   ]);
 
-  // ── Sit rejected by server ─────────────────────────────────────────────────
+  // ── Sit rejected by server ───────────────────────────────────────────────
   useEffect(() => {
     const handleSitRejected = () => {
       sittingChairRef.current = null;
@@ -275,11 +263,9 @@ export default function Avatar() {
     return () => socket?.off("sit-rejected", handleSitRejected);
   }, [socket, setIsSitting, setNearChair]);
 
-  // ── Frame loop ─────────────────────────────────────────────────────────────
+  // ── Frame loop ───────────────────────────────────────────────────────────
   useFrame((_, delta) => {
     const now = Date.now();
-
-    // Always emit position + yaw — even while sitting so avatar turns in place
     if (socket && roomCode && now - lastEmitRef.current >= EMIT_INTERVAL) {
       lastEmitRef.current = now;
       socket.emit("position-update", {
@@ -290,7 +276,7 @@ export default function Avatar() {
       });
     }
 
-    // Proximity check — show sit prompt only for unoccupied nearby chairs
+    // Proximity — show sit prompt only for unoccupied nearby chairs
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
       const occupiedChairIds = getOccupiedChairIds(
@@ -306,7 +292,6 @@ export default function Avatar() {
       setNearChair((prev) => (prev !== close ? close : prev));
     }
 
-    // Skip movement while sitting
     if (sittingChairRef.current) return;
 
     const speed = 5;
@@ -315,9 +300,9 @@ export default function Avatar() {
     const yaw = yawRef.current;
     const sinY = Math.sin(yaw);
     const cosY = Math.cos(yaw);
-
     let dx = 0,
       dz = 0;
+
     if (keys["w"] || keys["arrowup"]) {
       dx += sinY * speed * delta;
       dz -= cosY * speed * delta;
@@ -338,13 +323,11 @@ export default function Avatar() {
     const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
     if (anyMoveKeyHeld !== isMovingRef.current) {
       isMovingRef.current = anyMoveKeyHeld;
-      if (socket && roomCode) {
-        socket.emit("moving-update", {
-          roomCode,
-          userId: user.id,
-          isMoving: anyMoveKeyHeld,
-        });
-      }
+      socket?.emit("moving-update", {
+        roomCode,
+        userId: user.id,
+        isMoving: anyMoveKeyHeld,
+      });
     }
 
     if (dx !== 0 || dz !== 0) {
@@ -352,39 +335,29 @@ export default function Avatar() {
       const nz = z + dz;
       let blocked = false;
 
-      // ── Peer collision ─────────────────────────────────────────────────────
       for (const other of participants.filter((p) => p.id !== user.id)) {
         const otherPos = peerPositions[other.id];
         if (!otherPos) continue;
         const [ox, , oz] = otherPos;
-        if (ox === 0 && oz === 0) continue; // skip peers not yet spawned
+        if (ox === 0 && oz === 0) continue;
         if (Math.sqrt((nx - ox) ** 2 + (nz - oz) ** 2) < COLLISION_RADIUS) {
           blocked = true;
           break;
         }
       }
 
-      // ── Furniture collision ────────────────────────────────────────────────
-      // Try full move first; if blocked, try sliding along each axis separately.
       if (!blocked) {
         if (collidesWithFurniture(nx, nz)) {
-          // Try sliding on X axis only
           const slideX = !collidesWithFurniture(nx, z);
-          // Try sliding on Z axis only
           const slideZ = !collidesWithFurniture(x, nz);
-
           if (slideX) {
-            // Move only along X
             posRef.current = [nx, y, z];
             setAvatarPosition([nx, y, z]);
           } else if (slideZ) {
-            // Move only along Z
             posRef.current = [x, y, nz];
             setAvatarPosition([x, y, nz]);
           }
-          // If both axes blocked, don't move at all
         } else {
-          // No furniture collision — move freely
           posRef.current = [nx, y, nz];
           setAvatarPosition([nx, y, nz]);
         }
@@ -392,7 +365,7 @@ export default function Avatar() {
     }
   });
 
-  // ── Render — peers only ───────────────────────────────────────────────────
+  // ── Render peers ─────────────────────────────────────────────────────────
   return (
     <>
       {participants
