@@ -7,6 +7,7 @@ import {
   deleteClassroom,
   getClassroomsByUserId,
   getJoinedClassroomsByUserId,
+  leaveClassroom,
   joinClassroom,
   endClassroom,
 } from "../controllers/classroom.controller.js";
@@ -22,5 +23,6 @@ router.get("/:id/participants", getParticipants);
 router.get("/user/:user_id/joined", getJoinedClassroomsByUserId);
 router.get("/user/:user_id", getClassroomsByUserId);
 router.delete("/:id", deleteClassroom);
+router.delete("/:room_id/leave", leaveClassroom);
 
 export default router;

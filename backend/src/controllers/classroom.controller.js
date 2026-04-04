@@ -182,3 +182,21 @@ export const getJoinedClassroomsByUserId = async (req, res, next) => {
     next(error);
   }
 };
+
+export const leaveClassroom = async (req, res, next) => {
+  try {
+    const { user_id } = req.body;
+    const { room_id } = req.params;
+
+    if (!room_id || !user_id) {
+      return res
+        .status(400)
+        .json({ error: "room_id and user_id are required" });
+    }
+
+    const record = await classroomService.leaveClassroom(room_id, user_id);
+    res.json({ message: "Left classroom successfully", record });
+  } catch (error) {
+    next(error);
+  }
+};
