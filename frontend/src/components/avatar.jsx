@@ -218,7 +218,6 @@ export default function Avatar() {
 
   // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
-    // Proximity check — writes to context so SitPrompt outside Canvas reacts
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
       const close = CHAIR_POSITIONS.some(
