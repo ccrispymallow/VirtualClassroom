@@ -372,14 +372,39 @@ export default function Home() {
     }
   };
 
+  const handleRemoveFromList = async (room) => {
+    setMyRooms((prev) => prev.filter((r) => r.id !== room.id));
+    try {
+      await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/${room.id}/leave`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: user.id }),
+        },
+      );
+    } catch (err) {
+      console.error("Failed to remove from room:", err);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("userSession");
     localStorage.removeItem("currentRoom");
     navigate("/");
   };
 
+  // Close all menus when clicking outside
+  const closeAllMenus = () => {
+    setMyRooms((prev) => prev.map((r) => ({ ...r, _menuOpen: false })));
+    setShowUserPanel(false);
+  };
+
   return (
-    <div className="min-h-screen bg-[#0b0f1a] px-4 py-6 relative">
+    <div
+      className="min-h-screen bg-[#0b0f1a] px-4 py-6 relative"
+      onClick={closeAllMenus}
+    >
       {deleteTarget && (
         <DeleteConfirm
           roomName={deleteTarget.room_name}
@@ -408,7 +433,10 @@ export default function Home() {
       )}
 
       {/* Top bar */}
-      <div className="flex items-center justify-between max-w-5xl mx-auto mb-16">
+      <div
+        className="flex items-center justify-between max-w-5xl mx-auto mb-16"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-lg">
             🎓
@@ -419,7 +447,10 @@ export default function Home() {
         </div>
         <div className="relative">
           <button
-            onClick={() => setShowUserPanel(!showUserPanel)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowUserPanel(!showUserPanel);
+            }}
             className="flex items-center gap-2.5 bg-[#111827] border border-[#1e2d45] rounded-2xl px-3 py-2 hover:border-blue-500/50 transition-colors"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
@@ -648,7 +679,10 @@ export default function Home() {
         </div>
 
         {/* My Rooms panel */}
-        <div className="w-full max-w-[460px]">
+        <div
+          className="w-full max-w-[460px]"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-5">
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
               {isInstructor
@@ -672,10 +706,17 @@ export default function Home() {
                   return (
                     <div
                       key={room.id}
-                      onClick={(e) =>
-                        isInstructor ? handleInstructorEnterRoom(room, e) : null
-                      }
-                      className={`relative bg-[#0f172a] border border-[#1e2d45] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-blue-500/30 transition-colors ${isInstructor ? "cursor-pointer" : ""}`}
+                      onClick={(e) => {
+                        if (e.target.closest("[data-menu-btn]")) return;
+                        if (isInstructor) {
+                          handleInstructorEnterRoom(room, e);
+                        } else {
+                          // ── Student: click card to join ──
+                          setStatus(null);
+                          enterRoom(room);
+                        }
+                      }}
+                      className="relative bg-[#0f172a] border border-[#1e2d45] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-blue-500/30 transition-colors cursor-pointer group"
                     >
                       <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-400/10 flex items-center justify-center text-base flex-shrink-0">
                         🏫
@@ -694,6 +735,7 @@ export default function Home() {
                         </p>
                       </div>
 
+                      {/* 3-dot menu */}
                       <div className="relative" data-menu-btn>
                         <button
                           data-menu-btn
@@ -716,7 +758,6 @@ export default function Home() {
                         {room._menuOpen && (
                           <div className="absolute right-0 top-9 w-44 bg-[#111827] border border-[#1e2d45] rounded-xl shadow-xl z-20 overflow-hidden">
                             {isInstructor ? (
-                              // Instructor: delete room
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -736,57 +777,16 @@ export default function Home() {
                                 🗑️ Delete Room
                               </button>
                             ) : (
-                              <>
-                                {isLive && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMyRooms((prev) =>
-                                        prev.map((r) => ({
-                                          ...r,
-                                          _menuOpen: false,
-                                        })),
-                                      );
-                                      setStatus(null);
-                                      enterRoom(room);
-                                    }}
-                                    className="w-full px-3 py-2.5 text-left text-blue-400 text-xs font-semibold hover:bg-blue-500/10 transition-colors flex items-center gap-2 border-b border-[#1e2d45]"
-                                  >
-                                    🚪 Join Room
-                                  </button>
-                                )}
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-
-                                    setMyRooms((prev) =>
-                                      prev.filter((r) => r.id !== room.id),
-                                    );
-                                    try {
-                                      await fetch(
-                                        `${import.meta.env.VITE_BACKEND_URL}/api/classrooms/${room.id}/leave`,
-                                        {
-                                          method: "DELETE",
-                                          headers: {
-                                            "Content-Type": "application/json",
-                                          },
-                                          body: JSON.stringify({
-                                            user_id: user.id,
-                                          }),
-                                        },
-                                      );
-                                    } catch (err) {
-                                      console.error(
-                                        "Failed to remove from room:",
-                                        err,
-                                      );
-                                    }
-                                  }}
-                                  className="w-full px-3 py-2.5 text-left text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors flex items-center gap-2"
-                                >
-                                  ✕ Remove from list
-                                </button>
-                              </>
+                              // Student: only "Remove from list"
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveFromList(room);
+                                }}
+                                className="w-full px-3 py-2.5 text-left text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors flex items-center gap-2"
+                              >
+                                ✕ Remove from list
+                              </button>
                             )}
                           </div>
                         )}

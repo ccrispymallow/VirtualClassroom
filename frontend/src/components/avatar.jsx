@@ -5,7 +5,11 @@ import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { SkeletonUtils } from "three-stdlib";
-import { CHAIR_POSITIONS, CHAIR_SNAP_RADIUS } from "./Classroom";
+import {
+  CHAIR_POSITIONS,
+  CHAIR_SNAP_RADIUS,
+  collidesWithFurniture,
+} from "./Classroom";
 
 const COLLISION_RADIUS = 0.8;
 const EMIT_INTERVAL = 50;
@@ -218,7 +222,6 @@ export default function Avatar() {
 
   // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
-    // Proximity check — writes to context so SitPrompt outside Canvas reacts
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
       const close = CHAIR_POSITIONS.some(
@@ -269,9 +272,11 @@ export default function Avatar() {
     }
 
     if (dx !== 0 || dz !== 0) {
-      const nx = x + dx,
-        nz = z + dz;
+      const nx = x + dx;
+      const nz = z + dz;
       let blocked = false;
+
+      // ── Peer collision ─────────────────────────────────────────────────────
       for (const other of participants.filter((p) => p.id !== user.id)) {
         if (!peerPositions[other.id]) continue;
         const [ox, , oz] = peerPositions[other.id];
@@ -280,9 +285,31 @@ export default function Avatar() {
           break;
         }
       }
+
+      // ── Furniture collision ────────────────────────────────────────────────
+      // Try full move first; if blocked, try sliding along each axis separately.
       if (!blocked) {
-        posRef.current = [nx, y, nz];
-        setAvatarPosition([nx, y, nz]);
+        if (collidesWithFurniture(nx, nz)) {
+          // Try sliding on X axis only
+          const slideX = !collidesWithFurniture(nx, z);
+          // Try sliding on Z axis only
+          const slideZ = !collidesWithFurniture(x, nz);
+
+          if (slideX) {
+            // Move only along X
+            posRef.current = [nx, y, z];
+            setAvatarPosition([nx, y, z]);
+          } else if (slideZ) {
+            // Move only along Z
+            posRef.current = [x, y, nz];
+            setAvatarPosition([x, y, nz]);
+          }
+          // If both axes blocked, don't move at all
+        } else {
+          // No furniture collision — move freely
+          posRef.current = [nx, y, nz];
+          setAvatarPosition([nx, y, nz]);
+        }
       }
     }
 
