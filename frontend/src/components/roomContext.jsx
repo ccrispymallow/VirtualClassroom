@@ -10,6 +10,7 @@ export const RoomProvider = ({ children }) => {
   const [avatarPosition, setAvatarPosition] = useState([0, 0, 0]);
   const [peerPositions, setPeerPositions] = useState({});
   const [peerMoving, setPeerMoving] = useState({});
+  const [peerYaws, setPeerYaws] = useState({});
   const [myEmote, setMyEmote] = useState(null);
   const [peerEmotes, setPeerEmotes] = useState({});
   const [chatMessages, setChatMessages] = useState([]);
@@ -23,13 +24,18 @@ export const RoomProvider = ({ children }) => {
     setPeerEmotes({});
     setPeerPositions({});
     setPeerMoving({});
+    setPeerYaws({});
     keysRef.current = {};
   }, []);
 
   useEffect(() => {
-    const handlePeerMoved = ({ userId, position }) => {
+    const handlePeerMoved = ({ userId, position, yaw }) => {
       setPeerPositions((prev) => ({ ...prev, [userId]: position }));
+      if (yaw !== undefined) {
+        setPeerYaws((prev) => ({ ...prev, [userId]: yaw }));
+      }
     };
+
     const handleParticipantsUpdate = (updatedList) => {
       setParticipants(updatedList);
       setPeerPositions((prev) => {
@@ -49,6 +55,7 @@ export const RoomProvider = ({ children }) => {
     socket.on("peer-moved", handlePeerMoved);
     socket.on("participants-update", handleParticipantsUpdate);
     socket.on("peer-moving", handlePeerMoving);
+
     return () => {
       socket.off("peer-moved", handlePeerMoved);
       socket.off("participants-update", handleParticipantsUpdate);
@@ -85,6 +92,7 @@ export const RoomProvider = ({ children }) => {
         peerPositions,
         setPeerPositions,
         peerMoving,
+        peerYaws,
         socket,
         keysRef,
         yawRef,

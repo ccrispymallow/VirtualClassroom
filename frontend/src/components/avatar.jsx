@@ -1,6 +1,6 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
@@ -43,50 +43,41 @@ function AvatarModel({
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
     if (names.length === 0) return;
+    if (Object.keys(actions).length === 0) return;
 
-    Object.values(actions).forEach((a) => a.stop());
-    currentActionRef.current = null;
-
-    let targetAnim = null;
-
-    if (emote === "raise") {
-      targetAnim = "Raising Hand";
-    } else if (emote === "speaking") {
-      targetAnim = "Speaking";
-    } else if (isMoving) {
-      targetAnim = "Walking";
-    } else {
-      targetAnim = "Standing";
-    }
-
-    console.log(
-      "AvatarModel animating:",
-      targetAnim,
-      "isMoving:",
-      isMoving,
-      "emote:",
-      emote,
-    );
-
-    if (!names.includes(targetAnim)) {
-      console.warn("Animation not found:", targetAnim, "available:", names);
-      return;
-    }
-    if (currentActionRef.current === targetAnim) return;
-
-    const prev = currentActionRef.current
-      ? actions[currentActionRef.current]
-      : null;
-    const next = actions[targetAnim];
+    const next = actions["Standing"];
     if (!next) return;
 
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      // Force stop everything immediately, no fade
+      Object.values(actions).forEach((a) => a.stop());
+      next.reset().play();
+      currentActionRef.current = "Standing";
+      return;
+    }
+
+    let targetAnim = "Standing";
+    if (emote === "raise") targetAnim = "Raising Hand";
+    else if (emote === "speaking") targetAnim = "Speaking";
+    else if (isMoving) targetAnim = "Walking";
+
+    if (!names.includes(targetAnim)) return;
+    if (currentActionRef.current === targetAnim) return;
+
+    const prev = actions[currentActionRef.current];
+    const target = actions[targetAnim];
+    if (!target) return;
+
     if (prev) {
-      next.reset().fadeIn(0.2).play();
+      target.reset().fadeIn(0.2).play();
       prev.fadeOut(0.2);
     } else {
-      next.reset().fadeIn(0.2).play();
+      target.reset().fadeIn(0.2).play();
     }
     currentActionRef.current = targetAnim;
   }, [isMoving, emote, actions, names]);
@@ -95,7 +86,7 @@ function AvatarModel({
     <primitive
       object={clone}
       position={position}
-      rotation={[0, yaw, 0]}
+      rotation={[0, -yaw + Math.PI, 0]}
       scale={1}
     />
   );
@@ -110,6 +101,7 @@ export default function Avatar() {
     participants,
     peerPositions,
     peerMoving,
+    peerYaws,
     socket,
     keysRef,
     yawRef,
@@ -123,7 +115,6 @@ export default function Avatar() {
   const lastEmitRef = useRef(0);
   const initializedRef = useRef(false);
   const isMovingRef = useRef(false);
-  const lastMovingEmitRef = useRef(false);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -140,6 +131,7 @@ export default function Avatar() {
         roomCode,
         userId: user.id,
         position: posRef.current,
+        yaw: yawRef.current,
       });
     }
   }, [
@@ -180,11 +172,8 @@ export default function Avatar() {
     }
 
     const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
-
-    // Emit moving state to peers when it changes
     if (anyMoveKeyHeld !== isMovingRef.current) {
       isMovingRef.current = anyMoveKeyHeld;
-      // Broadcast moving state so other clients can animate us
       if (socket && roomCode) {
         socket.emit("moving-update", {
           roomCode,
@@ -223,6 +212,7 @@ export default function Avatar() {
         roomCode,
         userId: user.id,
         position: posRef.current,
+        yaw: yawRef.current,
       });
     }
   });
@@ -245,6 +235,7 @@ export default function Avatar() {
                 avatarType={p.avatar || "boy"}
                 isMoving={peerMoving?.[p.id] || false}
                 emote={peerEmotes?.[p.id] || null}
+                yaw={peerYaws?.[p.id] ?? 0}
               />
               <Billboard position={[px, py + 2.4, pz]}>
                 <Html

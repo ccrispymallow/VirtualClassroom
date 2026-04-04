@@ -12,6 +12,7 @@ export const initSocket = (io) => {
         socketId: socket.id,
         peerId,
         position: [0, 0, 0],
+        yaw: 0,
         mic: false,
       });
 
@@ -28,12 +29,15 @@ export const initSocket = (io) => {
     });
 
     // ── Receive position from one user, broadcast to everyone else ──
-    socket.on("position-update", ({ roomCode, userId, position }) => {
+    socket.on("position-update", ({ roomCode, userId, position, yaw }) => {
       if (rooms[roomCode]) {
         const p = rooms[roomCode].find((p) => p.id === userId);
-        if (p) p.position = position;
+        if (p) {
+          p.position = position;
+          if (yaw !== undefined) p.yaw = yaw;
+        }
       }
-      socket.to(roomCode).emit("peer-moved", { userId, position });
+      socket.to(roomCode).emit("peer-moved", { userId, position, yaw });
     });
 
     socket.on("mic-status", ({ roomCode, userId, mic }) => {
