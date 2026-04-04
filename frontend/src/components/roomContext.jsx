@@ -11,6 +11,7 @@ export const RoomProvider = ({ children }) => {
   const [peerPositions, setPeerPositions] = useState({});
   const [peerMoving, setPeerMoving] = useState({});
   const [peerSitting, setPeerSitting] = useState({});
+  const [peerYaws, setPeerYaws] = useState({});
   const [myEmote, setMyEmote] = useState(null);
   const [peerEmotes, setPeerEmotes] = useState({});
   const [chatMessages, setChatMessages] = useState([]);
@@ -31,12 +32,16 @@ export const RoomProvider = ({ children }) => {
     setPeerSitting({});
     setIsSitting(false);
     setNearChair(false);
+    setPeerYaws({});
     keysRef.current = {};
   }, []);
 
   useEffect(() => {
-    const handlePeerMoved = ({ userId, position }) => {
+    const handlePeerMoved = ({ userId, position, yaw }) => {
       setPeerPositions((prev) => ({ ...prev, [userId]: position }));
+      if (yaw !== undefined) {
+        setPeerYaws((prev) => ({ ...prev, [userId]: yaw }));
+      }
     };
 
     const handleParticipantsUpdate = (updatedList) => {
@@ -113,6 +118,7 @@ export const RoomProvider = ({ children }) => {
         setIsSitting,
         nearChair,
         setNearChair,
+        peerYaws,
         socket,
         keysRef,
         yawRef,

@@ -45,8 +45,20 @@ function AvatarModel({
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
     if (names.length === 0) return;
+    if (Object.keys(actions).length === 0) return;
+
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      Object.values(actions).forEach((a) => a.stop());
+      const standing = actions["Standing"];
+      if (standing) standing.reset().play();
+      currentActionRef.current = "Standing";
+      return;
+    }
 
     let targetAnim = null;
     if (isSitting)
@@ -74,7 +86,7 @@ function AvatarModel({
     <primitive
       object={clone}
       position={position}
-      rotation={[0, yaw, 0]}
+      rotation={[0, -yaw + Math.PI, 0]}
       scale={1}
     />
   );
@@ -91,6 +103,7 @@ export default function Avatar() {
     peerPositions,
     peerMoving,
     peerSitting,
+    peerYaws,
     socket,
     keysRef,
     yawRef,
@@ -119,11 +132,14 @@ export default function Avatar() {
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
     initializedRef.current = true;
-    socket?.emit("position-update", {
-      roomCode,
-      userId: user.id,
-      position: posRef.current,
-    });
+    if (socket && roomCode) {
+      socket.emit("position-update", {
+        roomCode,
+        userId: user.id,
+        position: posRef.current,
+        yaw: yawRef.current,
+      });
+    }
   }, [
     participants,
     socket,
@@ -243,11 +259,13 @@ export default function Avatar() {
     const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
     if (anyMoveKeyHeld !== isMovingRef.current) {
       isMovingRef.current = anyMoveKeyHeld;
-      socket?.emit("moving-update", {
-        roomCode,
-        userId: user.id,
-        isMoving: anyMoveKeyHeld,
-      });
+      if (socket && roomCode) {
+        socket.emit("moving-update", {
+          roomCode,
+          userId: user.id,
+          isMoving: anyMoveKeyHeld,
+        });
+      }
     }
 
     if (dx !== 0 || dz !== 0) {
@@ -275,6 +293,7 @@ export default function Avatar() {
         roomCode,
         userId: user.id,
         position: posRef.current,
+        yaw: yawRef.current,
       });
     }
   });
@@ -292,11 +311,11 @@ export default function Avatar() {
               <AvatarModel
                 key={`${p.id}-${p.avatar || "boy"}`}
                 position={[px, py, pz]}
-                yaw={0}
                 avatarType={p.avatar || "boy"}
                 isMoving={peerMoving?.[p.id] || false}
                 emote={peerEmotes?.[p.id] || null}
                 isSitting={peerSitting?.[p.id] || false}
+                yaw={peerYaws?.[p.id] ?? 0}
               />
               <Billboard position={[px, py + 2.4, pz]}>
                 <Html
