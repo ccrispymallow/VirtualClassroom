@@ -10,9 +10,14 @@ export const RoomProvider = ({ children }) => {
   const [avatarPosition, setAvatarPosition] = useState([0, 0, 0]);
   const [peerPositions, setPeerPositions] = useState({});
   const [peerMoving, setPeerMoving] = useState({});
+  const [peerSitting, setPeerSitting] = useState({});
   const [myEmote, setMyEmote] = useState(null);
   const [peerEmotes, setPeerEmotes] = useState({});
   const [chatMessages, setChatMessages] = useState([]);
+
+  const [isSitting, setIsSitting] = useState(false);
+  const [nearChair, setNearChair] = useState(false);
+
   const keysRef = useRef({});
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
@@ -23,6 +28,9 @@ export const RoomProvider = ({ children }) => {
     setPeerEmotes({});
     setPeerPositions({});
     setPeerMoving({});
+    setPeerSitting({});
+    setIsSitting(false);
+    setNearChair(false);
     keysRef.current = {};
   }, []);
 
@@ -30,14 +38,19 @@ export const RoomProvider = ({ children }) => {
     const handlePeerMoved = ({ userId, position }) => {
       setPeerPositions((prev) => ({ ...prev, [userId]: position }));
     };
+
     const handleParticipantsUpdate = (updatedList) => {
       setParticipants(updatedList);
       setPeerPositions((prev) => {
         const ids = new Set(updatedList.map((p) => p.id));
         const next = {};
-        for (const id in prev) {
-          if (ids.has(id)) next[id] = prev[id];
-        }
+        for (const id in prev) if (ids.has(id)) next[id] = prev[id];
+        return next;
+      });
+      setPeerSitting((prev) => {
+        const ids = new Set(updatedList.map((p) => p.id));
+        const next = {};
+        for (const id in prev) if (ids.has(id)) next[id] = prev[id];
         return next;
       });
     };
@@ -46,13 +59,23 @@ export const RoomProvider = ({ children }) => {
       setPeerMoving((prev) => ({ ...prev, [userId]: isMoving }));
     };
 
+    const handlePeerSitting = ({ userId, isSitting: sitting, position }) => {
+      setPeerSitting((prev) => ({ ...prev, [userId]: sitting }));
+      if (sitting && position) {
+        setPeerPositions((prev) => ({ ...prev, [userId]: position }));
+      }
+    };
+
     socket.on("peer-moved", handlePeerMoved);
     socket.on("participants-update", handleParticipantsUpdate);
     socket.on("peer-moving", handlePeerMoving);
+    socket.on("sit-update", handlePeerSitting);
+
     return () => {
       socket.off("peer-moved", handlePeerMoved);
       socket.off("participants-update", handleParticipantsUpdate);
       socket.off("peer-moving", handlePeerMoving);
+      socket.off("sit-update", handlePeerSitting);
     };
   }, []);
 
@@ -85,6 +108,11 @@ export const RoomProvider = ({ children }) => {
         peerPositions,
         setPeerPositions,
         peerMoving,
+        peerSitting,
+        isSitting,
+        setIsSitting,
+        nearChair,
+        setNearChair,
         socket,
         keysRef,
         yawRef,

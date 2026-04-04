@@ -1,10 +1,11 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
 import { SkeletonUtils } from "three-stdlib";
+import { CHAIR_POSITIONS, CHAIR_SNAP_RADIUS } from "./Classroom";
 
 const COLLISION_RADIUS = 0.8;
 const EMIT_INTERVAL = 50;
@@ -18,7 +19,6 @@ const MOVE_KEYS = [
   "arrowleft",
   "arrowright",
 ];
-
 const SPAWN_SLOTS = [
   [-3, 0, 4],
   [-2, 0, 4],
@@ -30,12 +30,14 @@ const SPAWN_SLOTS = [
   [-1, 0, 8],
 ];
 
+// ─── AvatarModel ─────────────────────────────────────────────────────────────
 function AvatarModel({
   position,
   yaw = 0,
   avatarType = "boy",
   isMoving = false,
   emote = null,
+  isSitting = false,
 }) {
   const modelUrl = avatarType === "boy" ? "/boy.glb" : "/girl.glb";
   const { scene, animations } = useGLTF(modelUrl);
@@ -46,50 +48,27 @@ function AvatarModel({
   useEffect(() => {
     if (names.length === 0) return;
 
-    Object.values(actions).forEach((a) => a.stop());
-    currentActionRef.current = null;
-
     let targetAnim = null;
-
-    if (emote === "raise") {
-      targetAnim = "Raising Hand";
-    } else if (emote === "speaking") {
-      targetAnim = "Speaking";
-    } else if (isMoving) {
-      targetAnim = "Walking";
-    } else {
-      targetAnim = "Standing";
-    }
-
-    console.log(
-      "AvatarModel animating:",
-      targetAnim,
-      "isMoving:",
-      isMoving,
-      "emote:",
-      emote,
-    );
+    if (isSitting)
+      targetAnim =
+        names.find((n) => n.toLowerCase().includes("sit")) ?? "Sitting";
+    else if (emote === "raise") targetAnim = "Raising Hand";
+    else if (emote === "speaking") targetAnim = "Speaking";
+    else if (isMoving) targetAnim = "Walking";
+    else targetAnim = "Standing";
 
     if (!names.includes(targetAnim)) {
-      console.warn("Animation not found:", targetAnim, "available:", names);
+      console.warn("Animation not found:", targetAnim, "| available:", names);
       return;
     }
     if (currentActionRef.current === targetAnim) return;
 
-    const prev = currentActionRef.current
-      ? actions[currentActionRef.current]
-      : null;
+    Object.values(actions).forEach((a) => a.fadeOut(0.2));
     const next = actions[targetAnim];
     if (!next) return;
-
-    if (prev) {
-      next.reset().fadeIn(0.2).play();
-      prev.fadeOut(0.2);
-    } else {
-      next.reset().fadeIn(0.2).play();
-    }
+    next.reset().fadeIn(0.2).play();
     currentActionRef.current = targetAnim;
-  }, [isMoving, emote, actions, names]);
+  }, [isMoving, emote, isSitting, actions, names]);
 
   return (
     <primitive
@@ -104,12 +83,14 @@ function AvatarModel({
 useGLTF.preload("/boy.glb");
 useGLTF.preload("/girl.glb");
 
+// ─── Avatar ───────────────────────────────────────────────────────────────────
 export default function Avatar() {
   const { roomCode } = useParams();
   const {
     participants,
     peerPositions,
     peerMoving,
+    peerSitting,
     socket,
     keysRef,
     yawRef,
@@ -117,17 +98,20 @@ export default function Avatar() {
     setAvatarPosition,
     myEmote,
     peerEmotes,
+    isSitting,
+    setIsSitting,
+    setNearChair,
   } = useRoom();
 
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
   const initializedRef = useRef(false);
   const isMovingRef = useRef(false);
-  const lastMovingEmitRef = useRef(false);
+  const sittingChairRef = useRef(null);
 
+  // ── Spawn ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (initializedRef.current) return;
-    if (participants.length === 0) return;
+    if (initializedRef.current || participants.length === 0) return;
     const myIndex = participants.findIndex((p) => p.id === user.id);
     if (myIndex === -1) return;
     const slot = SPAWN_SLOTS[myIndex % SPAWN_SLOTS.length] ?? SPAWN_SLOTS[0];
@@ -135,13 +119,11 @@ export default function Avatar() {
     setAvatarPosition([...slot]);
     yawRef.current = Math.PI / 2;
     initializedRef.current = true;
-    if (socket && roomCode) {
-      socket.emit("position-update", {
-        roomCode,
-        userId: user.id,
-        position: posRef.current,
-      });
-    }
+    socket?.emit("position-update", {
+      roomCode,
+      userId: user.id,
+      position: posRef.current,
+    });
   }, [
     participants,
     socket,
@@ -152,7 +134,86 @@ export default function Avatar() {
     yawRef,
   ]);
 
+  // ── Spacebar ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code !== "Space") return;
+      e.preventDefault();
+
+      // Stand up
+      if (sittingChairRef.current) {
+        sittingChairRef.current = null;
+        setIsSitting(false);
+        setNearChair(false);
+        isMovingRef.current = false;
+
+        posRef.current = [posRef.current[0], 0, posRef.current[2]];
+        setAvatarPosition([posRef.current[0], 0, posRef.current[2]]);
+
+        socket?.emit("sit-update", {
+          roomCode,
+          userId: user.id,
+          isSitting: false,
+          position: posRef.current,
+        });
+        return;
+      }
+
+      // Find nearest chair
+      const [px, , pz] = posRef.current;
+      let nearest = null;
+      let nearestDist = Infinity;
+      for (const chair of CHAIR_POSITIONS) {
+        const [cx, , cz] = chair.position;
+        const dist = Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2);
+        if (dist < CHAIR_SNAP_RADIUS && dist < nearestDist) {
+          nearest = chair;
+          nearestDist = dist;
+        }
+      }
+
+      if (nearest) {
+        const [cx, cy, cz] = nearest.position;
+        posRef.current = [cx, cy, cz];
+        setAvatarPosition([cx, cy, cz]);
+        sittingChairRef.current = nearest.id;
+        setIsSitting(true);
+        socket?.emit("sit-update", {
+          roomCode,
+          userId: user.id,
+          isSitting: true,
+          position: [cx, cy, cz],
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [
+    socket,
+    roomCode,
+    user.id,
+    posRef,
+    setAvatarPosition,
+    setIsSitting,
+    setNearChair,
+  ]);
+
+  // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
+    // Proximity check — writes to context so SitPrompt outside Canvas reacts
+    if (!sittingChairRef.current) {
+      const [px, , pz] = posRef.current;
+      const close = CHAIR_POSITIONS.some(
+        ({ position: [cx, , cz] }) =>
+          Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < CHAIR_SNAP_RADIUS,
+      );
+      setNearChair((prev) => (prev !== close ? close : prev));
+    }
+
+    if (sittingChairRef.current) return;
+
     const speed = 5;
     const keys = keysRef.current;
     const [x, y, z] = posRef.current;
@@ -180,32 +241,23 @@ export default function Avatar() {
     }
 
     const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
-
-    // Emit moving state to peers when it changes
     if (anyMoveKeyHeld !== isMovingRef.current) {
       isMovingRef.current = anyMoveKeyHeld;
-      // Broadcast moving state so other clients can animate us
-      if (socket && roomCode) {
-        socket.emit("moving-update", {
-          roomCode,
-          userId: user.id,
-          isMoving: anyMoveKeyHeld,
-        });
-      }
+      socket?.emit("moving-update", {
+        roomCode,
+        userId: user.id,
+        isMoving: anyMoveKeyHeld,
+      });
     }
 
-    const moving = dx !== 0 || dz !== 0;
-    if (moving) {
-      const nx = x + dx;
-      const nz = z + dz;
-      const others = participants.filter((p) => p.id !== user.id);
+    if (dx !== 0 || dz !== 0) {
+      const nx = x + dx,
+        nz = z + dz;
       let blocked = false;
-      for (const other of others) {
+      for (const other of participants.filter((p) => p.id !== user.id)) {
         if (!peerPositions[other.id]) continue;
         const [ox, , oz] = peerPositions[other.id];
-        const cdx = nx - ox,
-          cdz = nz - oz;
-        if (Math.sqrt(cdx * cdx + cdz * cdz) < COLLISION_RADIUS) {
+        if (Math.sqrt((nx - ox) ** 2 + (nz - oz) ** 2) < COLLISION_RADIUS) {
           blocked = true;
           break;
         }
@@ -227,6 +279,7 @@ export default function Avatar() {
     }
   });
 
+  // ── Render — peers only ───────────────────────────────────────────────────
   return (
     <>
       {participants
@@ -234,17 +287,16 @@ export default function Avatar() {
         .map((p) => {
           if (!peerPositions[p.id]) return null;
           const [px, py, pz] = peerPositions[p.id];
-          const name = p.username || "Guest";
-          const micActive = !!p.mic;
-
           return (
             <group key={p.id}>
               <AvatarModel
                 key={`${p.id}-${p.avatar || "boy"}`}
                 position={[px, py, pz]}
+                yaw={0}
                 avatarType={p.avatar || "boy"}
                 isMoving={peerMoving?.[p.id] || false}
                 emote={peerEmotes?.[p.id] || null}
+                isSitting={peerSitting?.[p.id] || false}
               />
               <Billboard position={[px, py + 2.4, pz]}>
                 <Html
@@ -269,8 +321,8 @@ export default function Avatar() {
                       pointerEvents: "none",
                     }}
                   >
-                    <span>{name}</span>
-                    {micActive ? (
+                    <span>{p.username || "Guest"}</span>
+                    {p.mic ? (
                       <BsMicFill size={10} color="#22c55e" />
                     ) : (
                       <BsMicMuteFill size={10} color="#f87171" />

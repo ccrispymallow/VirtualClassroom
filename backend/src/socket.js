@@ -177,6 +177,17 @@ export const initSocket = (io) => {
       socket.leave(roomCode);
     });
 
+    socket.on("sit-update", (data) => {
+      if (rooms[data.roomCode]) {
+        const p = rooms[data.roomCode].find((p) => p.id === data.userId);
+        if (p) {
+          p.isSitting = data.isSitting;
+          if (data.position) p.position = data.position;
+        }
+      }
+      socket.to(data.roomCode).emit("sit-update", data);
+    });
+
     socket.on("end-room", async ({ roomCode, userId }) => {
       try {
         // Call the end classroom service
