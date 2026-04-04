@@ -46,6 +46,9 @@ function AvatarModel({
   useEffect(() => {
     if (names.length === 0) return;
 
+    Object.values(actions).forEach((a) => a.stop());
+    currentActionRef.current = null;
+
     let targetAnim = null;
 
     if (emote === "raise") {
