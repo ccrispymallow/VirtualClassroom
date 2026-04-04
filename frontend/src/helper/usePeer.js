@@ -59,10 +59,6 @@ export const usePeer = ({
   );
 
   useEffect(() => {
-    console.log("=== usePeer mount ===", { userId, roomCode });
-    console.log("VITE_PEER_HOST:", import.meta.env.VITE_PEER_HOST);
-    console.log("VITE_BACKEND_URL:", import.meta.env.VITE_BACKEND_URL);
-
     if (!userId || !roomCode) return;
 
     const isLocal =
@@ -71,7 +67,7 @@ export const usePeer = ({
 
     const peer = new Peer(undefined, {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
-      port: isLocal ? 5001 : 443,
+      port: isLocal ? 9000 : 443,
       path: "/peerjs",
       secure: !isLocal,
     });
