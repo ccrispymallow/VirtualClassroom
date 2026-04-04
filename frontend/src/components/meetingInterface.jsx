@@ -13,6 +13,7 @@ import { LuScreenShare } from "react-icons/lu";
 import { MdEmojiEmotions } from "react-icons/md";
 import { useParams, useNavigate } from "react-router-dom";
 import copyIcon from "../assets/copy.svg";
+import BoardNotifications from "./boardNotification";
 
 const EMOTES = [{ label: "✋ Raise Hand", key: "raise" }];
 
@@ -453,6 +454,7 @@ const MeetingInterface = () => {
 
   return (
     <>
+      <BoardNotifications isInstructor={isInstructor} />
       {/* Understanding poll modal for students */}
       {pollQuestion.active && !isInstructor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">

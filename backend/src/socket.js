@@ -256,6 +256,19 @@ export const initSocket = (io) => {
       socket.to(roomCode).emit("peer-moving", { userId, isMoving });
     });
 
+    // board-announce: instructor posts and notifies students
+    socket.on("board-announce", ({ roomCode, text, author }) => {
+      socket.to(roomCode).emit("board-announcement-notify", { text, author });
+    });
+
+    // board-file-notify: instructor broadcasts selected files to students
+    socket.on("board-file-notify", ({ roomCode, files, file }) => {
+      const filesToSend = files ?? (file ? [file] : []);
+      if (!filesToSend.length) return;
+
+      socket.to(roomCode).emit("board-file-notify", { files: filesToSend });
+    });
+
     // Chat messages
     socket.on(
       "send-message",
