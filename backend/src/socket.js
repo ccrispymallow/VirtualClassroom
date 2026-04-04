@@ -182,13 +182,31 @@ export const initSocket = (io) => {
     });
 
     socket.on("sit-update", (data) => {
-      if (rooms[data.roomCode]) {
-        const p = rooms[data.roomCode].find((p) => p.id === data.userId);
-        if (p) {
-          p.isSitting = data.isSitting;
-          if (data.position) p.position = data.position;
+      if (!rooms[data.roomCode]) return;
+
+      // If trying to sit, check if chair is already occupied
+      if (data.isSitting && data.position) {
+        const [tx, , tz] = data.position;
+        const alreadyOccupied = rooms[data.roomCode].some((p) => {
+          if (p.id === data.userId) return false;
+          if (!p.isSitting || !p.position) return false;
+          const [px, , pz] = p.position;
+          return Math.sqrt((tx - px) ** 2 + (tz - pz) ** 2) < 0.1;
+        });
+
+        if (alreadyOccupied) {
+          // Tell the requesting client the chair is taken
+          socket.emit("sit-rejected", { userId: data.userId });
+          return;
         }
       }
+
+      const p = rooms[data.roomCode].find((p) => p.id === data.userId);
+      if (p) {
+        p.isSitting = data.isSitting;
+        if (data.position) p.position = data.position;
+      }
+
       socket.to(data.roomCode).emit("sit-update", data);
     });
 
