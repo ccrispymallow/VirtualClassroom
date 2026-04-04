@@ -34,7 +34,6 @@ const SPAWN_SLOTS = [
   [-1, 0, 8],
 ];
 
-// ─── AvatarModel ──────────────────────────────────────────────────────────────
 function AvatarModel({
   position,
   yaw = 0,
@@ -59,35 +58,52 @@ function AvatarModel({
         Object.values(actions).forEach((a) => a.stop());
         const standing = actions["Standing"];
         if (standing) {
-          standing.reset().play();
+          standing.reset().setEffectiveWeight(1).play();
           currentActionRef.current = "Standing";
         }
       });
       return () => cancelAnimationFrame(raf);
     }
 
-    // ── Pick target animation ──────────────────────────────────────────────
-    let targetAnim = "Standing";
-    if (isSitting) targetAnim = "Sitting";
-    else if (emote === "raise") targetAnim = "Raising Hand";
-    else if (emote === "speaking") targetAnim = "Speaking";
-    else if (isMoving) targetAnim = "Walking";
+    // ── Base animation ──────────────────────────────────────────────────
+    let baseAnim = "Standing";
+    if (isSitting) baseAnim = "Sitting";
+    else if (isMoving) baseAnim = "Walking";
 
-    if (!names.includes(targetAnim)) return;
-    if (currentActionRef.current === targetAnim) return;
-
-    const prev = actions[currentActionRef.current];
-    const target = actions[targetAnim];
-    if (!target) return;
-
-    if (prev) {
-      target.reset().fadeIn(0.2).play();
-      prev.fadeOut(0.2);
-    } else {
-      target.reset().fadeIn(0.2).play();
+    if (currentActionRef.current !== baseAnim) {
+      const prev = actions[currentActionRef.current];
+      const target = actions[baseAnim];
+      if (target) {
+        if (prev) {
+          target.reset().fadeIn(0.2).play();
+          prev.fadeOut(0.2);
+        } else target.reset().fadeIn(0.2).play();
+        currentActionRef.current = baseAnim;
+      }
     }
-    currentActionRef.current = targetAnim;
-  }, [isSitting, isMoving, emote, actions, names]); // ← isSitting in deps
+
+    // ── Reduce base weight to 0 when emote is active ───────────────────
+    const baseAction = actions[baseAnim];
+    if (baseAction) {
+      baseAction.setEffectiveWeight(emote ? 0 : 1);
+    }
+
+    // ── Emote layer ─────────────────────────────────────────────────────
+    const raiseAction = actions["Raising Hand"];
+    const speakAction = actions["Speaking"];
+
+    if (emote === "raise" && raiseAction) {
+      speakAction?.stop();
+      raiseAction.reset().setEffectiveWeight(1).fadeIn(0.2).play();
+    } else if (emote === "speaking" && speakAction) {
+      raiseAction?.stop();
+      speakAction.reset().setEffectiveWeight(1).fadeIn(0.2).play();
+    } else {
+      if (baseAction) baseAction.setEffectiveWeight(1);
+      if (raiseAction?.isRunning()) raiseAction.fadeOut(0.2);
+      if (speakAction?.isRunning()) speakAction.fadeOut(0.2);
+    }
+  }, [emote, isSitting, isMoving, actions, names]);
 
   return (
     <primitive
@@ -98,7 +114,6 @@ function AvatarModel({
     />
   );
 }
-
 useGLTF.preload("/boy.glb");
 useGLTF.preload("/girl.glb");
 
@@ -149,7 +164,7 @@ export default function Avatar() {
   const isMovingRef = useRef(false);
   const sittingChairRef = useRef(null);
 
-  // ── Spawn ────────────────────────────────────────────────────────────────
+  // ── Spawn ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (initializedRef.current || participants.length === 0) return;
     const sorted = [...participants].sort((a, b) =>
@@ -178,7 +193,7 @@ export default function Avatar() {
     yawRef,
   ]);
 
-  // ── Spacebar — sit / stand ───────────────────────────────────────────────
+  // ── Spacebar — sit / stand ─────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code !== "Space") return;
@@ -252,7 +267,7 @@ export default function Avatar() {
     peerPositions,
   ]);
 
-  // ── Sit rejected by server ───────────────────────────────────────────────
+  // ── Sit rejected by server ─────────────────────────────────────────────────
   useEffect(() => {
     const handleSitRejected = () => {
       sittingChairRef.current = null;
@@ -263,7 +278,7 @@ export default function Avatar() {
     return () => socket?.off("sit-rejected", handleSitRejected);
   }, [socket, setIsSitting, setNearChair]);
 
-  // ── Frame loop ───────────────────────────────────────────────────────────
+  // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
     const now = Date.now();
     if (socket && roomCode && now - lastEmitRef.current >= EMIT_INTERVAL) {
@@ -276,7 +291,6 @@ export default function Avatar() {
       });
     }
 
-    // Proximity — show sit prompt only for unoccupied nearby chairs
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
       const occupiedChairIds = getOccupiedChairIds(
@@ -365,7 +379,7 @@ export default function Avatar() {
     }
   });
 
-  // ── Render peers ─────────────────────────────────────────────────────────
+  // ── Render peers ───────────────────────────────────────────────────────────
   return (
     <>
       {participants

@@ -1,4 +1,4 @@
-import { useGLTF, Html } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 
 // ─── Chair positions ──────────────────────────────────────────────────────────
 const LEFT_COL_1_X = -2.7;
@@ -46,88 +46,9 @@ export function collidesWithFurniture(nx, nz, radius = AVATAR_RADIUS) {
   return false;
 }
 
-const DEBUG = true;
-
-const DEBUG_COLORS = {
-  "teacher-desk-L": "#10b981",
-  "teacher-desk-R": "#f59e0b",
-  "wall-top": "#10b981",
-  "lockers-L": "#3b82f6",
-  "lockers-R": "#6366f1",
-  "wall-left": "#ef4444",
-  "wall-right": "#ef4444",
-};
-
-function FurnitureDebug() {
-  if (!DEBUG) return null;
-  return (
-    <>
-      {FURNITURE_BOXES.map((box) => {
-        const cx = (box.minX + box.maxX) / 2;
-        const cz = (box.minZ + box.maxZ) / 2;
-        const sx = box.maxX - box.minX;
-        const sz = box.maxZ - box.minZ;
-        const color = DEBUG_COLORS[box.id] ?? "#ffffff";
-        return (
-          <group key={box.id}>
-            <mesh position={[cx, 0.75, cz]}>
-              <boxGeometry args={[sx, 1.5, sz]} />
-              <meshStandardMaterial color={color} transparent opacity={0.25} />
-            </mesh>
-            <mesh position={[cx, 0.75, cz]}>
-              <boxGeometry args={[sx, 1.5, sz]} />
-              <meshStandardMaterial color={color} wireframe />
-            </mesh>
-            <Html position={[cx, 2.2, cz]} center>
-              <div
-                style={{
-                  background: color,
-                  color: "#000",
-                  fontSize: "11px",
-                  fontWeight: "bold",
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  whiteSpace: "nowrap",
-                  pointerEvents: "none",
-                  userSelect: "none",
-                }}
-              >
-                {box.id}
-              </div>
-            </Html>
-          </group>
-        );
-      })}
-    </>
-  );
-}
-
-// ─── Chair snap debug ─────────────────────────────────────────────────────────
-function ChairDebug() {
-  if (!DEBUG) return null;
-  return (
-    <>
-      {CHAIR_POSITIONS.map((chair) => (
-        <mesh key={chair.id} position={chair.position}>
-          <sphereGeometry args={[0.2, 8, 8]} />
-          <meshStandardMaterial color="red" transparent opacity={0.5} />
-        </mesh>
-      ))}
-    </>
-  );
-}
-
-// ─── Classroom component ──────────────────────────────────────────────────────
 export default function Classroom() {
   const { scene } = useGLTF("/ClassroomModel_max40.glb");
-
-  return (
-    <>
-      <primitive object={scene} position={[0, 0, 0]} />
-      <FurnitureDebug />
-      <ChairDebug />
-    </>
-  );
+  return <primitive object={scene} position={[0, 0, 0]} />;
 }
 
 useGLTF.preload("/ClassroomModel_max40.glb");
