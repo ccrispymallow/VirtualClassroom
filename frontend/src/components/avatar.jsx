@@ -52,35 +52,38 @@ function AvatarModel({
     if (Object.keys(actions).length === 0) return;
 
     if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      Object.values(actions).forEach((a) => a.stop());
-      const standing = actions["Standing"];
-      if (standing) standing.reset().play();
-      currentActionRef.current = "Standing";
-      return;
+      const raf = requestAnimationFrame(() => {
+        hasInitialized.current = true;
+        Object.values(actions).forEach((a) => a.stop());
+        const standing = actions["Standing"];
+        if (standing) {
+          standing.reset().play();
+          currentActionRef.current = "Standing";
+        }
+      });
+      return () => cancelAnimationFrame(raf);
     }
 
-    let targetAnim = null;
-    if (isSitting)
-      targetAnim =
-        names.find((n) => n.toLowerCase().includes("sit")) ?? "Sitting";
-    else if (emote === "raise") targetAnim = "Raising Hand";
+    let targetAnim = "Standing";
+    if (emote === "raise") targetAnim = "Raising Hand";
     else if (emote === "speaking") targetAnim = "Speaking";
     else if (isMoving) targetAnim = "Walking";
-    else targetAnim = "Standing";
 
-    if (!names.includes(targetAnim)) {
-      console.warn("Animation not found:", targetAnim, "| available:", names);
-      return;
-    }
+    if (!names.includes(targetAnim)) return;
     if (currentActionRef.current === targetAnim) return;
 
-    Object.values(actions).forEach((a) => a.fadeOut(0.2));
-    const next = actions[targetAnim];
-    if (!next) return;
-    next.reset().fadeIn(0.2).play();
+    const prev = actions[currentActionRef.current];
+    const target = actions[targetAnim];
+    if (!target) return;
+
+    if (prev) {
+      target.reset().fadeIn(0.2).play();
+      prev.fadeOut(0.2);
+    } else {
+      target.reset().fadeIn(0.2).play();
+    }
     currentActionRef.current = targetAnim;
-  }, [isMoving, emote, isSitting, actions, names]);
+  }, [isMoving, emote, actions, names]);
 
   return (
     <primitive
