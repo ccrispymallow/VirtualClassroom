@@ -71,9 +71,9 @@ export default function MainEngine() {
           <ambientLight intensity={1.2} />
           <directionalLight position={[5, 8, 5]} intensity={1.5} castShadow />
           <directionalLight position={[-5, 5, -5]} intensity={1.0} />
-          <pointLight position={[0, 3, 0]} intensity={1.5} distance={15} />
-          <pointLight position={[0, 3, -10]} intensity={1.2} distance={15} />
-          <pointLight position={[0, 3, -20]} intensity={1.2} distance={15} />
+          <pointLight position={[0, 4, 0]} intensity={1.5} distance={15} />
+          <pointLight position={[0, 4, -10]} intensity={1.2} distance={15} />
+          <pointLight position={[0, 4, -20]} intensity={1.2} distance={15} />
           <Suspense fallback={null}>
             <Classroom />
             <Avatar />
