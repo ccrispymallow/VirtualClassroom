@@ -9,7 +9,7 @@ import {
   CHAIR_POSITIONS,
   CHAIR_SNAP_RADIUS,
   collidesWithFurniture,
-} from "./Classroom";
+} from "./classroom";
 
 const COLLISION_RADIUS = 0.8;
 const EMIT_INTERVAL = 50;
