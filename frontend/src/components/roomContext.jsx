@@ -46,10 +46,12 @@ export const RoomProvider = ({ children }) => {
 
     const handleParticipantsUpdate = (updatedList) => {
       setParticipants(updatedList);
-      setPeerPositions((prev) => {
-        const ids = new Set(updatedList.map((p) => p.id));
-        const next = {};
-        for (const id in prev) if (ids.has(id)) next[id] = prev[id];
+      // Seed emotes from participant data for late joiners
+      setPeerEmotes((prev) => {
+        const next = { ...prev };
+        updatedList.forEach((p) => {
+          if (p.emote !== undefined) next[p.id] = p.emote;
+        });
         return next;
       });
       setPeerSitting((prev) => {
@@ -88,9 +90,6 @@ export const RoomProvider = ({ children }) => {
     if (!socket) return;
     socket.on("peer-emote", ({ userId, emote }) => {
       setPeerEmotes((prev) => ({ ...prev, [userId]: emote }));
-      setTimeout(() => {
-        setPeerEmotes((prev) => ({ ...prev, [userId]: null }));
-      }, 8000);
     });
     socket.on("receive-message", (msg) => {
       setChatMessages((prev) => [...prev, msg]);

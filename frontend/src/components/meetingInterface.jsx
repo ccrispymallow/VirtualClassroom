@@ -31,6 +31,7 @@ const MeetingInterface = () => {
     myEmote,
     setMyEmote,
     chatMessages,
+    peerEmotes,
     setChatMessages,
   } = useRoom();
 
@@ -92,6 +93,11 @@ const MeetingInterface = () => {
   });
 
   const remoteScreen = remoteStreams.find((s) => s.type === "screen");
+
+  const raisedHandCount = participants.filter((p) => {
+    if (p.id === user.id) return myEmote === "raise";
+    return peerEmotes?.[p.id] === "raise";
+  }).length;
 
   useEffect(() => {
     showChatRef.current = showChat;
@@ -308,10 +314,10 @@ const MeetingInterface = () => {
   };
 
   const handleEmote = (emoteKey) => {
-    setMyEmote?.(emoteKey);
+    const next = myEmote === emoteKey ? null : emoteKey;
+    setMyEmote?.(next);
     setShowEmotes(false);
-    socket.emit("emote", { roomCode, userId: user.id, emote: emoteKey });
-    setTimeout(() => setMyEmote?.(null), 8000);
+    socket.emit("emote", { roomCode, userId: user.id, emote: next });
   };
 
   const handleSendChat = () => {
@@ -595,9 +601,14 @@ const MeetingInterface = () => {
                 ? closeBox("participants")
                 : openBox("participants")
             }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
+            className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
           >
             <IoPeople size={22} />
+            {raisedHandCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-[10px] rounded-full flex items-center justify-center">
+                ✋
+              </span>
+            )}
             <span className="text-[10px] mt-1 select-none">People</span>
           </button>
 
@@ -704,38 +715,48 @@ const MeetingInterface = () => {
           </button>
         </div>
         <div className="p-3 flex flex-col gap-2 max-h-72 overflow-y-auto">
-          {participants.map((p, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
-            >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                {p.username?.[0]?.toUpperCase() || "?"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-200 text-xs font-semibold truncate">
-                  {p.username}{" "}
-                  {p.id === user.id && (
-                    <span className="text-slate-500">(you)</span>
+          {participants.map((p, i) => {
+            const isMe = p.id === user.id;
+            const hasHandRaised = isMe
+              ? myEmote === "raise"
+              : peerEmotes?.[p.id] === "raise";
+
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                  {p.username?.[0]?.toUpperCase() || "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-200 text-xs font-semibold truncate">
+                    {p.username}{" "}
+                    {isMe && <span className="text-slate-500">(you)</span>}
+                  </p>
+                  <p className="text-[11px] capitalize">
+                    {p.role === "instructor" ? (
+                      <span className="text-violet-400">{p.role}</span>
+                    ) : (
+                      <span className="text-slate-500">{p.role}</span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {hasHandRaised && (
+                    <span className="text-sm" title="Hand raised">
+                      ✋
+                    </span>
                   )}
-                </p>
-                <p className="text-[11px] capitalize">
-                  {p.role === "instructor" ? (
-                    <span className="text-violet-400">{p.role}</span>
+                  {p.mic ? (
+                    <BsMicFill size={12} color="#3b82f6" />
                   ) : (
-                    <span className="text-slate-500">{p.role}</span>
+                    <BsMicMuteFill size={12} color="#64748b" />
                   )}
-                </p>
+                </div>
               </div>
-              <div className="flex-shrink-0">
-                {p.mic ? (
-                  <BsMicFill size={12} color="#3b82f6" />
-                ) : (
-                  <BsMicMuteFill size={12} color="#64748b" />
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

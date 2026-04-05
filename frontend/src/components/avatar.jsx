@@ -48,62 +48,40 @@ function AvatarModel({
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
   const hasInitialized = useRef(false);
+  // At the top of the useEffect, after the guard
+  console.log(
+    "isSitting:",
+    isSitting,
+    "baseAnim would be:",
+    isSitting ? "Sitting" : isMoving ? "Walking" : "Standing",
+  );
 
   useEffect(() => {
     if (names.length === 0 || Object.keys(actions).length === 0) return;
 
-    if (!hasInitialized.current) {
-      const raf = requestAnimationFrame(() => {
-        hasInitialized.current = true;
-        Object.values(actions).forEach((a) => a.stop());
-        const standing = actions["Standing"];
-        if (standing) {
-          standing.reset().setEffectiveWeight(1).play();
-          currentActionRef.current = "Standing";
-        }
-      });
-      return () => cancelAnimationFrame(raf);
+    let targetAnim = "Standing";
+    if (isSitting) targetAnim = "Sitting";
+    else if (isMoving) targetAnim = "Walking";
+
+    if (emote === "raise") targetAnim = "Raising Hand";
+    else if (emote === "speaking") targetAnim = "Speaking";
+
+    const target = actions[targetAnim];
+    if (!target) return;
+
+    // Stop all, play target — simple and reliable
+    Object.values(actions).forEach((a) => {
+      if (a !== target) a.fadeOut(0.2);
+    });
+
+    if (currentActionRef.current !== targetAnim) {
+      target
+        .reset()
+        .fadeIn(currentActionRef.current ? 0.2 : 0)
+        .play();
+      currentActionRef.current = targetAnim;
     }
-
-    // ── Base animation ──────────────────────────────────────────────────
-    let baseAnim = "Standing";
-    if (isSitting) baseAnim = "Sitting";
-    else if (isMoving) baseAnim = "Walking";
-
-    if (currentActionRef.current !== baseAnim) {
-      const prev = actions[currentActionRef.current];
-      const target = actions[baseAnim];
-      if (target) {
-        if (prev) {
-          target.reset().fadeIn(0.2).play();
-          prev.fadeOut(0.2);
-        } else target.reset().fadeIn(0.2).play();
-        currentActionRef.current = baseAnim;
-      }
-    }
-
-    // ── Reduce base weight to 0 when emote is active ───────────────────
-    const baseAction = actions[baseAnim];
-    if (baseAction) {
-      baseAction.setEffectiveWeight(emote ? 0 : 1);
-    }
-
-    // ── Emote layer ─────────────────────────────────────────────────────
-    const raiseAction = actions["Raising Hand"];
-    const speakAction = actions["Speaking"];
-
-    if (emote === "raise" && raiseAction) {
-      speakAction?.stop();
-      raiseAction.reset().setEffectiveWeight(1).fadeIn(0.2).play();
-    } else if (emote === "speaking" && speakAction) {
-      raiseAction?.stop();
-      speakAction.reset().setEffectiveWeight(1).fadeIn(0.2).play();
-    } else {
-      if (baseAction) baseAction.setEffectiveWeight(1);
-      if (raiseAction?.isRunning()) raiseAction.fadeOut(0.2);
-      if (speakAction?.isRunning()) speakAction.fadeOut(0.2);
-    }
-  }, [emote, isSitting, isMoving, actions, names]);
+  }, [isSitting, isMoving, emote, actions, names]);
 
   return (
     <primitive

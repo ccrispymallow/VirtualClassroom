@@ -301,6 +301,10 @@ export const initSocket = (io) => {
 
     // Emote sync
     socket.on("emote", ({ roomCode, userId, emote }) => {
+      if (rooms[roomCode]) {
+        const p = rooms[roomCode].find((p) => p.id === userId);
+        if (p) p.emote = emote; // store it
+      }
       socket.to(roomCode).emit("peer-emote", { userId, emote });
     });
 
