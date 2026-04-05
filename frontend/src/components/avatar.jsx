@@ -42,7 +42,8 @@ function AvatarModel({
   emote = null,
   isSitting = false,
 }) {
-  const modelUrl = avatarType === "boy" ? "/boy.glb" : "/girl.glb";
+  const modelUrl =
+    avatarType === "boy" ? "/model 2/boy.glb" : "/model 2/girl.glb";
   const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
@@ -92,8 +93,8 @@ function AvatarModel({
     />
   );
 }
-useGLTF.preload("/boy.glb");
-useGLTF.preload("/girl.glb");
+useGLTF.preload("/model 2/boy.glb");
+useGLTF.preload("/model 2/girl.glb");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getOccupiedChairId(peerPos) {
@@ -175,6 +176,15 @@ export default function Avatar() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code !== "Space") return;
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      const isTyping =
+        activeTag === "input" ||
+        activeTag === "textarea" ||
+        document.activeElement?.isContentEditable;
+
+      if (isTyping) {
+        return;
+      }
       e.preventDefault();
 
       // Stand up

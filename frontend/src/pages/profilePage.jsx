@@ -6,8 +6,8 @@ import { SkeletonUtils } from "three-stdlib";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MODEL_PATHS = {
-  boy: "/boy.glb",
-  girl: "/girl.glb",
+  boy: "/model 2/boy.glb",
+  girl: "/model 2/girl.glb",
 };
 
 const AVATAR_OPTIONS = [
