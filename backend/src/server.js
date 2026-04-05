@@ -14,6 +14,7 @@ import { Server } from "socket.io";
 import { PeerServer } from "peer";
 import { initSocket } from "./socket.js";
 import { createServer } from "http";
+import { ExpressPeerServer } from "peer";
 
 dotenv.config();
 
@@ -30,9 +31,17 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 const io = new Server(httpServer, { cors: { origin: "*" } });
 initSocket(io);
 
+//deploy
+if (process.env.NODE_ENV === "production") {
+  const peerServer = ExpressPeerServer(httpServer, { path: "/" });
+  app.use("/peerjs", peerServer);
+} else {
+  PeerServer({ port: 9000, path: "/peerjs" });
+}
+
 // PeerJS server
-const peerServer = PeerServer({ port: 9000, path: "/peerjs" });
-console.log("PeerJS server running on port 9000");
+// const peerServer = PeerServer({ port: 9000, path: "/peerjs" });
+// console.log("PeerJS server running on port 9000");
 
 // Routes
 app.use("/api/users", userRoutes);
