@@ -24,19 +24,42 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const httpServer = createServer(app);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  }),
+);
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-const io = new Server(httpServer, { cors: { origin: "*" } });
+// const io = new Server(httpServer, { cors: { origin: "*" } });
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  },
+});
 initSocket(io);
 
 //deploy
-if (process.env.NODE_ENV === "production") {
+// if (process.env.NODE_ENV === "production") {
+//   const peerServer = ExpressPeerServer(httpServer, { path: "/" });
+//   app.use("/peerjs", peerServer);
+// } else {
+//   PeerServer({ port: 9000, path: "/peerjs" });
+// }
+// Remove the if/else and replace with:
+if (process.env.FRONTEND_URL) {
+  // Production: FRONTEND_URL is set in Railway
+  const { ExpressPeerServer } = await import("peer");
   const peerServer = ExpressPeerServer(httpServer, { path: "/" });
   app.use("/peerjs", peerServer);
+  console.log("PeerJS running via ExpressPeerServer (production)");
 } else {
+  // Local: standalone on port 9000
   PeerServer({ port: 9000, path: "/peerjs" });
+  console.log("PeerJS server running on port 9000 (local)");
 }
 
 // PeerJS server
