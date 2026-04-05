@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMedia } from "../helper/useMedia";
 import { socket } from "../helper/socket";
 import { usePeer } from "../helper/usePeer";
@@ -84,13 +84,19 @@ const MeetingInterface = () => {
     stopScreen,
   } = useMedia();
 
-  const { remoteStreams, broadcastMic, broadcastScreen } = usePeer({
-    roomCode,
-    user,
-    socket,
-    micStreamRef,
-    screenStreamRef,
-  });
+  const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
+    usePeer({
+      roomCode,
+      user,
+      socket,
+      micStreamRef,
+      screenStreamRef,
+    });
+
+  const handleNetworkScreenStop = useCallback(() => {
+    stopScreenCalls();
+    socket.emit("screen-share-stop", { roomCode, userId: user.id });
+  }, [stopScreenCalls, roomCode, user.id]);
 
   const remoteScreen = remoteStreams.find((s) => s.type === "screen");
 
@@ -127,37 +133,45 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     socket.on("screen-share-approved", async () => {
-      const stream = await startScreen();
-      if (stream) broadcastScreen(stream);
+      // We wait for the user to interact with the browser popup
+      const stream = await startScreen(handleNetworkScreenStop); 
+      
+      if (stream) {
+        // They picked a screen and clicked "Share"
+        broadcastScreen(stream);
+      } else {
+        // they cancelled
+        socket.emit("screen-share-stop", { roomCode, userId: user.id });
+      }
     });
     socket.on("screen-share-rejected", () => {
       alert("Someone is already sharing their screen.");
     });
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
       if (active && sharingUserId !== user.id && screenOn) {
-        stopScreen();
-        socket.emit("screen-share-stop", { roomCode, userId: user.id });
+        stopScreen(handleNetworkScreenStop); 
       }
     });
+
     return () => {
       socket.off("screen-share-approved");
       socket.off("screen-share-rejected");
       socket.off("screen-share-update");
     };
-  }, [screenOn, roomCode, user.id, startScreen, stopScreen, broadcastScreen]);
+  }, [screenOn, roomCode, user.id, startScreen, stopScreen, broadcastScreen, handleNetworkScreenStop]);
 
-  useEffect(() => {
-    const stream = screenStreamRef.current;
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
-    const handleEnded = () => {
-      stopScreen();
-      socket.emit("screen-share-stop", { roomCode, userId: user.id });
-    };
-    track.addEventListener("ended", handleEnded);
-    return () => track.removeEventListener("ended", handleEnded);
-  }, [screenOn, roomCode, user.id, stopScreen]);
+  // useEffect(() => {
+  //   const stream = screenStreamRef.current;
+  //   if (!stream) return;
+  //   const track = stream.getVideoTracks()[0];
+  //   if (!track) return;
+  //   const handleEnded = () => {
+  //     stopScreen();
+  //     socket.emit("screen-share-stop", { roomCode, userId: user.id });
+  //   };
+  //   track.addEventListener("ended", handleEnded);
+  //   return () => track.removeEventListener("ended", handleEnded);
+  // }, [screenOn, roomCode, user.id, stopScreen]);
 
   useEffect(() => {
     const handleRoomEnded = ({ message }) => {
@@ -292,7 +306,6 @@ const MeetingInterface = () => {
   }, [deviceSections]);
 
   // Handlers
-
   const handleMicToggle = async () => {
     const nextMic = !micOn;
     if (nextMic) {
@@ -309,8 +322,7 @@ const MeetingInterface = () => {
 
   const handleScreenToggle = async () => {
     if (screenOn) {
-      stopScreen();
-      socket.emit("screen-share-stop", { roomCode, userId: user.id });
+      stopScreen(handleNetworkScreenStop);
     } else {
       socket.emit("screen-share-start", { roomCode, userId: user.id });
     }

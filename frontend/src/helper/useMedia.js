@@ -24,29 +24,34 @@ export const useMedia = () => {
     setMicOn(false);
   }, []);
 
-  const startScreen = useCallback(async () => {
+  // Add 'onStopCallback' as a parameter
+  const startScreen = useCallback(async (onStopCallback) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
       screenStreamRef.current = stream;
-      // Auto-stop when user clicks browser's "Stop sharing"
+
       stream.getVideoTracks()[0].onended = () => {
         screenStreamRef.current = null;
         setScreenOn(false);
+        if (onStopCallback) onStopCallback();
       };
+
       setScreenOn(true);
       return stream;
     } catch (err) {
-      return null;
+      return null; // User clicked Cancel
     }
   }, []);
 
-  const stopScreen = useCallback(() => {
+  // Also add it to the manual stop function just in case
+  const stopScreen = useCallback((onStopCallback) => {
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     setScreenOn(false);
+    if (onStopCallback) onStopCallback();
   }, []);
 
   return {

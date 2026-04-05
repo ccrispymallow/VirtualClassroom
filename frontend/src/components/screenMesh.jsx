@@ -1,19 +1,22 @@
-import { useRef, useEffect, useState, useCallback } from "react";
-import { createRoot } from "react-dom/client";
-import { VideoTexture, LinearFilter } from "three";
-import { Html } from "@react-three/drei";
+import { Suspense, useEffect, useState } from "react";
+import { useVideoTexture, Html } from "@react-three/drei";
 import { useRoom } from "../components/roomContext";
+import { createRoot } from "react-dom/client";
 
+// ─── Video material using useVideoTexture (auto-updates reactively) ───────────
+function VideoMaterial({ stream }) {
+  const texture = useVideoTexture(stream, { muted: true });
+  return <meshStandardMaterial map={texture} toneMapped={false} />;
+}
+
+// ─── Fullscreen overlay ───────────────────────────────────────────────────────
 function FullscreenOverlay({ stream, onClose }) {
-  const videoRef = useCallback(
-    (el) => {
-      if (el && stream) {
-        el.srcObject = stream;
-        el.play().catch(() => {});
-      }
-    },
-    [stream],
-  );
+  const videoRef = (el) => {
+    if (el && stream) {
+      el.srcObject = stream;
+      el.play().catch(() => {});
+    }
+  };
 
   return (
     <div
@@ -64,11 +67,13 @@ function FullscreenOverlay({ stream, onClose }) {
   );
 }
 
+// ─── Screen mesh ──────────────────────────────────────────────────────────────
 export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   const { screenStream } = useRoom();
-  const meshRef = useRef();
   const [fullscreen, setFullscreen] = useState(false);
+  const isActive = !!screenStream;
 
+  // F key toggles fullscreen
   useEffect(() => {
     const onKey = (e) => {
       if (e.key.toLowerCase() === "f") {
@@ -81,54 +86,35 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
-  useEffect(() => {
-    if (!screenStream || !meshRef.current) return;
-    const video = document.createElement("video");
-    video.srcObject = screenStream;
-    video.autoplay = true;
-    video.muted = true;
-    video.playsInline = true;
-    video.play().catch(() => {});
-
-    const texture = new VideoTexture(video);
-    texture.minFilter = LinearFilter;
-    texture.magFilter = LinearFilter;
-    meshRef.current.material.map = texture;
-    meshRef.current.material.needsUpdate = true;
-
-    return () => {
-      video.pause();
-      video.srcObject = null;
-      texture.dispose();
-      if (meshRef.current) {
-        meshRef.current.material.map = null;
-        meshRef.current.material.needsUpdate = true;
-      }
-    };
-  }, [screenStream]);
-
+  // Fullscreen overlay
   useEffect(() => {
     if (!fullscreen || !screenStream) return;
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
-    const close = () => setFullscreen(false);
-    root.render(<FullscreenOverlay stream={screenStream} onClose={close} />);
+    root.render(
+      <FullscreenOverlay
+        stream={screenStream}
+        onClose={() => setFullscreen(false)}
+      />,
+    );
     return () => {
       root.unmount();
       document.body.removeChild(container);
     };
   }, [fullscreen, screenStream]);
 
-  const isActive = !!screenStream;
-
   return (
-    <mesh ref={meshRef} position={position} rotation={[0, Math.PI, 0]}>
+    <mesh position={position} rotation={[0, Math.PI, 0]}>
       <planeGeometry args={[4.5, 2.2]} />
-      <meshStandardMaterial
-        color={isActive ? "#ffffff" : "#0a0a0a"}
-        toneMapped={false}
-      />
+
+      {isActive ? (
+        <Suspense fallback={<meshStandardMaterial color="#0a0a0a" />}>
+          <VideoMaterial stream={screenStream} />
+        </Suspense>
+      ) : (
+        <meshStandardMaterial color="#0a0a0a" toneMapped={false} />
+      )}
 
       {!fullscreen && !isActive && (
         <Html

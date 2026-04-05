@@ -10,6 +10,7 @@ export const usePeer = ({
 }) => {
   const peerRef = useRef(null);
   const callsRef = useRef({});
+  const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
 
   const userId = user?.id ?? "";
@@ -35,9 +36,13 @@ export const usePeer = ({
       if (!peerRef.current || !stream) return;
 
       const callKey = `${peerId}-${type}`;
-      if (callsRef.current[callKey]) return;
+      console.log("Calling peer:", peerId, "type:", type, "stream:", stream);
 
-      console.log("Calling peer:", peerId, "type:", type);
+      if (callsRef.current[callKey]) {
+        callsRef.current[callKey].close();
+        delete callsRef.current[callKey];
+      }
+
       const call = peerRef.current.call(peerId, stream, {
         metadata: { type, username: uname },
       });
@@ -51,12 +56,16 @@ export const usePeer = ({
         delete callsRef.current[callKey];
       });
 
-      call.on("error", (err) => console.error("📞 Call error:", err));
+      call.on("error", (err) => console.error("Call error:", err));
 
       callsRef.current[callKey] = call;
     },
     [removeStreams, addStream],
   );
+
+  const getAllPeerIds = useCallback(() => {
+    return Array.from(knownPeersRef.current);
+  }, []);
 
   useEffect(() => {
     if (!userId || !roomCode) return;
@@ -68,7 +77,7 @@ export const usePeer = ({
     const peer = new Peer(undefined, {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
       port: isLocal ? 9000 : 443,
-      path: isLocal ? "/peerjs" : "/",
+      path: "/peerjs",
       secure: !isLocal,
     });
 
@@ -101,7 +110,7 @@ export const usePeer = ({
       });
 
       call.on("close", () => removeStreams(call.peer));
-      call.on("error", (err) => console.error("📞 Call error:", err));
+      call.on("error", (err) => console.error("Call error:", err));
 
       callsRef.current[`${call.peer}-${call.metadata?.type}`] = call;
     });
@@ -110,6 +119,8 @@ export const usePeer = ({
 
     socket.on("user-joined", ({ peerId, username: joinedUsername }) => {
       console.log("User joined:", joinedUsername, peerId);
+      knownPeersRef.current.add(peerId);
+
       if (micStreamRef.current) {
         callPeer(peerId, micStreamRef.current, "mic", username);
       }
@@ -121,6 +132,8 @@ export const usePeer = ({
     socket.on("existing-peers", (peers) => {
       console.log("Existing peers in room:", peers);
       peers.forEach(({ peerId }) => {
+        knownPeersRef.current.add(peerId);
+
         if (micStreamRef.current) {
           callPeer(peerId, micStreamRef.current, "mic", username);
         }
@@ -150,27 +163,39 @@ export const usePeer = ({
 
   const broadcastMic = useCallback(
     (stream) => {
-      Object.keys(callsRef.current).forEach((key) => {
-        if (key.endsWith("-mic")) {
-          const peerId = key.replace("-mic", "");
-          callPeer(peerId, stream, "mic", username);
-        }
+      getAllPeerIds().forEach((peerId) => {
+        callPeer(peerId, stream, "mic", username);
       });
     },
-    [callPeer, username],
+    [callPeer, username, getAllPeerIds],
   );
 
   const broadcastScreen = useCallback(
     (stream) => {
-      Object.keys(callsRef.current).forEach((key) => {
-        if (key.endsWith("-screen")) {
-          const peerId = key.replace("-screen", "");
-          callPeer(peerId, stream, "screen", username);
-        }
+      const peerIds = getAllPeerIds();
+      console.log("Broadcasting screen to peers:", peerIds);
+      peerIds.forEach((peerId) => {
+        callPeer(peerId, stream, "screen", username);
       });
     },
-    [callPeer, username],
+    [callPeer, username, getAllPeerIds],
   );
 
-  return { remoteStreams, peerRef, broadcastMic, broadcastScreen };
+  const stopScreenCalls = useCallback(() => {
+    Object.keys(callsRef.current)
+      .filter((key) => key.endsWith("-screen"))
+      .forEach((key) => {
+        callsRef.current[key].close();
+        delete callsRef.current[key];
+      });
+    setRemoteStreams((prev) => prev.filter((s) => s.type !== "screen"));
+  }, []);
+
+  return {
+    remoteStreams,
+    peerRef,
+    broadcastMic,
+    broadcastScreen,
+    stopScreenCalls,
+  };
 };
