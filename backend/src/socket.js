@@ -1,6 +1,5 @@
 const rooms = {};
 const roomPolls = {}; // key: roomCode, value: {pollId, totalExpected, responses:{yes,no}, answered:Set, timeout}
-const roomScreenShare = {};
 
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
@@ -15,25 +14,6 @@ export const initSocket = (io) => {
         position: [0, 0, 0],
         yaw: 0,
         mic: false,
-      });
-
-      socket.on("screen-share-start", ({ roomCode, userId }) => {
-        if (roomScreenShare[roomCode] && roomScreenShare[roomCode] !== userId) {
-          socket.emit("screen-share-rejected");
-          return;
-        }
-        roomScreenShare[roomCode] = userId;
-        socket.emit("screen-share-approved");
-        socket
-          .to(roomCode)
-          .emit("screen-share-update", { userId, active: true });
-      });
-
-      socket.on("screen-share-stop", ({ roomCode, userId }) => {
-        if (roomScreenShare[roomCode] === userId) {
-          delete roomScreenShare[roomCode];
-        }
-        io.to(roomCode).emit("screen-share-update", { userId, active: false });
       });
 
       const others = rooms[roomCode].filter((p) => p.id !== user.id);
@@ -198,8 +178,6 @@ export const initSocket = (io) => {
         rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
         io.to(roomCode).emit("participants-update", rooms[roomCode]);
       }
-      if (roomScreenShare[roomCode] === userId)
-        delete roomScreenShare[roomCode];
       socket.leave(roomCode);
     });
 
@@ -342,9 +320,6 @@ export const initSocket = (io) => {
 
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
-        const p = rooms[roomCode].find((p) => p.socketId === socket.id);
-        if (p && roomScreenShare[roomCode] === p.id)
-          delete roomScreenShare[roomCode];
         const before = rooms[roomCode].length;
         rooms[roomCode] = rooms[roomCode].filter(
           (p) => p.socketId !== socket.id,
