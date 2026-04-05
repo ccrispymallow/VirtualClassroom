@@ -117,6 +117,15 @@ const MeetingInterface = () => {
   }, [setParticipants]);
 
   useEffect(() => {
+    socket.on("you-were-removed", () => {
+      alert("You have been removed from the room by the instructor.");
+      localStorage.removeItem("currentRoom");
+      navigate("/homepage");
+    });
+    return () => socket.off("you-were-removed");
+  }, [navigate]);
+
+  useEffect(() => {
     const handleRoomEnded = ({ message }) => {
       alert(message);
       localStorage.removeItem("currentRoom");
@@ -318,6 +327,12 @@ const MeetingInterface = () => {
     setMyEmote?.(next);
     setShowEmotes(false);
     socket.emit("emote", { roomCode, userId: user.id, emote: next });
+  };
+
+  const handleRemoveParticipant = (participantId, username) => {
+    const confirmed = window.confirm(`Remove ${username} from the room?`);
+    if (!confirmed) return;
+    socket.emit("remove-participant", { roomCode, userId: participantId });
   };
 
   const handleSendChat = () => {
@@ -752,6 +767,15 @@ const MeetingInterface = () => {
                     <BsMicFill size={12} color="#3b82f6" />
                   ) : (
                     <BsMicMuteFill size={12} color="#64748b" />
+                  )}
+                  {isInstructor && !isMe && p.role !== "instructor" && (
+                    <button
+                      onClick={() => handleRemoveParticipant(p.id, p.username)}
+                      className="ml-1 text-rose-400 hover:text-rose-300 transition-colors"
+                      title="Remove participant"
+                    >
+                      <IoClose size={14} />
+                    </button>
                   )}
                 </div>
               </div>

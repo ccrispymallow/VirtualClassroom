@@ -46,16 +46,19 @@ export const RoomProvider = ({ children }) => {
 
     const handleParticipantsUpdate = (updatedList) => {
       setParticipants(updatedList);
-      // Seed emotes from participant data for late joiners
-      setPeerEmotes((prev) => {
-        const next = { ...prev };
-        updatedList.forEach((p) => {
-          if (p.emote !== undefined) next[p.id] = p.emote;
-        });
+      const ids = new Set(updatedList.map((p) => p.id));
+
+      setPeerPositions((prev) => {
+        const next = {};
+        for (const id in prev) if (ids.has(id)) next[id] = prev[id];
         return next;
       });
       setPeerSitting((prev) => {
-        const ids = new Set(updatedList.map((p) => p.id));
+        const next = {};
+        for (const id in prev) if (ids.has(id)) next[id] = prev[id];
+        return next;
+      });
+      setPeerYaws((prev) => {
         const next = {};
         for (const id in prev) if (ids.has(id)) next[id] = prev[id];
         return next;

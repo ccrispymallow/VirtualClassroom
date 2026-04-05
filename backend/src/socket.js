@@ -256,6 +256,16 @@ export const initSocket = (io) => {
       socket.to(roomCode).emit("peer-moving", { userId, isMoving });
     });
 
+    socket.on("remove-participant", ({ roomCode, userId }) => {
+      if (rooms[roomCode]) {
+        const target = rooms[roomCode].find((p) => p.id === userId);
+        if (target) {
+          io.to(target.socketId).emit("you-were-removed");
+          rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
+          io.to(roomCode).emit("participants-update", rooms[roomCode]);
+        }
+      }
+    });
     // board-announce: instructor posts and notifies students
     socket.on("board-announce", ({ roomCode, text, author }) => {
       socket.to(roomCode).emit("board-announcement-notify", { text, author });
