@@ -68,7 +68,7 @@ export const usePeer = ({
     const peer = new Peer(undefined, {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
       port: isLocal ? 9000 : 443,
-      path: "/peerjs",
+      path: isLocal ? "/peerjs" : "/",
       secure: !isLocal,
     });
 

@@ -126,6 +126,40 @@ const MeetingInterface = () => {
   }, [navigate]);
 
   useEffect(() => {
+    socket.on("screen-share-approved", async () => {
+      const stream = await startScreen();
+      if (stream) broadcastScreen(stream);
+    });
+    socket.on("screen-share-rejected", () => {
+      alert("Someone is already sharing their screen.");
+    });
+    socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
+      if (active && sharingUserId !== user.id && screenOn) {
+        stopScreen();
+        socket.emit("screen-share-stop", { roomCode, userId: user.id });
+      }
+    });
+    return () => {
+      socket.off("screen-share-approved");
+      socket.off("screen-share-rejected");
+      socket.off("screen-share-update");
+    };
+  }, [screenOn, roomCode, user.id, startScreen, stopScreen, broadcastScreen]);
+
+  useEffect(() => {
+    const stream = screenStreamRef.current;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    const handleEnded = () => {
+      stopScreen();
+      socket.emit("screen-share-stop", { roomCode, userId: user.id });
+    };
+    track.addEventListener("ended", handleEnded);
+    return () => track.removeEventListener("ended", handleEnded);
+  }, [screenOn, roomCode, user.id, stopScreen]);
+
+  useEffect(() => {
     const handleRoomEnded = ({ message }) => {
       alert(message);
       localStorage.removeItem("currentRoom");
@@ -276,9 +310,9 @@ const MeetingInterface = () => {
   const handleScreenToggle = async () => {
     if (screenOn) {
       stopScreen();
+      socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
-      const stream = await startScreen();
-      if (stream) broadcastScreen(stream);
+      socket.emit("screen-share-start", { roomCode, userId: user.id });
     }
   };
 
