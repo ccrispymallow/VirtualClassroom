@@ -122,6 +122,36 @@ const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
   </div>
 );
 
+const AlreadyActiveModal = ({ activeRoom, onCancel }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-80 shadow-2xl">
+      <div className="flex justify-center mb-3">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-2xl">
+          ⚠️
+        </div>
+      </div>
+      <p className="text-slate-200 text-sm font-semibold text-center mb-1">
+        You already have an active session
+      </p>
+      <p className="text-slate-500 text-xs text-center mb-1">
+        <span className="text-amber-400 font-medium">
+          "{activeRoom.room_name}"
+        </span>{" "}
+        is currently live.
+      </p>
+      <p className="text-slate-600 text-xs text-center mb-5">
+        End the session before starting a new one.
+      </p>
+      <button
+        onClick={onCancel}
+        className="w-full py-2.5 rounded-xl bg-[#1a2235] border border-[#1e2d45] text-slate-300 text-xs font-semibold hover:bg-[#1e2d45] transition-colors"
+      >
+        Got it
+      </button>
+    </div>
+  </div>
+);
+
 const checkRoomLive = async (roomId) => {
   try {
     const res = await fetch(
@@ -159,6 +189,7 @@ export default function Home() {
   const [pwError, setPwError] = useState("");
   const [sessionTarget, setSessionTarget] = useState(null);
   const [sessionStarting, setSessionStarting] = useState(false);
+  const [alreadyActiveRoom, setAlreadyActiveRoom] = useState(null);
 
   const inputClass =
     "w-full px-3.5 py-2.5 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-sm outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600";
@@ -178,6 +209,22 @@ export default function Home() {
 
   const handleInstructorEnterRoom = (room, e) => {
     if (e.target.closest("[data-menu-btn]")) return;
+
+    // If this room is already live, allow re-entering directly
+    if (room.live_status === "live") {
+      setSessionTarget(room);
+      return;
+    }
+
+    // Block if any OTHER room is currently live
+    const existingLive = myRooms.find(
+      (r) => r.id !== room.id && r.live_status === "live",
+    );
+    if (existingLive) {
+      setAlreadyActiveRoom(existingLive);
+      return;
+    }
+
     setSessionTarget(room);
   };
 
@@ -394,7 +441,6 @@ export default function Home() {
     navigate("/");
   };
 
-  // Close all menus when clicking outside
   const closeAllMenus = () => {
     setMyRooms((prev) => prev.map((r) => ({ ...r, _menuOpen: false })));
     setShowUserPanel(false);
@@ -429,6 +475,12 @@ export default function Home() {
           onConfirm={handleStartSession}
           onCancel={() => setSessionTarget(null)}
           loading={sessionStarting}
+        />
+      )}
+      {alreadyActiveRoom && (
+        <AlreadyActiveModal
+          activeRoom={alreadyActiveRoom}
+          onCancel={() => setAlreadyActiveRoom(null)}
         />
       )}
 
@@ -711,7 +763,6 @@ export default function Home() {
                         if (isInstructor) {
                           handleInstructorEnterRoom(room, e);
                         } else {
-                          // ── Student: click card to join ──
                           setStatus(null);
                           enterRoom(room);
                         }
@@ -777,7 +828,6 @@ export default function Home() {
                                 🗑️ Delete Room
                               </button>
                             ) : (
-                              // Student: only "Remove from list"
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
