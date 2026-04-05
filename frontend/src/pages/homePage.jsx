@@ -1,40 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import "../App.css"; // Ensures styles are imported
 
 const LiveBadge = () => (
-  <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full">
-    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-    LIVE
+  <span className="badge live">
+    <span className="dot" /> LIVE
   </span>
 );
 
-const OfflineBadge = () => (
-  <span className="px-2 py-0.5 bg-slate-700/40 text-slate-500 text-[10px] font-bold rounded-full">
-    OFFLINE
-  </span>
-);
+const OfflineBadge = () => <span className="badge offline">OFFLINE</span>;
 
 const DeleteConfirm = ({ roomName, onConfirm, onCancel }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-72 shadow-2xl">
-      <p className="text-slate-200 text-sm font-semibold text-center mb-1">
-        Delete Room?
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>Delete Room?</h3>
+      <p>
+        <span>"{roomName}"</span> will be permanently deleted.
       </p>
-      <p className="text-slate-500 text-xs text-center mb-5">
-        <span className="text-slate-300 font-medium">"{roomName}"</span> will be
-        permanently deleted.
-      </p>
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-2 rounded-xl border border-[#1e2d45] text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors"
-        >
+      <div className="modal-actions">
+        <button onClick={onCancel} className="btn-outline">
           Cancel
         </button>
-        <button
-          onClick={onConfirm}
-          className="flex-1 py-2 rounded-xl bg-rose-500 text-white text-xs font-semibold hover:bg-rose-600 transition-colors"
-        >
+        <button onClick={onConfirm} className="btn-danger">
           Delete
         </button>
       </div>
@@ -45,38 +32,30 @@ const DeleteConfirm = ({ roomName, onConfirm, onCancel }) => (
 const PasswordPrompt = ({ roomName, onConfirm, onCancel, error }) => {
   const [pw, setPw] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-72 shadow-2xl">
-        <p className="text-slate-200 text-sm font-semibold text-center mb-1">
-          Password Required
+    <div className="modal-overlay">
+      <div className="modal">
+        <h3>Password Required</h3>
+        <p>
+          Enter password for <span>"{roomName}"</span>
         </p>
-        <p className="text-slate-500 text-xs text-center mb-4">
-          Enter password for{" "}
-          <span className="text-slate-300 font-medium">"{roomName}"</span>
-        </p>
-        <input
-          type="password"
-          placeholder="••••••••"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onConfirm(pw)}
-          className="w-full px-3.5 py-2.5 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-sm outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600 mb-2"
-          autoFocus
-        />
+        <div className="field">
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onConfirm(pw)}
+            autoFocus
+          />
+        </div>
         {error && (
-          <p className="text-rose-400 text-xs text-center mb-2">{error}</p>
+          <p style={{ color: "var(--error)", marginTop: "-10px" }}>{error}</p>
         )}
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2 rounded-xl border border-[#1e2d45] text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors"
-          >
+        <div className="modal-actions">
+          <button onClick={onCancel} className="btn-outline">
             Cancel
           </button>
-          <button
-            onClick={() => onConfirm(pw)}
-            className="flex-1 py-2 rounded-xl bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-colors"
-          >
+          <button onClick={() => onConfirm(pw)} className="btn">
             Join
           </button>
         </div>
@@ -86,35 +65,26 @@ const PasswordPrompt = ({ roomName, onConfirm, onCancel, error }) => {
 };
 
 const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-80 shadow-2xl">
-      <div className="flex justify-center mb-3">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-400/10 flex items-center justify-center text-2xl">
-          🏫
-        </div>
+  <div className="modal-overlay">
+    <div className="modal">
+      <div
+        className="modal-icon"
+        style={{ background: "rgba(59, 130, 246, 0.1)" }}
+      >
+        🏫
       </div>
-      <p className="text-slate-200 text-sm font-semibold text-center mb-1">
-        Start a New Session?
+      <h3>Start a New Session?</h3>
+      <p>
+        <span>"{room.room_name}"</span>
       </p>
-      <p className="text-slate-500 text-xs text-center mb-1">
-        <span className="text-slate-300 font-medium">"{room.room_name}"</span>
-      </p>
-      <p className="text-slate-600 text-xs text-center mb-5">
+      <p style={{ marginBottom: "16px" }}>
         This will set the room as live so students can join.
       </p>
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          className="flex-1 py-2.5 rounded-xl border border-[#1e2d45] text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors disabled:opacity-50"
-        >
+      <div className="modal-actions">
+        <button onClick={onCancel} disabled={loading} className="btn-outline">
           Cancel
         </button>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
-        >
+        <button onClick={onConfirm} disabled={loading} className="btn">
           {loading ? "Starting…" : "Start Session"}
         </button>
       </div>
@@ -123,28 +93,26 @@ const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
 );
 
 const AlreadyActiveModal = ({ activeRoom, onCancel }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-    <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-6 w-80 shadow-2xl">
-      <div className="flex justify-center mb-3">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-2xl">
-          ⚠️
-        </div>
+  <div className="modal-overlay">
+    <div className="modal">
+      <div
+        className="modal-icon"
+        style={{ background: "rgba(245, 158, 11, 0.1)" }}
+      >
+        ⚠️
       </div>
-      <p className="text-slate-200 text-sm font-semibold text-center mb-1">
-        You already have an active session
-      </p>
-      <p className="text-slate-500 text-xs text-center mb-1">
-        <span className="text-amber-400 font-medium">
-          "{activeRoom.room_name}"
-        </span>{" "}
+      <h3>You already have an active session</h3>
+      <p>
+        <span style={{ color: "var(--warn)" }}>"{activeRoom.room_name}"</span>{" "}
         is currently live.
       </p>
-      <p className="text-slate-600 text-xs text-center mb-5">
+      <p style={{ marginBottom: "16px" }}>
         End the session before starting a new one.
       </p>
       <button
         onClick={onCancel}
-        className="w-full py-2.5 rounded-xl bg-[#1a2235] border border-[#1e2d45] text-slate-300 text-xs font-semibold hover:bg-[#1e2d45] transition-colors"
+        className="btn-outline"
+        style={{ width: "100%" }}
       >
         Got it
       </button>
@@ -191,9 +159,6 @@ export default function Home() {
   const [sessionStarting, setSessionStarting] = useState(false);
   const [alreadyActiveRoom, setAlreadyActiveRoom] = useState(null);
 
-  const inputClass =
-    "w-full px-3.5 py-2.5 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-sm outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600";
-
   useEffect(() => {
     if (!user.id) return;
     setRoomsLoading(true);
@@ -209,14 +174,10 @@ export default function Home() {
 
   const handleInstructorEnterRoom = (room, e) => {
     if (e.target.closest("[data-menu-btn]")) return;
-
-    // If this room is already live, allow re-entering directly
     if (room.live_status === "live") {
       setSessionTarget(room);
       return;
     }
-
-    // Block if any OTHER room is currently live
     const existingLive = myRooms.find(
       (r) => r.id !== room.id && r.live_status === "live",
     );
@@ -224,7 +185,6 @@ export default function Home() {
       setAlreadyActiveRoom(existingLive);
       return;
     }
-
     setSessionTarget(room);
   };
 
@@ -271,7 +231,7 @@ export default function Home() {
     if (!isLive) {
       setStatus({
         type: "error",
-        message: `"${room.room_name}" is not currently active. Wait for your instructor to start the session.`,
+        message: `"${room.room_name}" is not currently active. Wait for your instructor.`,
       });
       setPwTarget(null);
       return;
@@ -447,10 +407,7 @@ export default function Home() {
   };
 
   return (
-    <div
-      className="min-h-screen bg-[#0b0f1a] px-4 py-6 relative"
-      onClick={closeAllMenus}
-    >
+    <div className="app-wrapper" onClick={closeAllMenus}>
       {deleteTarget && (
         <DeleteConfirm
           roomName={deleteTarget.room_name}
@@ -484,369 +441,307 @@ export default function Home() {
         />
       )}
 
-      {/* Top bar */}
-      <div
-        className="flex items-center justify-between max-w-5xl mx-auto mb-16"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-lg">
-            🎓
+      {/* Navbar */}
+      <div className="navbar" onClick={(e) => e.stopPropagation()}>
+        <div className="nav-brand">
+          <div className="brand-icon" style={{ width: "36px", height: "36px" }}>
+            <img
+              src="/logo.svg"
+              style={{ width: "24px", filter: "brightness(0) invert(1)" }}
+              alt="Logo"
+            />
           </div>
-          <span className="text-sm font-bold tracking-wide text-slate-200">
-            Virtual<span className="text-cyan-400">Class</span>
+          <span className="brand-name" style={{ fontSize: "16px" }}>
+            Virtual<span>Class</span>
           </span>
         </div>
-        <div className="relative">
+
+        <div style={{ position: "relative" }}>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowUserPanel(!showUserPanel);
-            }}
-            className="flex items-center gap-2.5 bg-[#111827] border border-[#1e2d45] rounded-2xl px-3 py-2 hover:border-blue-500/50 transition-colors"
+            onClick={() => setShowUserPanel(!showUserPanel)}
+            className="user-menu-btn"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
+            <div className="user-avatar">
               {user.username?.[0]?.toUpperCase() || "?"}
             </div>
-            <div className="text-left">
-              <p className="text-slate-200 text-xs font-semibold">
-                {user.username || "Guest"}
-              </p>
-              <p className="text-slate-500 text-[11px] capitalize">
-                {user.role || "user"}
-              </p>
+            <div className="user-info">
+              <p className="name">{user.username || "Guest"}</p>
+              <p className="role">{user.role || "user"}</p>
             </div>
-            <svg
-              className={`w-4 h-4 text-slate-500 transition-transform ${showUserPanel ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            <span
+              style={{
+                fontSize: "10px",
+                marginLeft: "4px",
+                transform: showUserPanel ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s",
+              }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+              ▼
+            </span>
           </button>
+
           {showUserPanel && (
-            <div className="absolute right-0 top-14 w-64 bg-[#111827] border border-[#1e2d45] rounded-2xl p-4 z-50 shadow-xl">
-              <div className="flex flex-col items-center mb-4 pb-4 border-b border-[#1e2d45]">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-2xl mb-2">
+            <div className="dropdown">
+              <div className="dropdown-header">
+                <div className="user-avatar dropdown-avatar">
                   {user.username?.[0]?.toUpperCase() || "?"}
                 </div>
-                <p className="text-slate-200 font-semibold text-sm">
-                  {user.username}
+                <p className="name">{user.username}</p>
+                <p className="role" style={{ fontSize: "11px" }}>
+                  {user.email}
                 </p>
-                <p className="text-slate-500 text-xs">{user.email}</p>
-                <span className="mt-1.5 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[11px] rounded-full capitalize">
-                  {user.role}
-                </span>
+                <span className="dropdown-role">{user.role}</span>
               </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="w-full px-3 py-2 rounded-xl bg-[#1a2235] text-slate-300 text-xs font-semibold hover:bg-[#1e2d45] transition-colors text-left flex items-center gap-2"
-                >
-                  <span>✏️</span> Edit Profile & Avatar
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 text-xs font-semibold hover:bg-rose-500/20 transition-colors text-left flex items-center gap-2"
-                >
-                  <span>🚪</span> Sign Out
-                </button>
-              </div>
+              <button
+                onClick={() => navigate("/profile")}
+                className="dropdown-action"
+              >
+                <span>✏️</span> Edit Profile & Avatar
+              </button>
+              <button onClick={handleLogout} className="dropdown-action danger">
+                <span>🚪</span> Sign Out
+              </button>
             </div>
           )}
         </div>
       </div>
 
       {/* Hero */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-slate-100 mb-3">
-          Your Virtual{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">
-            Classroom
-          </span>
+      <div className="hero">
+        <h1>
+          Your Virtual <span>Classroom</span>
         </h1>
-        <p className="text-slate-500 text-sm">
+        <p>
           {isInstructor
             ? "Create or join a 3D classroom and teach in real time"
             : "Join a classroom and learn together in real time"}
         </p>
       </div>
 
-      <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 items-start justify-center">
-        {/* Form card */}
-        <div className="w-full max-w-[460px]">
-          <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl px-9 py-10 relative overflow-hidden">
-            <div className="absolute -top-14 -right-14 w-48 h-48 rounded-full bg-blue-500/10 pointer-events-none" />
-            {isInstructor && (
-              <div className="flex gap-1 bg-[#0b0f1a] rounded-xl p-1 mb-7">
-                {["join", "create"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => {
-                      setActiveTab(tab);
-                      setStatus(null);
-                    }}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${activeTab === tab ? "bg-blue-500 text-white" : "text-slate-500 hover:text-slate-300"}`}
-                  >
-                    {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
-                  </button>
-                ))}
+      <div className="home-layout">
+        {/* Form Card */}
+        <div className="card">
+          {isInstructor && (
+            <div className="tabs">
+              {["join", "create"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setStatus(null);
+                  }}
+                  className={`tab ${activeTab === tab ? "active" : ""}`}
+                >
+                  {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {status && (
+            <div className={`status ${status.type}`}>
+              {status.type === "loading" && "⏳ "}
+              {status.type === "success" && "✅ "}
+              {status.type === "error" && "❌ "}
+              {status.message}
+            </div>
+          )}
+
+          {!isInstructor || activeTab === "join" ? (
+            <form onSubmit={handleJoin}>
+              <div className="field">
+                <label>Room Code</label>
+                <input
+                  placeholder="Enter room code"
+                  value={joinForm.room_code}
+                  onChange={(e) =>
+                    setJoinForm({ ...joinForm, room_code: e.target.value })
+                  }
+                />
               </div>
-            )}
-            {status && (
-              <div
-                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium mb-4 border ${
-                  status.type === "success"
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
-                    : status.type === "error"
-                      ? "bg-rose-500/10 text-rose-400 border-rose-500/25"
-                      : "bg-blue-500/10 text-blue-400 border-blue-500/25"
-                }`}
+              <div className="field">
+                <label>
+                  Password{" "}
+                  <span style={{ textTransform: "none" }}>(if required)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={joinForm.room_password}
+                  onChange={(e) =>
+                    setJoinForm({ ...joinForm, room_password: e.target.value })
+                  }
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={status?.type === "loading"}
+                className="btn"
               >
-                {status.type === "loading" && "⏳"}
-                {status.type === "success" && "✅"}
-                {status.type === "error" && "❌"}
-                {status.message}
+                Join Classroom
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleCreate}>
+              <div className="field">
+                <label>Room Name</label>
+                <input
+                  placeholder="My Classroom"
+                  value={createForm.room_name}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, room_name: e.target.value })
+                  }
+                />
               </div>
-            )}
-            {!isInstructor || activeTab === "join" ? (
-              <form onSubmit={handleJoin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                    Room Code
-                  </label>
-                  <input
-                    placeholder="Enter room code"
-                    className={inputClass}
-                    value={joinForm.room_code}
-                    onChange={(e) =>
-                      setJoinForm({ ...joinForm, room_code: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                    Password{" "}
-                    <span className="normal-case text-slate-600">
-                      (if required)
-                    </span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className={inputClass}
-                    value={joinForm.room_password}
-                    onChange={(e) =>
-                      setJoinForm({
-                        ...joinForm,
-                        room_password: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={status?.type === "loading"}
-                  className="w-full py-3 mt-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl text-white text-sm font-bold hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Join Classroom
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                    Room Name
-                  </label>
-                  <input
-                    placeholder="My Classroom"
-                    className={inputClass}
-                    value={createForm.room_name}
-                    onChange={(e) =>
-                      setCreateForm({
-                        ...createForm,
-                        room_name: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                    Password{" "}
-                    <span className="normal-case text-slate-600">
-                      (optional)
-                    </span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className={inputClass}
-                    value={createForm.room_password}
-                    onChange={(e) =>
-                      setCreateForm({
-                        ...createForm,
-                        room_password: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">
-                    Capacity
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Max students (default 5)"
-                    className={inputClass}
-                    min="1"
-                    value={createForm.capacity}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (val < 1) return;
-                      setCreateForm({
-                        ...createForm,
-                        capacity: e.target.value,
-                      });
-                    }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={status?.type === "loading"}
-                  className="w-full py-3 mt-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl text-white text-sm font-bold hover:opacity-90 hover:-translate-y-px active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {status?.type === "loading"
-                    ? "Creating…"
-                    : "Create Classroom"}
-                </button>
-              </form>
-            )}
-          </div>
+              <div className="field">
+                <label>
+                  Password{" "}
+                  <span style={{ textTransform: "none" }}>(optional)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={createForm.room_password}
+                  onChange={(e) =>
+                    setCreateForm({
+                      ...createForm,
+                      room_password: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="field">
+                <label>Capacity</label>
+                <input
+                  type="number"
+                  placeholder="Max students"
+                  min="1"
+                  value={createForm.capacity}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, capacity: e.target.value })
+                  }
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={status?.type === "loading"}
+                className="btn"
+              >
+                {status?.type === "loading" ? "Creating…" : "Create Classroom"}
+              </button>
+            </form>
+          )}
         </div>
 
-        {/* My Rooms panel */}
-        <div
-          className="w-full max-w-[460px]"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-[#111827] border border-[#1e2d45] rounded-2xl p-5">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
+        {/* My Rooms Panel */}
+        <div className="card" onClick={(e) => e.stopPropagation()}>
+          <h2 className="card-title">
+            {isInstructor
+              ? "🏫 My Created Rooms"
+              : "📚 Previously Joined Rooms"}
+          </h2>
+
+          {roomsLoading ? (
+            <div className="spinner"></div>
+          ) : myRooms.length === 0 ? (
+            <p
+              style={{
+                textAlign: "center",
+                color: "var(--muted)",
+                fontSize: "12px",
+                margin: "32px 0",
+              }}
+            >
               {isInstructor
-                ? "🏫 My Created Rooms"
-                : "📚 Previously Joined Rooms"}
-            </h2>
-            {roomsLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="w-5 h-5 border-2 border-[#1e2d45] border-t-blue-500 rounded-full animate-spin" />
-              </div>
-            ) : myRooms.length === 0 ? (
-              <p className="text-slate-600 text-xs text-center py-8">
-                {isInstructor
-                  ? "No rooms yet. Create one to get started."
-                  : "You haven't joined any rooms yet."}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {myRooms.map((room) => {
-                  const isLive = room.live_status === "live";
-                  return (
-                    <div
-                      key={room.id}
-                      onClick={(e) => {
-                        if (e.target.closest("[data-menu-btn]")) return;
-                        if (isInstructor) {
-                          handleInstructorEnterRoom(room, e);
-                        } else {
-                          setStatus(null);
-                          enterRoom(room);
-                        }
-                      }}
-                      className="relative bg-[#0f172a] border border-[#1e2d45] rounded-xl px-4 py-3 flex items-center gap-3 hover:border-blue-500/30 transition-colors cursor-pointer group"
-                    >
-                      <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-400/10 flex items-center justify-center text-base flex-shrink-0">
-                        🏫
+                ? "No rooms yet. Create one to get started."
+                : "You haven't joined any rooms yet."}
+            </p>
+          ) : (
+            <div>
+              {myRooms.map((room) => {
+                const isLive = room.live_status === "live";
+                return (
+                  <div
+                    key={room.id}
+                    onClick={(e) => {
+                      if (e.target.closest("[data-menu-btn]")) return;
+                      if (isInstructor) handleInstructorEnterRoom(room, e);
+                      else {
+                        setStatus(null);
+                        enterRoom(room);
+                      }
+                    }}
+                    className="room-item"
+                  >
+                    <div className="room-icon">🏫</div>
+                    <div className="room-info">
+                      <div className="room-header">
+                        <p className="room-name">{room.room_name}</p>
+                        {isLive ? <LiveBadge /> : <OfflineBadge />}
                       </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-slate-200 text-xs font-semibold truncate">
-                            {room.room_name}
-                          </p>
-                          {isLive ? <LiveBadge /> : <OfflineBadge />}
-                        </div>
-                        <p className="text-slate-600 text-[11px] font-mono">
-                          {room.room_code}
-                          {room.room_password ? " · 🔒" : ""}
-                        </p>
-                      </div>
-
-                      {/* 3-dot menu */}
-                      <div className="relative" data-menu-btn>
-                        <button
-                          data-menu-btn
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMyRooms((prev) =>
-                              prev.map((r) =>
-                                r.id === room.id
-                                  ? { ...r, _menuOpen: !r._menuOpen }
-                                  : { ...r, _menuOpen: false },
-                              ),
-                            );
-                          }}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1a2235] transition-colors text-lg font-bold leading-none"
-                          title="Options"
-                        >
-                          ···
-                        </button>
-
-                        {room._menuOpen && (
-                          <div className="absolute right-0 top-9 w-44 bg-[#111827] border border-[#1e2d45] rounded-xl shadow-xl z-20 overflow-hidden">
-                            {isInstructor ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMyRooms((prev) =>
-                                    prev.map((r) => ({
-                                      ...r,
-                                      _menuOpen: false,
-                                    })),
-                                  );
-                                  setDeleteTarget({
-                                    id: room.id,
-                                    room_name: room.room_name,
-                                  });
-                                }}
-                                className="w-full px-3 py-2.5 text-left text-rose-400 text-xs font-semibold hover:bg-rose-500/10 transition-colors flex items-center gap-2"
-                              >
-                                🗑️ Delete Room
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveFromList(room);
-                                }}
-                                className="w-full px-3 py-2.5 text-left text-slate-400 text-xs font-semibold hover:bg-[#1a2235] transition-colors flex items-center gap-2"
-                              >
-                                ✕ Remove from list
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <p className="room-code">
+                        {room.room_code}
+                        {room.room_password ? " · 🔒" : ""}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+
+                    <div className="room-actions" data-menu-btn>
+                      <button
+                        data-menu-btn
+                        className="room-menu-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMyRooms((prev) =>
+                            prev.map((r) =>
+                              r.id === room.id
+                                ? { ...r, _menuOpen: !r._menuOpen }
+                                : { ...r, _menuOpen: false },
+                            ),
+                          );
+                        }}
+                      >
+                        ···
+                      </button>
+
+                      {room._menuOpen && (
+                        <div className="room-dropdown">
+                          {isInstructor ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMyRooms((prev) =>
+                                  prev.map((r) => ({ ...r, _menuOpen: false })),
+                                );
+                                setDeleteTarget({
+                                  id: room.id,
+                                  room_name: room.room_name,
+                                });
+                              }}
+                              className="dropdown-action danger"
+                              style={{ marginBottom: 0, borderRadius: 0 }}
+                            >
+                              🗑️ Delete Room
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveFromList(room);
+                              }}
+                              className="dropdown-action"
+                              style={{ marginBottom: 0, borderRadius: 0 }}
+                            >
+                              ✕ Remove from list
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
