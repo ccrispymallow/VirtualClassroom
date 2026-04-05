@@ -28,7 +28,13 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-const io = new Server(httpServer, { cors: { origin: "*" } });
+// const io = new Server(httpServer, { cors: { origin: "*" } });
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  },
+});
 initSocket(io);
 
 //deploy
