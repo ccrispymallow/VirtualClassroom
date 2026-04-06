@@ -13,8 +13,9 @@ import { socket } from "../helper/socket";
 const INTERACT_DISTANCE = 12;
 const POLL_INTERVAL = 5000;
 const API_BASE = `${import.meta.env.VITE_BACKEND_URL}/api`;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+// API
 const api = {
   getNotes: (roomId) =>
     fetch(`${API_BASE}/board/notes/room/${roomId}`).then((r) => {
@@ -76,7 +77,6 @@ const api = {
     }),
 };
 
-// ─── Normalizers ──────────────────────────────────────────────────────────────
 const normalizeNote = (n, fallbackUsername) => ({
   id: n.id,
   text: n.text,
@@ -99,7 +99,6 @@ const normalizeFile = (f, fallbackUsername) => ({
   uploader: f.username || f.uploader || f.uploaded_by || fallbackUsername,
 });
 
-// ─── ConfirmDialog ────────────────────────────────────────────────────────────
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
   <div
     style={{
@@ -203,7 +202,6 @@ const canDelete = (role, itemAuthor, currentUsername) => {
   return itemAuthor === currentUsername;
 };
 
-// ─── PostIt ───────────────────────────────────────────────────────────────────
 const PostIt = ({ note, onDelete, showDelete }) => {
   const colors = {
     yellow: "bg-yellow-200 border-yellow-300 text-yellow-900",
@@ -246,7 +244,6 @@ const Spinner = () => (
   </div>
 );
 
-// ─── File icon helper ─────────────────────────────────────────────────────────
 const fileIcon = (type) => {
   if (!type) return "📁";
   if (type.startsWith("image/")) return "🖼️";
@@ -258,14 +255,34 @@ const fileIcon = (type) => {
   return "📁";
 };
 
-// ─── File Notification Panel (student) ───────────────────────────────────────
+const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
+
+const downloadFile = async (file) => {
+  const fullUrl = buildFileUrl(file.url);
+  try {
+    const res = await fetch(fullUrl);
+    if (!res.ok) throw new Error("fail");
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(fullUrl, "_blank");
+  }
+};
+
+// File Notification Panel
 export const FileNotificationPanel = () => {
   const [notifFiles, setNotifFiles] = useState([]);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    // Handle single file notify (legacy)
     const handleFileNotif = (data) => {
       const files = Array.isArray(data.files) ? data.files : [data.file];
       setNotifFiles((prev) => [...files, ...prev]);
@@ -278,24 +295,6 @@ export const FileNotificationPanel = () => {
   const handleOpen = () => {
     setOpen((o) => !o);
     if (!open) setUnread(0);
-  };
-
-  const downloadFile = async (file) => {
-    try {
-      const res = await fetch(file.url);
-      if (!res.ok) throw new Error("fail");
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(file.url, "_blank");
-    }
   };
 
   return (
@@ -482,7 +481,7 @@ export const FileNotificationPanel = () => {
   );
 };
 
-// ─── Announcement Toast (student) ─────────────────────────────────────────────
+// Announcement Toast
 export const AnnouncementToast = () => {
   const [toasts, setToasts] = useState([]);
 
@@ -568,7 +567,6 @@ export const AnnouncementToast = () => {
   );
 };
 
-// ─── BoardUI ──────────────────────────────────────────────────────────────────
 const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [notes, setNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -584,7 +582,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [boardFiles, setBoardFiles] = useState([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // Multi-select: set of file ids currently checked
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
   const [broadcasting, setBroadcasting] = useState(false);
   const fileInputRef = useRef(null);
@@ -654,7 +651,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     return () => clearInterval(interval);
   }, [fetchAll]);
 
-  // ── Note handlers ──────────────────────────────────────────────────────────
+  //  Note handlers
   const addNote = async () => {
     if (!newNoteText.trim() || notePosting) return;
     setNotePosting(true);
@@ -688,7 +685,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // ── Announcement handlers (instructor only) ────────────────────────────────
+  //  Announcement handlers
   const addAnnouncement = async (notify = false) => {
     if (!newAnnouncement.trim() || announcementPosting) return;
     setAnnouncementPosting(true);
@@ -736,7 +733,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // ── File handlers ──────────────────────────────────────────────────────────
+  // File handlers
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length || uploading) return;
@@ -767,7 +764,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // Toggle a single file selection
   const toggleFileSelect = (id) => {
     setSelectedFileIds((prev) => {
       const next = new Set(prev);
@@ -777,12 +773,10 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     });
   };
 
-  // Broadcast all selected files to students via socket
   const broadcastSelected = () => {
     if (!roomCode || selectedFileIds.size === 0 || broadcasting) return;
     setBroadcasting(true);
     const filesToSend = boardFiles.filter((f) => selectedFileIds.has(f.id));
-    // Emit all selected files in one event
     socket.emit("board-file-notify", {
       roomCode,
       files: filesToSend,
@@ -807,25 +801,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  const downloadFile = async (file) => {
-    try {
-      const res = await fetch(file.url);
-      if (!res.ok) throw new Error("fail");
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(file.url, "_blank");
-    }
-  };
-
-  // ── Styles ─────────────────────────────────────────────────────────────────
+  // Styles
   const colStyle = {
     flex: 1,
     background: "#0f172a",
@@ -970,7 +946,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         <div style={colStyle}>
           <div style={headerStyle}>
             <LuUpload size={12} /> Files
-            {/* Broadcast selected button — appears when any file is checked */}
             {isInstructor && selectedFileIds.size > 0 && (
               <button
                 onClick={broadcastSelected}
@@ -998,7 +973,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             )}
           </div>
 
-          {/* Upload — instructor only */}
           {isInstructor && (
             <>
               <button
@@ -1072,7 +1046,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                       transition: "background 0.15s, border-color 0.15s",
                     }}
                   >
-                    {/* Checkbox — instructor only */}
                     {isInstructor && (
                       <input
                         type="checkbox"
@@ -1184,7 +1157,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             )}
           </div>
 
-          {/* Hint text for instructor when no files selected */}
           {isInstructor &&
             boardFiles.length > 0 &&
             selectedFileIds.size === 0 && (
@@ -1208,7 +1180,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             <MdAnnouncement size={12} /> Announcements
           </div>
 
-          {/* Post area — instructor only */}
           {isInstructor && (
             <>
               <textarea
@@ -1369,7 +1340,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   );
 };
 
-// ─── ClassBoard ───────────────────────────────────────────────────────────────
 export default function ClassBoard({
   position = [-3, 1.8, 0],
   rotation = [0, Math.PI / 2, 0],

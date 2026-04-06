@@ -3,8 +3,8 @@ import { BsBellFill, BsBell } from "react-icons/bs";
 import { socket } from "../helper/socket";
 
 const TOAST_TTL = 7000;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// ─── file icon (emoji) ────────────────────────────────────────────────────────
 const fileIcon = (type) => {
   if (!type) return "📁";
   if (type.startsWith("image/")) return "🖼️";
@@ -16,10 +16,12 @@ const fileIcon = (type) => {
   return "📁";
 };
 
-// ─── download ─────────────────────────────────────────────────────────────────
+const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
+
 const downloadFile = async (file) => {
+  const fullUrl = buildFileUrl(file.url);
   try {
-    const res = await fetch(file.url);
+    const res = await fetch(fullUrl);
     if (!res.ok) throw new Error("fail");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -31,11 +33,10 @@ const downloadFile = async (file) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch {
-    window.open(file.url, "_blank");
+    window.open(fullUrl, "_blank");
   }
 };
 
-// ─── single toast card ────────────────────────────────────────────────────────
 const ToastCard = ({ toast, onDismiss }) => {
   const isFile = toast.type === "file";
   const accent = isFile ? "#0ea5e9" : "#8b5cf6";
@@ -203,10 +204,10 @@ const ToastCard = ({ toast, onDismiss }) => {
   );
 };
 
-// ─── file history bell panel ──────────────────────────────────────────────────
+// file history bell panel
 const FileBellPanel = ({ files, announcements }) => {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("files"); // "files" | "announce"
+  const [activeTab, setActiveTab] = useState("files");
   const [seenFilesCount, setSeenFilesCount] = useState(0);
   const [seenAnnounceCount, setSeenAnnounceCount] = useState(0);
 
@@ -217,7 +218,6 @@ const FileBellPanel = ({ files, announcements }) => {
   const toggle = () =>
     setOpen((o) => {
       if (!o) {
-        // mark current tab as seen when opening
         if (activeTab === "files") setSeenFilesCount(files.length);
         else setSeenAnnounceCount(announcements.length);
       }
@@ -340,12 +340,7 @@ const FileBellPanel = ({ files, announcements }) => {
           </div>
 
           {/* tabs */}
-          <div
-            style={{
-              display: "flex",
-              borderBottom: "1px solid #1e2d45",
-            }}
-          >
+          <div style={{ display: "flex", borderBottom: "1px solid #1e2d45" }}>
             {[
               { key: "files", label: "📎 Files", count: unreadFiles },
               {
@@ -489,8 +484,7 @@ const FileBellPanel = ({ files, announcements }) => {
                   </div>
                 ))
               )
-            ) : // announcements tab
-            announcements.length === 0 ? (
+            ) : announcements.length === 0 ? (
               <p
                 style={{
                   color: "#475569",
@@ -557,7 +551,6 @@ const FileBellPanel = ({ files, announcements }) => {
   );
 };
 
-// ─── Main export ──────────────────────────────────────────────────────────────
 export function BoardNotifications({ isInstructor = false }) {
   const [toasts, setToasts] = useState([]);
   const [allFiles, setAllFiles] = useState([]);
@@ -579,12 +572,10 @@ export function BoardNotifications({ isInstructor = false }) {
 
   useEffect(() => {
     const onAnnounce = ({ text, author }) => {
-      // Add to persistent announcements history
       setAllAnnouncements((prev) => [
         { text, author, time: Date.now() },
         ...prev,
       ]);
-      // Show toast
       addToastRef.current({
         id: `announce-${Date.now()}`,
         type: "announce",
