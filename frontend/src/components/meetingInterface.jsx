@@ -16,7 +16,6 @@ import copyIcon from "../assets/copy.svg";
 import BoardNotifications from "./boardNotification";
 
 const EMOTES = [{ label: "✋ Raise Hand", key: "raise" }];
-
 const PANEL_CLASS =
   "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
 
@@ -118,7 +117,6 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
           {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
           <span className="text-[10px] mt-1 select-none">Mic</span>
         </button>
-
         <button
           type="button"
           onClick={onScreenToggle}
@@ -129,7 +127,6 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
             {screenOn ? "Sharing" : "Screen"}
           </span>
         </button>
-
         {isInstructor && (
           <button
             type="button"
@@ -140,9 +137,7 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
             <span className="text-[10px] mt-1 select-none">Start Check</span>
           </button>
         )}
-
         <div className="w-px h-8 bg-[#1e2d45] mx-1" />
-
         <button
           type="button"
           onClick={onToggleParticipants}
@@ -156,7 +151,6 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
           )}
           <span className="text-[10px] mt-1 select-none">People</span>
         </button>
-
         <button
           type="button"
           onClick={onToggleChat}
@@ -170,7 +164,6 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
           )}
           <span className="text-[10px] mt-1 select-none">Chat</span>
         </button>
-
         <button
           type="button"
           onClick={onToggleEmotes}
@@ -179,7 +172,6 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
           <MdEmojiEmotions size={22} />
           <span className="text-[10px] mt-1 select-none">React</span>
         </button>
-
         <button
           type="button"
           onClick={onToggleSettings}
@@ -188,9 +180,7 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
           <IoSettings size={22} />
           <span className="text-[10px] mt-1 select-none">Settings</span>
         </button>
-
         <div className="w-px h-8 bg-[#1e2d45] mx-1" />
-
         <button
           type="button"
           onClick={onOpenLeave}
@@ -238,7 +228,6 @@ const MeetingParticipantsPanel = memo(function MeetingParticipantsPanel({
           const hasHandRaised = isMe
             ? myEmote === "raise"
             : peerEmotes?.[p.id] === "raise";
-
           return (
             <div
               key={p.id}
@@ -391,7 +380,6 @@ const MeetingInterface = () => {
     peerEmotes,
     setChatMessages,
   } = useRoom();
-
   const safeChatMessages = useMemo(() => chatMessages ?? [], [chatMessages]);
 
   const [boxes, setBoxes] = useState({
@@ -405,14 +393,12 @@ const MeetingInterface = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const chatEndRef = useRef(null);
   const showChatRef = useRef(showChat);
-
   const [copyMessage, setCopyMessage] = useState("");
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState({ audio: null });
-
   const [pollQuestion, setPollQuestion] = useState({
     active: false,
     pollId: null,
@@ -440,15 +426,8 @@ const MeetingInterface = () => {
     startScreen,
     stopScreen,
   } = useMedia();
-
   const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
-    usePeer({
-      roomCode,
-      user,
-      socket,
-      micStreamRef,
-      screenStreamRef,
-    });
+    usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
@@ -464,7 +443,6 @@ const MeetingInterface = () => {
     () => remoteStreams.find((s) => s.type === "screen"),
     [remoteStreams],
   );
-
   const micRemoteStreams = useMemo(
     () => remoteStreams.filter((s) => s.type === "mic"),
     [remoteStreams],
@@ -501,54 +479,17 @@ const MeetingInterface = () => {
     return () => socket.off("you-were-removed");
   }, [navigate]);
 
+  // ✅ FIXED: only screen-share-update here, approved/rejected handled inline in handleScreenToggle
   useEffect(() => {
-    socket.on("screen-share-approved", async () => {
-      // We wait for the user to interact with the browser popup
-      const stream = await startScreen(handleNetworkScreenStop);
-
-      if (stream) {
-        // They picked a screen and clicked "Share"
-        broadcastScreen(stream);
-      } else {
-        // they cancelled
-        socket.emit("screen-share-stop", { roomCode, userId: user.id });
-      }
-    });
-    socket.on("screen-share-rejected", () => {
-      alert("Someone is already sharing their screen.");
-    });
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
       if (active && sharingUserId !== user.id && screenOnRef.current) {
         stopScreen(handleNetworkScreenStop);
       }
     });
-
     return () => {
-      socket.off("screen-share-approved");
-      socket.off("screen-share-rejected");
       socket.off("screen-share-update");
     };
-  }, [
-    roomCode,
-    user.id,
-    startScreen,
-    stopScreen,
-    broadcastScreen,
-    handleNetworkScreenStop,
-  ]);
-
-  // useEffect(() => {
-  //   const stream = screenStreamRef.current;
-  //   if (!stream) return;
-  //   const track = stream.getVideoTracks()[0];
-  //   if (!track) return;
-  //   const handleEnded = () => {
-  //     stopScreen();
-  //     socket.emit("screen-share-stop", { roomCode, userId: user.id });
-  //   };
-  //   track.addEventListener("ended", handleEnded);
-  //   return () => track.removeEventListener("ended", handleEnded);
-  // }, [screenOn, roomCode, user.id, stopScreen]);
+  }, [stopScreen, handleNetworkScreenStop, user.id]);
 
   useEffect(() => {
     const handleRoomEnded = ({ message }) => {
@@ -584,9 +525,7 @@ const MeetingInterface = () => {
   }, [room.id, setChatMessages]);
 
   useEffect(() => {
-    if (showChat) {
-      chatEndRef.current?.scrollIntoView({ behavior: "instant" });
-    }
+    if (showChat) chatEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [safeChatMessages.length, showChat]);
 
   useEffect(() => {
@@ -700,13 +639,45 @@ const MeetingInterface = () => {
     setParticipants,
   ]);
 
+  // ✅ FIXED: check if someone is already sharing BEFORE opening the browser picker
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
       stopScreen(handleNetworkScreenStop);
+      socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
+      // Block immediately if a remote screen share is already active — no picker popup
+      if (remoteScreen) {
+        alert("Someone is already sharing their screen.");
+        return;
+      }
+
+      const stream = await startScreen(handleNetworkScreenStop);
+      if (!stream) return; // user cancelled
+
       socket.emit("screen-share-start", { roomCode, userId: user.id });
+
+      const approved = await new Promise((resolve) => {
+        socket.once("screen-share-approved", () => resolve(true));
+        socket.once("screen-share-rejected", () => resolve(false));
+      });
+
+      if (approved) {
+        broadcastScreen(stream);
+      } else {
+        stream.getTracks().forEach((t) => t.stop());
+        alert("Someone is already sharing their screen.");
+      }
     }
-  }, [screenOn, stopScreen, handleNetworkScreenStop, roomCode, user.id]);
+  }, [
+    screenOn,
+    remoteScreen,
+    stopScreen,
+    startScreen,
+    broadcastScreen,
+    handleNetworkScreenStop,
+    roomCode,
+    user.id,
+  ]);
 
   const handleLeave = useCallback(() => {
     const confirmed = window.confirm(
@@ -735,9 +706,7 @@ const MeetingInterface = () => {
           if (liveData?.session?.id) {
             await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/sessions/end/${liveData.session.id}`,
-              {
-                method: "POST",
-              },
+              { method: "POST" },
             );
           }
         }
@@ -770,7 +739,6 @@ const MeetingInterface = () => {
   const handleSendChat = useCallback(() => {
     const msg = chatInput.trim();
     if (!msg) return;
-
     setChatMessages?.((prev) => [
       ...(prev ?? []),
       {
@@ -781,7 +749,6 @@ const MeetingInterface = () => {
         sent_at: new Date().toISOString(),
       },
     ]);
-
     socket.emit("send-message", {
       roomCode,
       userId: user.id,
@@ -881,7 +848,6 @@ const MeetingInterface = () => {
     (name) => setBoxes((p) => ({ ...p, [name]: false })),
     [],
   );
-
   const handlePanelMouseEnter = useCallback(() => {
     if (document.pointerLockElement) document.exitPointerLock();
   }, []);
@@ -897,9 +863,10 @@ const MeetingInterface = () => {
     }
   }, [roomCode]);
 
-  const onTogglePollPanel = useCallback(() => {
-    setIsPollPanelOpen((p) => !p);
-  }, []);
+  const onTogglePollPanel = useCallback(
+    () => setIsPollPanelOpen((p) => !p),
+    [],
+  );
 
   const onToggleParticipants = useCallback(() => {
     setShowEmotes(false);
@@ -937,23 +904,15 @@ const MeetingInterface = () => {
     );
   }, []);
 
-  const onOpenLeave = useCallback(() => {
-    openBox("leave");
-  }, [openBox]);
-
-  const onChatInputChange = useCallback((value) => {
-    setChatInput(value);
-  }, []);
-
+  const onOpenLeave = useCallback(() => openBox("leave"), [openBox]);
+  const onChatInputChange = useCallback((value) => setChatInput(value), []);
   const onCloseParticipants = useCallback(
     () => closeBox("participants"),
     [closeBox],
   );
-
   const onCloseChat = useCallback(() => setShowChat(false), []);
 
   const prevMessageCountRef = useRef(0);
-
   useEffect(() => {
     const newCount = safeChatMessages.length;
     if (newCount > prevMessageCountRef.current && !showChatRef.current) {
@@ -961,9 +920,7 @@ const MeetingInterface = () => {
       const othersCount = newMessages.filter(
         (msg) => msg.user_id !== user.id && msg.userId !== user.id,
       ).length;
-      if (othersCount > 0) {
-        setUnreadCount((prev) => prev + othersCount);
-      }
+      if (othersCount > 0) setUnreadCount((prev) => prev + othersCount);
     }
     prevMessageCountRef.current = newCount;
   }, [safeChatMessages, user.id]);
@@ -971,7 +928,6 @@ const MeetingInterface = () => {
   return (
     <>
       <BoardNotifications isInstructor={isInstructor} />
-      {/* Understanding poll modal for students */}
       {pollQuestion.active && !isInstructor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
           <div className="bg-[#0f172a] border border-[#1e2d45] rounded-xl p-5 w-80">
@@ -1008,7 +964,6 @@ const MeetingInterface = () => {
       )}
 
       <RemoteMicStreams streams={micRemoteStreams} />
-
       <MeetingTopBar
         roomCode={roomCode}
         roomName={room.room_name}
@@ -1018,7 +973,6 @@ const MeetingInterface = () => {
         copyMessage={copyMessage}
         onCopyRoomCode={handleCopyRoomCode}
       />
-
       <MeetingBottomToolbar
         micOn={micOn}
         screenOn={screenOn}
@@ -1040,7 +994,6 @@ const MeetingInterface = () => {
         onOpenLeave={onOpenLeave}
       />
 
-      {/* INSTRUCTOR POLL PANEL */}
       {isInstructor && isPollPanelOpen && (
         <div className="fixed bottom-20 right-4 z-30 w-72 p-3 bg-[#0f172a] border border-[#1e2d45] rounded-xl shadow-xl">
           <div className="flex items-center justify-between mb-2">
@@ -1087,7 +1040,6 @@ const MeetingInterface = () => {
         onRemoveParticipant={handleRemoveParticipant}
         onPanelMouseEnter={handlePanelMouseEnter}
       />
-
       <MeetingChatPanel
         open={showChat}
         messages={safeChatMessages}
@@ -1101,7 +1053,6 @@ const MeetingInterface = () => {
         onPanelMouseEnter={handlePanelMouseEnter}
       />
 
-      {/* EMOTE PICKER PANEL */}
       <div
         className={`${PANEL_CLASS} w-56 ${showEmotes ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
@@ -1128,7 +1079,6 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* SETTINGS PANEL */}
       <div
         className={`${PANEL_CLASS} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
@@ -1189,7 +1139,6 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* LEAVE PANEL */}
       <div
         className={`${PANEL_CLASS} w-56 ${boxes.leave ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
