@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { pool } from "./config/database.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -11,8 +12,7 @@ import boardRoutes from "./routes/boardRoutes.js";
 import sessionRoutes from "./routes/sessionRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import { Server } from "socket.io";
-import { PeerServer } from "peer";
-import { ExpressPeerServer } from "peer";
+import { PeerServer, ExpressPeerServer } from "peer";
 import { initSocket } from "./socket.js";
 import { createServer } from "http";
 
@@ -20,6 +20,17 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// ── Uploads directory
+export const uploadsDir = process.env.UPLOADS_DIR
+  ? path.resolve(process.env.UPLOADS_DIR)
+  : path.join(__dirname, "../uploads");
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+console.log("Uploads directory:", uploadsDir);
 
 const app = express();
 const httpServer = createServer(app);
@@ -38,7 +49,7 @@ app.use(
 );
 
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/uploads", express.static(uploadsDir));
 
 const io = new Server(httpServer, {
   cors: {
@@ -52,12 +63,10 @@ initSocket(io);
 
 // PeerJS - local vs production
 if (process.env.CORS_ORIGIN || process.env.FRONTEND_URL) {
-  // Production
   const peerServer = ExpressPeerServer(httpServer, { path: "/" });
   app.use("/peerjs", peerServer);
   console.log("PeerJS running via ExpressPeerServer (production)");
 } else {
-  // Local
   PeerServer({ port: 9000, path: "/peerjs" });
   console.log("PeerJS server running on port 9000 (local)");
 }
