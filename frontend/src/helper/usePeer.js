@@ -58,6 +58,12 @@ export const usePeer = ({
       }
 
       setRemoteStreams((prev) => {
+        const existing = prev.find(
+          (s) => s.peerId === peerId && s.type === type,
+        );
+        if (existing?.stream === stream && existing?.username === uname) {
+          return prev;
+        }
         const filtered = prev.filter(
           (s) => !(s.peerId === peerId && s.type === type),
         );
@@ -70,7 +76,10 @@ export const usePeer = ({
   const removeStreams = useCallback(
     (peerId) => {
       stopRemoteAudio(peerId);
-      setRemoteStreams((prev) => prev.filter((s) => s.peerId !== peerId));
+      setRemoteStreams((prev) => {
+        const next = prev.filter((s) => s.peerId !== peerId);
+        return next.length === prev.length ? prev : next;
+      });
     },
     [stopRemoteAudio],
   );
@@ -80,7 +89,6 @@ export const usePeer = ({
       if (!peerRef.current || !stream) return;
 
       const callKey = `${peerId}-${type}`;
-      console.log("Calling peer:", peerId, "type:", type, "stream:", stream);
 
       if (callsRef.current[callKey]) {
         callsRef.current[callKey].close();
@@ -128,7 +136,6 @@ export const usePeer = ({
     peerRef.current = peer;
 
     peer.on("open", (peerId) => {
-      console.log("PeerJS connected, my peerId:", peerId);
       socket.emit("join-room", {
         roomCode,
         user: { id: userId, username, role: userRole, avatar: userAvatar },
@@ -164,8 +171,8 @@ export const usePeer = ({
 
     peer.on("error", (err) => console.error("PeerJS error:", err));
 
-    socket.on("user-joined", ({ peerId, username: joinedUsername }) => {
-      console.log("User joined:", joinedUsername, peerId);
+    socket.on("user-joined", ({ peerId }) => {
+      if (!peerId) return;
       knownPeersRef.current.add(peerId);
 
       if (micStreamRef.current) {
@@ -177,8 +184,8 @@ export const usePeer = ({
     });
 
     socket.on("existing-peers", (peers) => {
-      console.log("Existing peers in room:", peers);
       peers.forEach(({ peerId }) => {
+        if (!peerId) return;
         knownPeersRef.current.add(peerId);
 
         if (micStreamRef.current) {
@@ -227,7 +234,6 @@ export const usePeer = ({
   const broadcastScreen = useCallback(
     (stream) => {
       const peerIds = getAllPeerIds();
-      console.log("Broadcasting screen to peers:", peerIds);
       peerIds.forEach((peerId) => {
         callPeer(peerId, stream, "screen", username);
       });

@@ -18,6 +18,7 @@ export default function FollowCamera() {
   const { posRef, keysRef, yawRef, pitchRef } = useRoom();
   const { camera, gl } = useThree();
   const lookDragRef = useRef(false);
+  const dirRef = useRef(new THREE.Vector3());
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -65,8 +66,7 @@ export default function FollowCamera() {
       keysRef.current[e.key.toLowerCase()] = false;
     };
 
-    canvas.tabIndex = 0;
-    canvas.style.outline = "none";
+    canvas.setAttribute("tabindex", "0");
     canvas.focus();
 
     canvas.addEventListener("click", onCanvasClick);
@@ -96,7 +96,8 @@ export default function FollowCamera() {
     const [x, , z] = posRef.current;
     camera.position.set(x, EYE_HEIGHT, z);
 
-    const dir = new THREE.Vector3(
+    const dir = dirRef.current;
+    dir.set(
       Math.sin(yawRef.current) * Math.cos(pitchRef.current),
       Math.sin(pitchRef.current),
       -Math.cos(yawRef.current) * Math.cos(pitchRef.current),

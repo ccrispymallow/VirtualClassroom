@@ -1,8 +1,35 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import { socket } from "../helper/socket";
 
 const RoomContext = createContext(null);
+
+const areParticipantsEqual = (prev, next) => {
+  if (prev === next) return true;
+  if (!Array.isArray(prev) || !Array.isArray(next)) return false;
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i += 1) {
+    const a = prev[i];
+    const b = next[i];
+    if (
+      a?.id !== b?.id ||
+      a?.username !== b?.username ||
+      a?.role !== b?.role ||
+      a?.mic !== b?.mic ||
+      a?.avatar !== b?.avatar
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
 
 export const RoomProvider = ({ children }) => {
   const [participants, setParticipants] = useState([]);
@@ -25,27 +52,32 @@ export const RoomProvider = ({ children }) => {
   const posRef = useRef([0, 0, 0]);
 
   useEffect(() => {
-    setMyEmote(null);
-    setPeerEmotes({});
-    setPeerPositions({});
-    setPeerMoving({});
-    setPeerSitting({});
-    setIsSitting(false);
-    setNearChair(false);
-    setPeerYaws({});
     keysRef.current = {};
   }, []);
 
   useEffect(() => {
     const handlePeerMoved = ({ userId, position, yaw }) => {
-      setPeerPositions((prev) => ({ ...prev, [userId]: position }));
+      setPeerPositions((prev) => {
+        const prevPos = prev[userId];
+        if (
+          prevPos &&
+          prevPos[0] === position[0] &&
+          prevPos[1] === position[1] &&
+          prevPos[2] === position[2]
+        ) {
+          return prev;
+        }
+        return { ...prev, [userId]: position };
+      });
       if (yaw !== undefined) {
-        setPeerYaws((prev) => ({ ...prev, [userId]: yaw }));
+        setPeerYaws((prev) => (prev[userId] === yaw ? prev : { ...prev, [userId]: yaw }));
       }
     };
 
     const handleParticipantsUpdate = (updatedList) => {
-      setParticipants(updatedList);
+      setParticipants((prev) =>
+        areParticipantsEqual(prev, updatedList) ? prev : updatedList,
+      );
       const ids = new Set(updatedList.map((p) => p.id));
 
       setPeerPositions((prev) => {
@@ -66,13 +98,28 @@ export const RoomProvider = ({ children }) => {
     };
 
     const handlePeerMoving = ({ userId, isMoving }) => {
-      setPeerMoving((prev) => ({ ...prev, [userId]: isMoving }));
+      setPeerMoving((prev) =>
+        prev[userId] === isMoving ? prev : { ...prev, [userId]: isMoving },
+      );
     };
 
     const handlePeerSitting = ({ userId, isSitting: sitting, position }) => {
-      setPeerSitting((prev) => ({ ...prev, [userId]: sitting }));
+      setPeerSitting((prev) =>
+        prev[userId] === sitting ? prev : { ...prev, [userId]: sitting },
+      );
       if (sitting && position) {
-        setPeerPositions((prev) => ({ ...prev, [userId]: position }));
+        setPeerPositions((prev) => {
+          const prevPos = prev[userId];
+          if (
+            prevPos &&
+            prevPos[0] === position[0] &&
+            prevPos[1] === position[1] &&
+            prevPos[2] === position[2]
+          ) {
+            return prev;
+          }
+          return { ...prev, [userId]: position };
+        });
       }
     };
 
@@ -92,7 +139,7 @@ export const RoomProvider = ({ children }) => {
   useEffect(() => {
     if (!socket) return;
     socket.on("peer-emote", ({ userId, emote }) => {
-      setPeerEmotes((prev) => ({ ...prev, [userId]: emote }));
+      setPeerEmotes((prev) => (prev[userId] === emote ? prev : { ...prev, [userId]: emote }));
     });
     socket.on("receive-message", (msg) => {
       setChatMessages((prev) => [...prev, msg]);
@@ -103,37 +150,53 @@ export const RoomProvider = ({ children }) => {
     };
   }, []);
 
+  const value = useMemo(
+    () => ({
+      participants,
+      setParticipants,
+      screenStream,
+      setScreenStream,
+      avatarPosition,
+      setAvatarPosition,
+      peerPositions,
+      setPeerPositions,
+      peerMoving,
+      peerSitting,
+      isSitting,
+      setIsSitting,
+      nearChair,
+      setNearChair,
+      peerYaws,
+      socket,
+      keysRef,
+      yawRef,
+      pitchRef,
+      posRef,
+      myEmote,
+      setMyEmote,
+      peerEmotes,
+      setPeerEmotes,
+      chatMessages,
+      setChatMessages,
+    }),
+    [
+      participants,
+      screenStream,
+      avatarPosition,
+      peerPositions,
+      peerMoving,
+      peerSitting,
+      isSitting,
+      nearChair,
+      peerYaws,
+      myEmote,
+      peerEmotes,
+      chatMessages,
+    ],
+  );
+
   return (
-    <RoomContext.Provider
-      value={{
-        participants,
-        setParticipants,
-        screenStream,
-        setScreenStream,
-        avatarPosition,
-        setAvatarPosition,
-        peerPositions,
-        setPeerPositions,
-        peerMoving,
-        peerSitting,
-        isSitting,
-        setIsSitting,
-        nearChair,
-        setNearChair,
-        peerYaws,
-        socket,
-        keysRef,
-        yawRef,
-        pitchRef,
-        posRef,
-        myEmote,
-        setMyEmote,
-        peerEmotes,
-        setPeerEmotes,
-        chatMessages,
-        setChatMessages,
-      }}
-    >
+    <RoomContext.Provider value={value}>
       {children}
     </RoomContext.Provider>
   );
