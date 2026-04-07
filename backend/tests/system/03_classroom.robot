@@ -28,7 +28,7 @@ Go To Homepage
 
 
 *** Test Cases ***
-TC-02-01: Create Classroom With Valid Data
+TC-03-01: Create Classroom With Valid Data
     Go To Homepage
 
     # only works if instructor
@@ -42,7 +42,7 @@ TC-02-01: Create Classroom With Valid Data
     Click    button.btn[type="submit"]
 
 
-TC-02-02: Create Classroom Missing Required Fields
+TC-03-02: Create Classroom Missing Required Fields
     Go To Homepage
 
     Run Keyword And Ignore Error    Click    css=button.tab:has-text("Create Room")
@@ -53,7 +53,7 @@ TC-02-02: Create Classroom Missing Required Fields
     Click    button.btn[type="submit"]
 
 
-TC-02-03: Join Classroom With Wrong Password
+TC-03-03: Join Classroom With Wrong Password
     Go To Homepage
 
     Wait For Elements State    text=Join Room    visible
@@ -64,7 +64,7 @@ TC-02-03: Join Classroom With Wrong Password
 
     Click    button.btn[type="submit"]
 
-TC-02-04: Join Classroom With Valid Room Code
+TC-03-04: Join Classroom With Valid Room Code
     Go To Homepage
 
     Wait For Elements State    text=Join Room    visible

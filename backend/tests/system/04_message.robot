@@ -17,12 +17,15 @@ TC-04-01: Send Message Successfully
     Click    button.btn[type="submit"]
     Wait For Load State    networkidle
     Go To    ${BASE_URL}/classroom/${ROOM_CODE}
+    
     Wait For Elements State    css=button:has-text("Chat")    visible    timeout=10s
     Click    css=button:has-text("Chat")
-    Wait For Elements State    css=input[placeholder="Type a message..."]    visible    timeout=5s
-    Fill Text    css=input[placeholder="Type a message..."]    Hello everyone!
+    
+    Wait For Elements State    css=input.chat-input    visible    timeout=5s
+    Fill Text    css=input.chat-input    Hello everyone!
     Click    css=button:has-text("Send")
-    Wait For Elements State    css=text=Hello everyone!    visible    timeout=5s
+    
+    Wait For Elements State    text="Hello everyone!"    visible    timeout=5s
 
 TC-04-02: Message Sender Displayed
     New Page    ${BASE_URL}
@@ -33,9 +36,12 @@ TC-04-02: Message Sender Displayed
     Click    button.btn[type="submit"]
     Wait For Load State    networkidle
     Go To    ${BASE_URL}/classroom/${ROOM_CODE}
+    
     Wait For Elements State    css=button:has-text("Chat")    visible    timeout=10s
     Click    css=button:has-text("Chat")
-    Wait For Elements State    css=input[placeholder="Type a message..."]    visible    timeout=5s
-    Fill Text    css=input[placeholder="Type a message..."]    Hello everyone!
+    
+    Wait For Elements State    css=input.chat-input    visible    timeout=5s
+    Fill Text    css=input.chat-input    Hello everyone!
     Click    css=button:has-text("Send")
-    Wait For Elements State    css=text=testuser    visible    timeout=5s
+    
+    Wait For Elements State    css=span.chat-sender:has-text("testuser")    visible    timeout=5s

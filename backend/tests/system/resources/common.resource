@@ -21,7 +21,11 @@ Close Application
 
 Login As Test User
     Go To          ${BASE_URL}
-    Fill Text      css=input[type="email"]         ${VALID_EMAIL}
-    Fill Text      css=input[type="password"]      ${VALID_PASSWORD}
-    Click          css=button[type="submit"]:has-text("Login")
-    Wait For Elements State    css=.home-layout    visible    timeout=5s
+    Click    css=button.tab:has-text("Sign In")
+    Wait For Elements State    input[placeholder="you@school.edu"]    visible
+    Fill Text    input[placeholder="you@school.edu"]    test@email.com
+    Fill Text    input[type="password"]    123456
+    Click          css=button[type="submit"]:has-text("Sign In")
+    Click    button.btn[type="submit"]
+
+    Wait For Load State    networkidle
