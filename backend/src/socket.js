@@ -1,6 +1,27 @@
+import { pool } from "./config/database.js";
+import { endClassroom } from "./services/classroom.service.js";
+
 const rooms = {};
 const roomPolls = {}; // key: roomCode, value: {pollId, totalExpected, responses:{yes,no}, answered:Set, timeout}
 const roomScreenShare = {};
+const roomIdCache = new Map();
+const ROOM_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const getRoomIdByCode = async (roomCode) => {
+  const cached = roomIdCache.get(roomCode);
+  if (cached && Date.now() - cached.cachedAt < ROOM_CACHE_TTL_MS) {
+    return cached.id;
+  }
+
+  const roomRes = await pool.query("SELECT id FROM classrooms WHERE room_code = $1", [
+    roomCode,
+  ]);
+  const roomId = roomRes.rows[0]?.id;
+  if (roomId) {
+    roomIdCache.set(roomCode, { id: roomId, cachedAt: Date.now() });
+  }
+  return roomId ?? null;
+};
 
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
@@ -234,20 +255,12 @@ export const initSocket = (io) => {
 
     socket.on("end-room", async ({ roomCode, userId }) => {
       try {
-        // Call the end classroom service
-        const { endClassroom } =
-          await import("./services/classroom.service.js");
         await endClassroom(roomCode, userId);
-
-        const { pool } = await import("./config/database.js");
-        const roomRes = await pool.query(
-          "SELECT id FROM classrooms WHERE room_code = $1",
-          [roomCode],
-        );
-        const roomId = roomRes.rows[0]?.id;
+        const roomId = await getRoomIdByCode(roomCode);
         if (roomId) {
           await pool.query("DELETE FROM messages WHERE room_id = $1", [roomId]);
         }
+        roomIdCache.delete(roomCode);
 
         // Notify all participants class ended
         socket.to(roomCode).emit("room-ended", {
@@ -305,13 +318,8 @@ export const initSocket = (io) => {
     socket.on(
       "send-message",
       async ({ roomCode, userId, username, message }) => {
-        const { pool } = await import("./config/database.js");
         try {
-          const roomRes = await pool.query(
-            "SELECT id FROM classrooms WHERE room_code = $1",
-            [roomCode],
-          );
-          const room_id = roomRes.rows[0]?.id;
+          const room_id = await getRoomIdByCode(roomCode);
           if (room_id) {
             await pool.query(
               "INSERT INTO messages (room_id, user_id, message) VALUES ($1, $2, $3)",

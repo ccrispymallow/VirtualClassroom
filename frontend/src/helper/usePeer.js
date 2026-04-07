@@ -73,6 +73,19 @@ export const usePeer = ({
     [playRemoteAudio],
   );
 
+  const removeStreamByType = useCallback(
+    (peerId, type) => {
+      if (type === "mic") {
+        stopRemoteAudio(peerId);
+      }
+      setRemoteStreams((prev) => {
+        const next = prev.filter((s) => !(s.peerId === peerId && s.type === type));
+        return next.length === prev.length ? prev : next;
+      });
+    },
+    [stopRemoteAudio],
+  );
+
   const removeStreams = useCallback(
     (peerId) => {
       stopRemoteAudio(peerId);
@@ -104,7 +117,7 @@ export const usePeer = ({
       });
 
       call.on("close", () => {
-        removeStreams(peerId);
+        removeStreamByType(peerId, type);
         delete callsRef.current[callKey];
       });
 
@@ -112,7 +125,7 @@ export const usePeer = ({
 
       callsRef.current[callKey] = call;
     },
-    [removeStreams, addStream],
+    [removeStreamByType, addStream],
   );
 
   const getAllPeerIds = useCallback(() => {
@@ -163,7 +176,8 @@ export const usePeer = ({
         );
       });
 
-      call.on("close", () => removeStreams(call.peer));
+      const incomingType = call.metadata?.type || "mic";
+      call.on("close", () => removeStreamByType(call.peer, incomingType));
       call.on("error", (err) => console.error("Call error:", err));
 
       callsRef.current[`${call.peer}-${call.metadata?.type}`] = call;
@@ -220,6 +234,7 @@ export const usePeer = ({
     callPeer,
     addStream,
     removeStreams,
+    removeStreamByType,
   ]);
 
   const broadcastMic = useCallback(

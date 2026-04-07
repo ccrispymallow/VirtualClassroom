@@ -1,6 +1,6 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { memo, useRef, useEffect, useMemo } from "react";
+import { memo, useRef, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
@@ -13,7 +13,7 @@ import {
 
 const COLLISION_RADIUS = 0.8;
 const COLLISION_RADIUS_SQ = COLLISION_RADIUS * COLLISION_RADIUS;
-const EMIT_INTERVAL = 50;
+const EMIT_INTERVAL = 33;
 const CHAIR_SNAP_RADIUS_SQ = CHAIR_SNAP_RADIUS * CHAIR_SNAP_RADIUS;
 const CHAIR_OCCUPIED_EPSILON_SQ = 0.01;
 const SPAWN_SLOTS = [
@@ -105,6 +105,13 @@ function getOccupiedChairIds(participants, userId, peerSitting, peerPositions) {
   return occupied;
 }
 
+function lerpAngle(current, target, t) {
+  let diff = target - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * t;
+}
+
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 export default function Avatar() {
   const { roomCode } = useParams();
@@ -130,6 +137,10 @@ export default function Avatar() {
   const initializedRef = useRef(false);
   const isMovingRef = useRef(false);
   const sittingChairRef = useRef(null);
+  const [smoothedPeerPositions, setSmoothedPeerPositions] = useState({});
+  const [smoothedPeerYaws, setSmoothedPeerYaws] = useState({});
+  const targetPeerPositionsRef = useRef({});
+  const targetPeerYawsRef = useRef({});
   const occupiedChairIds = useMemo(
     () =>
       getOccupiedChairIds(participants, user.id, peerSitting, peerPositions),
@@ -139,6 +150,14 @@ export default function Avatar() {
     () => participants.filter((p) => p.id !== user.id),
     [participants, user.id],
   );
+
+  useEffect(() => {
+    targetPeerPositionsRef.current = peerPositions;
+  }, [peerPositions]);
+
+  useEffect(() => {
+    targetPeerYawsRef.current = peerYaws;
+  }, [peerYaws]);
 
   // ── Spawn ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -259,6 +278,49 @@ export default function Avatar() {
 
   // ── Frame loop ─────────────────────────────────────────────────────────────
   useFrame((_, delta) => {
+    const lerpFactor = 1 - Math.exp(-12 * delta);
+    const targetPositions = targetPeerPositionsRef.current;
+    const targetYaws = targetPeerYawsRef.current;
+
+    setSmoothedPeerPositions((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const id in targetPositions) {
+        const target = targetPositions[id];
+        if (!target) continue;
+        const current = next[id] ?? target;
+        const nx = current[0] + (target[0] - current[0]) * lerpFactor;
+        const ny = current[1] + (target[1] - current[1]) * lerpFactor;
+        const nz = current[2] + (target[2] - current[2]) * lerpFactor;
+        if (
+          !next[id] ||
+          Math.abs(nx - current[0]) > 0.0001 ||
+          Math.abs(ny - current[1]) > 0.0001 ||
+          Math.abs(nz - current[2]) > 0.0001
+        ) {
+          next[id] = [nx, ny, nz];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setSmoothedPeerYaws((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const id in targetYaws) {
+        const targetYaw = targetYaws[id];
+        if (targetYaw === undefined) continue;
+        const currentYaw = next[id] ?? targetYaw;
+        const smoothed = lerpAngle(currentYaw, targetYaw, lerpFactor);
+        if (!next[id] || Math.abs(smoothed - currentYaw) > 0.0001) {
+          next[id] = smoothed;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
     const now = Date.now();
     if (socket && roomCode && now - lastEmitRef.current >= EMIT_INTERVAL) {
       const [x, y, z] = posRef.current;
@@ -381,8 +443,9 @@ export default function Avatar() {
   return (
     <>
       {otherParticipants.map((p) => {
-        if (!peerPositions[p.id]) return null;
-        const [px, py, pz] = peerPositions[p.id];
+        const displayedPos = smoothedPeerPositions[p.id] || peerPositions[p.id];
+        if (!displayedPos) return null;
+        const [px, py, pz] = displayedPos;
         return (
           <group key={p.id}>
             <AvatarModel
@@ -392,7 +455,7 @@ export default function Avatar() {
               isMoving={peerMoving?.[p.id] || false}
               emote={peerEmotes?.[p.id] || null}
               isSitting={peerSitting?.[p.id] || false}
-              yaw={peerYaws?.[p.id] ?? 0}
+              yaw={smoothedPeerYaws?.[p.id] ?? peerYaws?.[p.id] ?? 0}
             />
             <Billboard position={[px, py + 2.4, pz]}>
               <Html

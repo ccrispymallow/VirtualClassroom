@@ -124,7 +124,13 @@ export const deleteFile = async (req, res, next) => {
 
     const filename = path.basename(deleted.file_url);
     const filePath = path.join(uploadsDir, filename);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (unlinkError) {
+      if (unlinkError.code !== "ENOENT") {
+        throw unlinkError;
+      }
+    }
 
     res.json({ message: "File deleted" });
   } catch (error) {
