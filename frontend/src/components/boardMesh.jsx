@@ -3,7 +3,17 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { useRoom } from "./roomContext";
 import { IoClose, IoAddCircleOutline } from "react-icons/io5";
-import { BsStickyFill, BsBellFill } from "react-icons/bs";
+import {
+  BsStickyFill,
+  BsBellFill,
+  BsFileEarmarkPdfFill,
+  BsFileEarmarkWordFill,
+  BsFileEarmarkSpreadsheetFill,
+  BsFileEarmarkSlidesFill,
+  BsFileEarmarkZipFill,
+  BsFileEarmarkFill,
+  BsImageFill,
+} from "react-icons/bs";
 import { LuUpload } from "react-icons/lu";
 import { MdAnnouncement } from "react-icons/md";
 import * as THREE from "three";
@@ -64,13 +74,12 @@ const api = {
       return r.json();
     }),
   uploadFile: (formData) =>
-    fetch(`${API_BASE}/board/files`, {
-      method: "POST",
-      body: formData,
-    }).then((r) => {
-      if (!r.ok) throw new Error(`uploadFile ${r.status}`);
-      return r.json();
-    }),
+    fetch(`${API_BASE}/board/files`, { method: "POST", body: formData }).then(
+      (r) => {
+        if (!r.ok) throw new Error(`uploadFile ${r.status}`);
+        return r.json();
+      },
+    ),
   deleteFile: (id) =>
     fetch(`${API_BASE}/board/files/${id}`, { method: "DELETE" }).then((r) => {
       if (!r.ok) throw new Error(`deleteFile ${r.status}`);
@@ -109,7 +118,6 @@ const areNoteListsEqual = (a, b) =>
       item.color === b[idx]?.color &&
       item.author === b[idx]?.author,
   );
-
 const areAnnouncementListsEqual = (a, b) =>
   a.length === b.length &&
   a.every(
@@ -119,7 +127,6 @@ const areAnnouncementListsEqual = (a, b) =>
       item.author === b[idx]?.author &&
       item.time === b[idx]?.time,
   );
-
 const areFileListsEqual = (a, b) =>
   a.length === b.length &&
   a.every(
@@ -134,66 +141,40 @@ const areFileListsEqual = (a, b) =>
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
   <div
     style={{
-      position: "fixed",
+      position: "absolute",
       inset: 0,
-      zIndex: 9999,
+      zIndex: 50,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       background: "rgba(0,0,0,0.6)",
+      borderRadius: "24px",
       backdropFilter: "blur(4px)",
     }}
   >
-    <div
-      style={{
-        background: "#0f172a",
-        border: "1px solid #1e2d45",
-        borderRadius: "14px",
-        padding: "24px 28px",
-        minWidth: "260px",
-        maxWidth: "320px",
-        boxShadow: "0 25px 60px rgba(0,0,0,0.6)",
-        fontFamily: "sans-serif",
-      }}
-    >
+    <div className="modal" style={{ padding: "24px", width: "280px" }}>
+      <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>Confirm Action</h3>
       <p
         style={{
-          color: "#e2e8f0",
-          fontSize: "13px",
-          lineHeight: 1.6,
+          fontSize: "14px",
           marginBottom: "20px",
-          textAlign: "center",
+          color: "var(--muted)",
         }}
       >
         {message}
       </p>
-      <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+      <div className="modal-actions" style={{ display: "flex", gap: "10px" }}>
         <button
           onClick={onCancel}
-          style={{
-            padding: "7px 18px",
-            borderRadius: "8px",
-            border: "1px solid #1e2d45",
-            background: "transparent",
-            color: "#94a3b8",
-            fontSize: "12px",
-            cursor: "pointer",
-          }}
+          className="btn-outline"
+          style={{ flex: 1, padding: "10px", fontSize: "14px" }}
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          style={{
-            padding: "7px 18px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            fontSize: "12px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
+          className="btn-danger"
+          style={{ flex: 1, padding: "10px", fontSize: "14px" }}
         >
           Delete
         </button>
@@ -235,39 +216,80 @@ const canDelete = (role, itemAuthor, currentUsername) => {
 };
 
 const PostIt = memo(function PostIt({ note, onDelete, showDelete }) {
-  const colors = {
-    yellow: "bg-yellow-200 border-yellow-300 text-yellow-900",
-    pink: "bg-pink-200 border-pink-300 text-pink-900",
-    blue: "bg-blue-200 border-blue-300 text-blue-900",
-    green: "bg-green-200 border-green-300 text-green-900",
+  const themes = {
+    yellow: { bg: "#fef08a", border: "#fde047", text: "#713f12" },
+    pink: { bg: "#fbcfe8", border: "#f9a8d4", text: "#831843" },
+    blue: { bg: "#bfdbfe", border: "#93c5fd", text: "#1e3a8a" },
+    green: { bg: "#bbf7d0", border: "#86efac", text: "#14532d" },
   };
+  const t = themes[note.color] || themes.yellow;
+
   return (
     <div
-      className={`relative p-3 rounded-xl border text-xs font-medium shadow-sm select-none ${colors[note.color] || colors.yellow}`}
-      style={{ flexShrink: 0 }}
+      style={{
+        position: "relative",
+        padding: "16px",
+        borderRadius: "12px",
+        background: t.bg,
+        border: `1px solid ${t.border}`,
+        color: t.text,
+        flexShrink: 0,
+        boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+      }}
     >
       {showDelete && (
         <button
           onClick={() => onDelete(note.id)}
-          className="absolute top-1 right-1 opacity-40 hover:opacity-80 text-current"
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: t.text,
+            opacity: 0.5,
+            padding: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.5)}
         >
-          <IoClose size={12} />
+          <IoClose size={18} />
         </button>
       )}
-      <p className="mt-1 break-words leading-relaxed">{note.text}</p>
-      <p className="mt-2 opacity-50 text-[10px]">{note.author}</p>
+      <p
+        style={{
+          marginTop: "4px",
+          fontSize: "15px",
+          fontWeight: "600",
+          lineHeight: 1.5,
+          wordBreak: "break-word",
+        }}
+      >
+        {note.text}
+      </p>
+      <p
+        style={{
+          marginTop: "12px",
+          fontSize: "12px",
+          fontWeight: "700",
+          opacity: 0.6,
+        }}
+      >
+        {note.author}
+      </p>
     </div>
   );
 });
 
 const Spinner = () => (
-  <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
+  <div style={{ display: "flex", justifyContent: "center", padding: "16px 0" }}>
     <div
       style={{
-        width: "16px",
-        height: "16px",
-        border: "2px solid #1e2d45",
-        borderTop: "2px solid #60a5fa",
+        width: "24px",
+        height: "24px",
+        border: "3px solid var(--border)",
+        borderTop: "3px solid var(--accent)",
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
       }}
@@ -277,14 +299,19 @@ const Spinner = () => (
 );
 
 const fileIcon = (type) => {
-  if (!type) return "📁";
-  if (type.startsWith("image/")) return "🖼️";
-  if (type === "application/pdf") return "📄";
-  if (type.includes("word") || type.includes("document")) return "📝";
-  if (type.includes("sheet") || type.includes("excel")) return "📊";
-  if (type.includes("presentation") || type.includes("powerpoint")) return "📋";
-  if (type.includes("zip") || type.includes("compressed")) return "🗜️";
-  return "📁";
+  if (!type) return <BsFileEarmarkFill color="var(--muted)" />;
+  if (type.startsWith("image/")) return <BsImageFill color="var(--accent)" />;
+  if (type === "application/pdf")
+    return <BsFileEarmarkPdfFill color="var(--error)" />;
+  if (type.includes("word") || type.includes("document"))
+    return <BsFileEarmarkWordFill color="#3b82f6" />;
+  if (type.includes("sheet") || type.includes("excel"))
+    return <BsFileEarmarkSpreadsheetFill color="var(--success)" />;
+  if (type.includes("presentation") || type.includes("powerpoint"))
+    return <BsFileEarmarkSlidesFill color="var(--warn)" />;
+  if (type.includes("zip") || type.includes("compressed"))
+    return <BsFileEarmarkZipFill color="var(--muted)" />;
+  return <BsFileEarmarkFill color="var(--muted)" />;
 };
 
 const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
@@ -308,297 +335,6 @@ const downloadFile = async (file) => {
   }
 };
 
-// File Notification Panel
-export const FileNotificationPanel = () => {
-  const [notifFiles, setNotifFiles] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    const handleFileNotif = (data) => {
-      const files = Array.isArray(data.files) ? data.files : [data.file];
-      setNotifFiles((prev) => [...files, ...prev]);
-      setUnread((u) => u + files.length);
-    };
-    socket.on("board-file-notify", handleFileNotif);
-    return () => socket.off("board-file-notify", handleFileNotif);
-  }, []);
-
-  const handleOpen = () => {
-    setOpen((o) => !o);
-    if (!open) setUnread(0);
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: "52px",
-        right: "12px",
-        zIndex: 50,
-        fontFamily: "sans-serif",
-      }}
-    >
-      {/* Bell button */}
-      <button
-        onClick={handleOpen}
-        style={{
-          position: "relative",
-          width: "36px",
-          height: "36px",
-          borderRadius: "10px",
-          background: "#111827",
-          border: "1px solid #1e2d45",
-          color: unread > 0 ? "#60a5fa" : "#64748b",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-        }}
-      >
-        <BsBellFill size={15} />
-        {unread > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: "-4px",
-              right: "-4px",
-              background: "#ef4444",
-              color: "#fff",
-              fontSize: "9px",
-              fontWeight: 700,
-              width: "16px",
-              height: "16px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "44px",
-            right: 0,
-            width: "300px",
-            background: "#111827",
-            border: "1px solid #1e2d45",
-            borderRadius: "14px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "10px 14px",
-              borderBottom: "1px solid #1e2d45",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{ color: "#94a3b8", fontSize: "11px", fontWeight: 700 }}
-            >
-              Files from instructor
-            </span>
-            <button
-              onClick={() => setOpen(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#64748b",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              <IoClose size={14} />
-            </button>
-          </div>
-
-          <div
-            style={{ maxHeight: "360px", overflowY: "auto", padding: "8px" }}
-          >
-            {notifFiles.length === 0 ? (
-              <p
-                style={{
-                  color: "#475569",
-                  fontSize: "11px",
-                  textAlign: "center",
-                  padding: "16px 0",
-                }}
-              >
-                No files sent yet
-              </p>
-            ) : (
-              notifFiles.map((file, i) => (
-                <div
-                  key={`${file.id}-${i}`}
-                  style={{
-                    background: "#1a2235",
-                    borderRadius: "10px",
-                    padding: "10px",
-                    marginBottom: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "7px",
-                      background: "#0b0f1a",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "15px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {fileIcon(file.type)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
-                      style={{
-                        color: "#e2e8f0",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        margin: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {file.name}
-                    </p>
-                    <p
-                      style={{ color: "#64748b", fontSize: "10px", margin: 0 }}
-                    >
-                      by {file.uploader}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => downloadFile(file)}
-                    style={{
-                      color: "#60a5fa",
-                      fontSize: "10px",
-                      background: "rgba(59,130,246,0.1)",
-                      border: "1px solid rgba(59,130,246,0.25)",
-                      borderRadius: "6px",
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      flexShrink: 0,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Download
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Announcement Toast
-export const AnnouncementToast = () => {
-  const [toasts, setToasts] = useState([]);
-
-  useEffect(() => {
-    const handleAnnouncement = (data) => {
-      const id = Date.now();
-      setToasts((prev) => [
-        ...prev,
-        { id, text: data.text, author: data.author },
-      ]);
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 6000);
-    };
-    socket.on("board-announcement-notify", handleAnnouncement);
-    return () => socket.off("board-announcement-notify", handleAnnouncement);
-  }, []);
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: "52px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 50,
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        fontFamily: "sans-serif",
-        pointerEvents: "none",
-      }}
-    >
-      {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          style={{
-            background: "#111827",
-            border: "1px solid #8b5cf6",
-            borderLeft: "3px solid #8b5cf6",
-            borderRadius: "10px",
-            padding: "10px 16px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "8px",
-            minWidth: "260px",
-            maxWidth: "360px",
-            animation: "slideIn 0.3s ease",
-          }}
-        >
-          <MdAnnouncement
-            size={14}
-            color="#a78bfa"
-            style={{ flexShrink: 0, marginTop: "1px" }}
-          />
-          <div>
-            <p
-              style={{
-                color: "#a78bfa",
-                fontSize: "10px",
-                fontWeight: 700,
-                margin: "0 0 2px",
-              }}
-            >
-              {toast.author}
-            </p>
-            <p
-              style={{
-                color: "#e2e8f0",
-                fontSize: "11px",
-                margin: 0,
-                lineHeight: 1.5,
-              }}
-            >
-              {toast.text}
-            </p>
-          </div>
-        </div>
-      ))}
-      <style>{`@keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }`}</style>
-    </div>
-  );
-};
-
 const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [notes, setNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -616,9 +352,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [uploading, setUploading] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
   const [broadcasting, setBroadcasting] = useState(false);
-  const [isPageVisible, setIsPageVisible] = useState(
-    () => !document.hidden,
-  );
+  const [isPageVisible, setIsPageVisible] = useState(() => !document.hidden);
   const fileInputRef = useRef(null);
   const pollFailureCountRef = useRef(0);
 
@@ -629,11 +363,11 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const userId = user.id || user.user_id;
 
   const noteColors = ["yellow", "pink", "blue", "green"];
-  const colorDot = {
-    yellow: "bg-yellow-300",
-    pink: "bg-pink-300",
-    blue: "bg-blue-300",
-    green: "bg-green-300",
+  const colorHex = {
+    yellow: "#fde047",
+    pink: "#f9a8d4",
+    blue: "#93c5fd",
+    green: "#86efac",
   };
 
   useEffect(() => {
@@ -670,15 +404,20 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
       } else {
         pollFailureCountRef.current = 0;
       }
+
       if (notesResult.status === "fulfilled") {
         const nextNotes = (
           Array.isArray(notesResult.value) ? notesResult.value : []
         ).map((n) => normalizeNote(n, username));
-        setNotes((prev) => (areNoteListsEqual(prev, nextNotes) ? prev : nextNotes));
+        setNotes((prev) =>
+          areNoteListsEqual(prev, nextNotes) ? prev : nextNotes,
+        );
       }
       if (announcementsResult.status === "fulfilled") {
         const nextAnnouncements = (
-          Array.isArray(announcementsResult.value) ? announcementsResult.value : []
+          Array.isArray(announcementsResult.value)
+            ? announcementsResult.value
+            : []
         ).map((a) => normalizeAnnouncement(a, username));
         setAnnouncements((prev) =>
           areAnnouncementListsEqual(prev, nextAnnouncements)
@@ -687,10 +426,12 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         );
       }
       if (filesResult.status === "fulfilled") {
-        const nextFiles = (Array.isArray(filesResult.value) ? filesResult.value : []).map(
-          (f) => normalizeFile(f, username),
+        const nextFiles = (
+          Array.isArray(filesResult.value) ? filesResult.value : []
+        ).map((f) => normalizeFile(f, username));
+        setBoardFiles((prev) =>
+          areFileListsEqual(prev, nextFiles) ? prev : nextFiles,
         );
-        setBoardFiles((prev) => (areFileListsEqual(prev, nextFiles) ? prev : nextFiles));
       }
       if (showLoading) {
         setNotesLoading(false);
@@ -704,10 +445,8 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   useEffect(() => {
     fetchAll(true);
     if (!isPageVisible || !isNear) return;
-
     let cancelled = false;
     let timeoutId;
-
     const scheduleNext = () => {
       if (cancelled) return;
       const delay = Math.min(
@@ -719,16 +458,13 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         scheduleNext();
       }, delay);
     };
-
     scheduleNext();
-
     return () => {
       cancelled = true;
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [fetchAll, isPageVisible, isNear]);
 
-  //  Note handlers
   const addNote = async () => {
     if (!newNoteText.trim() || notePosting) return;
     setNotePosting(true);
@@ -757,12 +493,9 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     try {
       await api.deleteNote(id);
       setNotes((p) => p.filter((n) => n.id !== id));
-    } catch (err) {
-      console.error("Failed to delete note:", err);
-    }
+    } catch (err) {}
   };
 
-  //  Announcement handlers
   const addAnnouncement = async (notify = false) => {
     if (!newAnnouncement.trim() || announcementPosting) return;
     setAnnouncementPosting(true);
@@ -782,18 +515,14 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         username,
       );
       setAnnouncements((prev) => [normalized, ...prev]);
-
-      if (notify && roomCode) {
+      if (notify && roomCode)
         socket.emit("board-announce", {
           roomCode,
           text: newAnnouncement.trim(),
           author: username,
         });
-      }
-
       setNewAnnouncement("");
     } catch (err) {
-      console.error("Failed to add announcement:", err);
     } finally {
       setAnnouncementPosting(false);
     }
@@ -805,12 +534,9 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     try {
       await api.deleteAnnouncement(id);
       setAnnouncements((p) => p.filter((a) => a.id !== id));
-    } catch (err) {
-      console.error("Failed to delete announcement:", err);
-    }
+    } catch (err) {}
   };
 
-  // File handlers
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length || uploading) return;
@@ -836,7 +562,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
       );
       setBoardFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (err) {
-      console.error("Failed to upload file:", err);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -856,10 +581,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     if (!roomCode || selectedFileIds.size === 0 || broadcasting) return;
     setBroadcasting(true);
     const filesToSend = boardFiles.filter((f) => selectedFileIds.has(f.id));
-    socket.emit("board-file-notify", {
-      roomCode,
-      files: filesToSend,
-    });
+    socket.emit("board-file-notify", { roomCode, files: filesToSend });
     setSelectedFileIds(new Set());
     setBroadcasting(false);
   };
@@ -875,86 +597,23 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         next.delete(id);
         return next;
       });
-    } catch (err) {
-      console.error("Failed to delete file:", err);
-    }
+    } catch (err) {}
   };
-
-  // Styles
-  const colStyle = {
-    flex: 1,
-    background: "#0f172a",
-    borderRadius: "12px",
-    padding: "10px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    minWidth: 0,
-    height: "340px",
-    boxSizing: "border-box",
-    overflow: "hidden",
-    pointerEvents: isNear ? "auto" : "none",
-  };
-
-  const headerStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-    color: "#94a3b8",
-    fontSize: "11px",
-    fontWeight: 700,
-    paddingBottom: "6px",
-    borderBottom: "1px solid #1e2d45",
-    flexShrink: 0,
-  };
-
-  const listStyle = {
-    flex: 1,
-    overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    paddingRight: "2px",
-    scrollbarWidth: "thin",
-    scrollbarColor: "#1e2d45 transparent",
-  };
-
-  const emptyText = { color: "#475569", fontSize: "11px", textAlign: "center" };
 
   return (
     <>
       {ConfirmUI}
       <div
-        style={{
-          width: "780px",
-          background: "#111827",
-          borderRadius: "16px",
-          border: "1px solid #1e2d45",
-          padding: "12px",
-          fontFamily: "sans-serif",
-          display: "flex",
-          gap: "10px",
-        }}
+        className="board-container"
+        style={{ pointerEvents: isNear ? "auto" : "none" }}
       >
         {/* ── NOTES ── */}
-        <div style={colStyle}>
-          <div style={headerStyle}>
-            <BsStickyFill size={12} /> Notes
+        <div className="board-column">
+          <div className="board-header">
+            <BsStickyFill size={18} /> Notes
           </div>
           <textarea
-            style={{
-              width: "100%",
-              background: "#0b0f1a",
-              border: "1px solid #1e2d45",
-              borderRadius: "8px",
-              padding: "8px",
-              color: "#e2e8f0",
-              fontSize: "12px",
-              outline: "none",
-              resize: "none",
-              boxSizing: "border-box",
-              flexShrink: 0,
-            }}
+            className="board-textarea"
             placeholder="Write a note..."
             rows={2}
             value={newNoteText}
@@ -974,40 +633,56 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
               flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", gap: "5px" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
               {noteColors.map((c) => (
                 <button
                   key={c}
                   onClick={() => setNewNoteColor(c)}
-                  className={`w-4 h-4 rounded-full ${colorDot[c]} ${newNoteColor === c ? "ring-2 ring-white/40 scale-125" : ""}`}
+                  style={{
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    background: colorHex[c],
+                    border:
+                      newNoteColor === c
+                        ? "3px solid var(--text)"
+                        : "2px solid transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                    transition: "all 0.2s",
+                  }}
                 />
               ))}
             </div>
             <button
+              className="btn"
               onClick={addNote}
               disabled={notePosting}
               style={{
+                padding: "8px 16px",
+                fontSize: "14px",
                 display: "flex",
                 alignItems: "center",
-                gap: "3px",
-                padding: "4px 10px",
-                background: notePosting ? "#1e3a5f" : "#3b82f6",
-                color: "#fff",
-                fontSize: "11px",
-                borderRadius: "7px",
-                border: "none",
-                cursor: notePosting ? "not-allowed" : "pointer",
+                gap: "6px",
+                width: "auto",
               }}
             >
-              <IoAddCircleOutline size={12} />
-              {notePosting ? "Adding…" : "Add"}
+              <IoAddCircleOutline size={18} /> {notePosting ? "Adding…" : "Add"}
             </button>
           </div>
-          <div style={listStyle}>
+          <div className="board-list">
             {notesLoading ? (
               <Spinner />
             ) : notes.length === 0 ? (
-              <p style={emptyText}>No notes yet</p>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              >
+                No notes yet
+              </p>
             ) : (
               notes.map((note) => (
                 <PostIt
@@ -1022,36 +697,28 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         </div>
 
         {/* ── FILES ── */}
-        <div style={colStyle}>
-          <div style={headerStyle}>
-            <LuUpload size={12} /> Files
+        <div className="board-column">
+          <div className="board-header">
+            <LuUpload size={18} /> Files
             {isInstructor && selectedFileIds.size > 0 && (
               <button
                 onClick={broadcastSelected}
                 disabled={broadcasting}
+                className="btn"
                 style={{
                   marginLeft: "auto",
+                  padding: "8px 14px",
+                  fontSize: "13px",
                   display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "3px 9px",
-                  background: broadcasting ? "#1e3a5f" : "#0ea5e9",
-                  color: "#fff",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  borderRadius: "6px",
-                  border: "none",
-                  cursor: broadcasting ? "not-allowed" : "pointer",
-                  whiteSpace: "nowrap",
-                  animation: "pulse 1.5s ease-in-out infinite",
+                  gap: "6px",
+                  backgroundColor: "var(--accent)",
+                  width: "auto",
                 }}
               >
-                <BsBellFill size={9} />
-                Broadcast {selectedFileIds.size} selected
+                <BsBellFill size={14} /> Broadcast {selectedFileIds.size}
               </button>
             )}
           </div>
-
           {isInstructor && (
             <>
               <button
@@ -1060,33 +727,19 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "6px",
+                  gap: "8px",
                   width: "100%",
-                  padding: "9px",
-                  border: "2px dashed #1e2d45",
-                  borderRadius: "10px",
+                  padding: "16px",
+                  border: "2px dashed var(--border)",
+                  borderRadius: "12px",
                   background: "none",
-                  color: uploading ? "#3b82f6" : "#64748b",
-                  fontSize: "11px",
+                  color: uploading ? "var(--accent)" : "var(--muted)",
+                  fontSize: "15px",
                   cursor: uploading ? "not-allowed" : "pointer",
-                  flexShrink: 0,
-                  boxSizing: "border-box",
-                  transition: "border-color 0.2s, color 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!uploading) {
-                    e.currentTarget.style.borderColor = "#3b82f6";
-                    e.currentTarget.style.color = "#60a5fa";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#1e2d45";
-                  e.currentTarget.style.color = uploading
-                    ? "#3b82f6"
-                    : "#64748b";
+                  transition: "border-color 0.2s",
                 }}
               >
-                <LuUpload size={14} />
+                <LuUpload size={18} />{" "}
                 {uploading ? "Uploading…" : "Upload file"}
               </button>
               <input
@@ -1098,32 +751,26 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
               />
             </>
           )}
-
-          <div style={listStyle}>
+          <div className="board-list">
             {filesLoading ? (
               <Spinner />
             ) : boardFiles.length === 0 ? (
-              <p style={emptyText}>No files yet</p>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              >
+                No files yet
+              </p>
             ) : (
               boardFiles.map((file) => {
                 const isChecked = selectedFileIds.has(file.id);
                 return (
                   <div
                     key={file.id}
-                    style={{
-                      background: isChecked ? "#0d2040" : "#1a2235",
-                      borderRadius: "10px",
-                      padding: "9px 10px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      flexShrink: 0,
-                      position: "relative",
-                      border: isChecked
-                        ? "1px solid #0ea5e9"
-                        : "1px solid transparent",
-                      transition: "background 0.15s, border-color 0.15s",
-                    }}
+                    className={`board-file-item ${isChecked ? "selected" : ""}`}
                   >
                     {isInstructor && (
                       <input
@@ -1131,35 +778,20 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                         checked={isChecked}
                         onChange={() => toggleFileSelect(file.id)}
                         style={{
-                          width: "13px",
-                          height: "13px",
-                          accentColor: "#0ea5e9",
+                          width: "18px",
+                          height: "18px",
+                          accentColor: "var(--accent)",
                           cursor: "pointer",
                           flexShrink: 0,
                         }}
                       />
                     )}
-
-                    <div
-                      style={{
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "7px",
-                        background: "#0b0f1a",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "14px",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {fileIcon(file.type)}
-                    </div>
+                    <div className="board-file-icon">{fileIcon(file.type)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
-                          color: "#e2e8f0",
-                          fontSize: "11px",
+                          color: "var(--text)",
+                          fontSize: "14px",
                           fontWeight: 600,
                           margin: 0,
                           overflow: "hidden",
@@ -1171,54 +803,41 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                       </p>
                       <p
                         style={{
-                          color: "#64748b",
-                          fontSize: "10px",
+                          color: "var(--muted)",
+                          fontSize: "12px",
                           margin: 0,
                         }}
                       >
                         by {file.uploader}
                       </p>
                     </div>
-
-                    <div
+                    <button
+                      onClick={() => downloadFile(file)}
                       style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                        alignItems: "flex-end",
-                        flexShrink: 0,
+                        color: "var(--accent)",
+                        fontSize: "13px",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        padding: "0 8px",
                       }}
                     >
-                      <button
-                        onClick={() => downloadFile(file)}
-                        style={{
-                          color: "#60a5fa",
-                          fontSize: "10px",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                        }}
-                      >
-                        Download
-                      </button>
-                    </div>
-
+                      Download
+                    </button>
                     {canDelete(role, file.uploader, username) && (
                       <button
                         onClick={() => deleteFile(file.id)}
                         style={{
                           position: "absolute",
-                          top: "6px",
-                          right: "6px",
+                          top: "8px",
+                          right: "8px",
                           background: "none",
                           border: "none",
                           cursor: "pointer",
-                          color: "#64748b",
-                          padding: 0,
-                          lineHeight: 1,
+                          color: "var(--error)",
+                          padding: "4px",
                           opacity: 0.5,
-                          transition: "opacity 0.15s",
                         }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.opacity = 1)
@@ -1227,7 +846,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                           (e.currentTarget.style.opacity = 0.5)
                         }
                       >
-                        <IoClose size={12} />
+                        <IoClose size={18} />
                       </button>
                     )}
                   </div>
@@ -1235,145 +854,97 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
               })
             )}
           </div>
-
-          {isInstructor &&
-            boardFiles.length > 0 &&
-            selectedFileIds.size === 0 && (
-              <p
-                style={{
-                  color: "#334155",
-                  fontSize: "10px",
-                  textAlign: "center",
-                  flexShrink: 0,
-                  marginTop: "2px",
-                }}
-              >
-                ☑ Check files to broadcast to students
-              </p>
-            )}
         </div>
 
         {/* ── ANNOUNCEMENTS ── */}
-        <div style={colStyle}>
-          <div style={headerStyle}>
-            <MdAnnouncement size={12} /> Announcements
+        <div className="board-column">
+          <div className="board-header">
+            <MdAnnouncement size={18} /> Announcements
           </div>
-
           {isInstructor && (
             <>
               <textarea
-                style={{
-                  width: "100%",
-                  background: "#0b0f1a",
-                  border: "1px solid #1e2d45",
-                  borderRadius: "8px",
-                  padding: "8px",
-                  color: "#e2e8f0",
-                  fontSize: "12px",
-                  outline: "none",
-                  resize: "none",
-                  boxSizing: "border-box",
-                  flexShrink: 0,
-                }}
+                className="board-textarea"
                 placeholder="Post an announcement..."
                 rows={2}
                 value={newAnnouncement}
                 onChange={(e) => setNewAnnouncement(e.target.value)}
               />
-              <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "12px", flexShrink: 0 }}>
                 <button
                   onClick={() => addAnnouncement(false)}
                   disabled={announcementPosting}
+                  className="btn-outline"
                   style={{
                     flex: 1,
+                    padding: "10px",
+                    fontSize: "14px",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "4px",
-                    padding: "5px",
-                    background: announcementPosting ? "#5b3fa8" : "#8b5cf6",
-                    color: "#fff",
-                    fontSize: "11px",
-                    borderRadius: "7px",
-                    border: "none",
-                    cursor: announcementPosting ? "not-allowed" : "pointer",
+                    gap: "6px",
                   }}
                 >
-                  <MdAnnouncement size={12} />
-                  Post
+                  <MdAnnouncement size={16} /> Post
                 </button>
                 <button
                   onClick={() => addAnnouncement(true)}
                   disabled={announcementPosting}
+                  className="btn"
                   style={{
                     flex: 1,
+                    padding: "10px",
+                    fontSize: "14px",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "4px",
-                    padding: "5px",
-                    background: announcementPosting ? "#1e3a5f" : "#0ea5e9",
-                    color: "#fff",
-                    fontSize: "11px",
-                    borderRadius: "7px",
-                    border: "none",
-                    cursor: announcementPosting ? "not-allowed" : "pointer",
+                    gap: "6px",
                   }}
                 >
-                  <BsBellFill size={10} />
-                  Post & Notify All
+                  <BsBellFill size={14} /> Post & Notify
                 </button>
               </div>
             </>
           )}
-
-          <div style={listStyle}>
+          <div className="board-list">
             {announcementsLoading ? (
               <Spinner />
             ) : announcements.length === 0 ? (
-              <p style={emptyText}>No announcements yet</p>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "14px",
+                  textAlign: "center",
+                }}
+              >
+                No announcements yet
+              </p>
             ) : (
               announcements.map((a) => (
-                <div
-                  key={a.id}
-                  style={{
-                    background: "#1a2235",
-                    borderRadius: "10px",
-                    padding: "10px",
-                    borderLeft: "2px solid #8b5cf6",
-                    flexShrink: 0,
-                    position: "relative",
-                  }}
-                >
+                <div key={a.id} className="board-announcement-item">
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      marginBottom: "3px",
+                      marginBottom: "6px",
                     }}
                   >
                     <span
                       style={{
-                        color: "#a78bfa",
-                        fontSize: "10px",
+                        color: "var(--accent)",
+                        fontSize: "13px",
                         fontWeight: 600,
                       }}
                     >
                       {a.author}
                     </span>
-                    <span style={{ color: "#475569", fontSize: "10px" }}>
+                    <span style={{ color: "var(--muted)", fontSize: "12px" }}>
                       {a.time}
                     </span>
                   </div>
                   <p
                     style={{
-                      color: "#e2e8f0",
-                      fontSize: "11px",
+                      color: "var(--text)",
+                      fontSize: "15px",
                       lineHeight: 1.5,
                       margin: 0,
-                      paddingRight: canDelete(role, a.author, username)
-                        ? "16px"
-                        : 0,
+                      paddingRight: "20px",
                     }}
                   >
                     {a.text}
@@ -1383,23 +954,21 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                       onClick={() => deleteAnnouncement(a.id)}
                       style={{
                         position: "absolute",
-                        top: "8px",
-                        right: "8px",
+                        top: "12px",
+                        right: "12px",
                         background: "none",
                         border: "none",
                         cursor: "pointer",
-                        color: "#64748b",
-                        padding: 0,
-                        lineHeight: 1,
+                        color: "var(--error)",
+                        padding: "0",
                         opacity: 0.5,
-                        transition: "opacity 0.15s",
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.opacity = 0.5)
                       }
                     >
-                      <IoClose size={12} />
+                      <IoClose size={18} />
                     </button>
                   )}
                 </div>
@@ -1408,13 +977,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.75; }
-        }
-      `}</style>
     </>
   );
 };
@@ -1455,7 +1017,7 @@ export default function ClassBoard({
   return (
     <mesh ref={meshRef} position={position} rotation={rotation}>
       <planeGeometry args={[5, 3]} />
-      <meshStandardMaterial color="#1a2235" />
+      <meshStandardMaterial color="var(--surface2)" />
       <Html
         transform
         prepend
@@ -1482,18 +1044,19 @@ export default function ClassBoard({
       >
         <div
           style={{
-            color: isNear ? "#60a5fa" : "#64748b",
+            color: isNear ? "var(--accent)" : "var(--muted)",
             fontSize: "11px",
-            fontFamily: "sans-serif",
-            background: "rgba(11,15,26,0.7)",
-            padding: "2px 8px",
-            borderRadius: "6px",
+            fontFamily: "Sora, sans-serif",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            padding: "4px 10px",
+            borderRadius: "8px",
             whiteSpace: "nowrap",
             transition: "color 0.3s",
             pointerEvents: "none",
           }}
         >
-          {isNear ? "Board" : "Walk closer to interact"}
+          {isNear ? "Board Active" : "Walk closer to interact"}
         </div>
       </Html>
     </mesh>

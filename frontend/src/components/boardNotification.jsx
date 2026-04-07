@@ -1,19 +1,37 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { BsBellFill, BsBell } from "react-icons/bs";
+import {
+  BsBellFill,
+  BsBell,
+  BsFileEarmarkPdfFill,
+  BsFileEarmarkWordFill,
+  BsFileEarmarkSpreadsheetFill,
+  BsFileEarmarkSlidesFill,
+  BsFileEarmarkZipFill,
+  BsFileEarmarkFill,
+  BsImageFill,
+  BsPaperclip,
+} from "react-icons/bs";
+import { MdAnnouncement } from "react-icons/md";
+import { IoClose } from "react-icons/io5";
 import { socket } from "../helper/socket";
 
 const TOAST_TTL = 7000;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const fileIcon = (type) => {
-  if (!type) return "📁";
-  if (type.startsWith("image/")) return "🖼️";
-  if (type === "application/pdf") return "📄";
-  if (type.includes("word") || type.includes("document")) return "📝";
-  if (type.includes("sheet") || type.includes("excel")) return "📊";
-  if (type.includes("presentation") || type.includes("powerpoint")) return "📋";
-  if (type.includes("zip") || type.includes("compressed")) return "🗜️";
-  return "📁";
+  if (!type) return <BsFileEarmarkFill color="var(--muted)" />;
+  if (type.startsWith("image/")) return <BsImageFill color="var(--accent)" />;
+  if (type === "application/pdf")
+    return <BsFileEarmarkPdfFill color="var(--error)" />;
+  if (type.includes("word") || type.includes("document"))
+    return <BsFileEarmarkWordFill color="#3b82f6" />;
+  if (type.includes("sheet") || type.includes("excel"))
+    return <BsFileEarmarkSpreadsheetFill color="var(--success)" />;
+  if (type.includes("presentation") || type.includes("powerpoint"))
+    return <BsFileEarmarkSlidesFill color="var(--warn)" />;
+  if (type.includes("zip") || type.includes("compressed"))
+    return <BsFileEarmarkZipFill color="var(--muted)" />;
+  return <BsFileEarmarkFill color="var(--muted)" />;
 };
 
 const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
@@ -39,83 +57,43 @@ const downloadFile = async (file) => {
 
 const ToastCard = ({ toast, onDismiss }) => {
   const isFile = toast.type === "file";
-  const accent = isFile ? "#0ea5e9" : "#8b5cf6";
+  const accent = isFile ? "var(--accent)" : "#a78bfa";
 
   return (
-    <div
-      style={{
-        background: "#111827",
-        border: `1px solid ${accent}`,
-        borderLeft: `3px solid ${accent}`,
-        borderRadius: "12px",
-        padding: "11px 13px 10px",
-        width: "300px",
-        boxShadow: "0 8px 28px rgba(0,0,0,0.6)",
-        position: "relative",
-        overflow: "hidden",
-        animation: "slideInRight 0.22s ease",
-        fontFamily: "sans-serif",
-      }}
-    >
-      {/* header row */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          marginBottom: "7px",
-        }}
-      >
-        <span style={{ fontSize: "12px" }}>{isFile ? "📎" : "📢"}</span>
-        <span
-          style={{
-            color: isFile ? "#38bdf8" : "#a78bfa",
-            fontSize: "10px",
-            fontWeight: 700,
-            flex: 1,
-          }}
-        >
+    <div className="toast-card" style={{ borderLeft: `4px solid ${accent}` }}>
+      <div className="toast-header">
+        {isFile ? (
+          <BsPaperclip size={18} color={accent} />
+        ) : (
+          <MdAnnouncement size={20} color={accent} />
+        )}
+        <span className="toast-title" style={{ color: accent }}>
           {isFile ? "Files from instructor" : "Announcement"}
         </span>
-        <button
-          onClick={() => onDismiss(toast.id)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "#64748b",
-            cursor: "pointer",
-            padding: 0,
-            lineHeight: 1,
-            fontSize: "14px",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#e2e8f0")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#64748b")}
-        >
-          ✕
+        <button onClick={() => onDismiss(toast.id)} className="toast-close">
+          <IoClose size={20} />
         </button>
       </div>
 
-      {/* body */}
       {isFile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {toast.files.map((file, i) => (
             <div
               key={`${file.id}-${i}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "#1a2235",
-                borderRadius: "8px",
-                padding: "7px 9px",
-              }}
+              className="board-file-item"
+              style={{ padding: "14px" }}
             >
-              <span style={{ fontSize: "16px" }}>{fileIcon(file.type)}</span>
+              <div
+                className="board-file-icon"
+                style={{ width: "38px", height: "38px", fontSize: "18px" }}
+              >
+                {fileIcon(file.type)}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p
                   style={{
-                    color: "#e2e8f0",
-                    fontSize: "11px",
+                    color: "var(--text)",
+                    fontSize: "13px",
                     fontWeight: 600,
                     margin: 0,
                     overflow: "hidden",
@@ -125,25 +103,23 @@ const ToastCard = ({ toast, onDismiss }) => {
                 >
                   {file.name}
                 </p>
-                <p style={{ color: "#64748b", fontSize: "10px", margin: 0 }}>
+                <p
+                  style={{ color: "var(--muted)", fontSize: "11px", margin: 0 }}
+                >
                   by {file.uploader}
                 </p>
               </div>
               <button
                 onClick={() => downloadFile(file)}
+                className="btn-outline"
                 style={{
-                  color: "#38bdf8",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  background: "rgba(14,165,233,0.1)",
-                  border: "1px solid rgba(14,165,233,0.25)",
-                  borderRadius: "5px",
-                  padding: "2px 8px",
-                  cursor: "pointer",
-                  flexShrink: 0,
+                  padding: "6px 12px",
+                  fontSize: "11px",
+                  color: "var(--accent)",
+                  borderColor: "var(--accent)",
                 }}
               >
-                ↓
+                Download
               </button>
             </div>
           ))}
@@ -152,18 +128,18 @@ const ToastCard = ({ toast, onDismiss }) => {
         <>
           <p
             style={{
-              color: "#a78bfa",
-              fontSize: "10px",
+              color: "var(--accent)",
+              fontSize: "13px",
               fontWeight: 700,
-              margin: "0 0 3px",
+              margin: "0 0 6px",
             }}
           >
             {toast.author}
           </p>
           <p
             style={{
-              color: "#e2e8f0",
-              fontSize: "11px",
+              color: "var(--text)",
+              fontSize: "14px",
               lineHeight: 1.5,
               margin: 0,
             }}
@@ -173,25 +149,17 @@ const ToastCard = ({ toast, onDismiss }) => {
         </>
       )}
 
-      {/* timer bar */}
       <div
+        className="toast-progress"
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          height: "2px",
-          width: "100%",
           background: accent,
-          transformOrigin: "left center",
           animation: `toastProgress ${TOAST_TTL}ms linear forwards`,
-          borderRadius: "0 0 0 12px",
         }}
       />
     </div>
   );
 };
 
-// file history bell panel
 const FileBellPanel = ({ files, announcements }) => {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("files");
@@ -224,156 +192,59 @@ const FileBellPanel = ({ files, announcements }) => {
 
   return (
     <div style={{ position: "relative" }}>
-      {/* bell icon button */}
       <button
         onClick={toggle}
         title="Notifications"
-        style={{
-          width: "34px",
-          height: "34px",
-          borderRadius: "9px",
-          background: "#111827",
-          border: `1px solid ${totalUnread > 0 ? "#0ea5e9" : "#1e2d45"}`,
-          color: totalUnread > 0 ? "#38bdf8" : "#94a3b8",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          position: "relative",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-          lineHeight: 0,
-          padding: 0,
-        }}
+        className={`bell-btn ${totalUnread > 0 ? "active" : ""}`}
       >
-        {totalUnread > 0 ? <BsBellFill size={16} /> : <BsBell size={16} />}
+        {totalUnread > 0 ? <BsBellFill size={26} /> : <BsBell size={26} />}
         {totalUnread > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              top: "-4px",
-              right: "-4px",
-              background: "#ef4444",
-              color: "#fff",
-              fontSize: "9px",
-              fontWeight: 700,
-              minWidth: "16px",
-              height: "16px",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 3px",
-            }}
-          >
+          <span className="bell-badge">
             {totalUnread > 9 ? "9+" : totalUnread}
           </span>
         )}
       </button>
 
-      {/* dropdown */}
       {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "42px",
-            right: 0,
-            width: "300px",
-            background: "#111827",
-            border: "1px solid #1e2d45",
-            borderRadius: "14px",
-            boxShadow: "0 12px 40px rgba(0,0,0,0.65)",
-            overflow: "hidden",
-            zIndex: 400,
-            fontFamily: "sans-serif",
-          }}
-        >
-          {/* header */}
-          <div
-            style={{
-              padding: "10px 14px",
-              borderBottom: "1px solid #1e2d45",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{
-                color: "#94a3b8",
-                fontSize: "11px",
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <BsBellFill size={11} /> Notifications
+        <div className="bell-panel">
+          <div className="bell-panel-header">
+            <span className="bell-panel-title">
+              <BsBellFill size={14} /> Notifications
             </span>
-            <button
-              onClick={() => setOpen(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#64748b",
-                cursor: "pointer",
-                padding: 0,
-                fontSize: "14px",
-              }}
-            >
-              ✕
+            <button onClick={() => setOpen(false)} className="toast-close">
+              <IoClose size={20} />
             </button>
           </div>
 
-          {/* tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid #1e2d45" }}>
+          <div className="bell-tabs">
             {[
-              { key: "files", label: "📎 Files", count: unreadFiles },
+              {
+                key: "files",
+                label: (
+                  <>
+                    <BsPaperclip size={14} /> Files
+                  </>
+                ),
+                count: unreadFiles,
+              },
               {
                 key: "announce",
-                label: "📢 Announcements",
+                label: (
+                  <>
+                    <MdAnnouncement size={16} /> Announcements
+                  </>
+                ),
                 count: unreadAnnounce,
               },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => switchTab(tab.key)}
-                style={{
-                  flex: 1,
-                  padding: "8px 4px",
-                  background: "none",
-                  border: "none",
-                  borderRadius: 0,
-                  borderBottom:
-                    activeTab === tab.key
-                      ? "2px solid #0ea5e9"
-                      : "2px solid transparent",
-                  color: activeTab === tab.key ? "#e2e8f0" : "#64748b",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "4px",
-                }}
+                className={`bell-tab ${activeTab === tab.key ? "active" : ""}`}
               >
                 {tab.label}
                 {tab.count > 0 && (
-                  <span
-                    style={{
-                      background: "#ef4444",
-                      color: "#fff",
-                      fontSize: "9px",
-                      fontWeight: 700,
-                      minWidth: "14px",
-                      height: "14px",
-                      borderRadius: "7px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "0 3px",
-                    }}
-                  >
+                  <span className="bell-tab-badge">
                     {tab.count > 9 ? "9+" : tab.count}
                   </span>
                 )}
@@ -381,47 +252,23 @@ const FileBellPanel = ({ files, announcements }) => {
             ))}
           </div>
 
-          {/* content */}
-          <div
-            style={{ maxHeight: "360px", overflowY: "auto", padding: "8px" }}
-          >
+          <div className="bell-content">
             {activeTab === "files" ? (
               files.length === 0 ? (
-                <p
-                  style={{
-                    color: "#475569",
-                    fontSize: "11px",
-                    textAlign: "center",
-                    padding: "16px 0",
-                  }}
-                >
-                  No files sent yet
-                </p>
+                <p className="notif-empty">No files sent yet</p>
               ) : (
                 files.map((file, i) => (
                   <div
                     key={`${file.id ?? i}`}
-                    style={{
-                      background: "#1a2235",
-                      borderRadius: "10px",
-                      padding: "10px",
-                      marginBottom: "6px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "9px",
-                    }}
+                    className="board-file-item"
+                    style={{ marginBottom: "10px", padding: "14px" }}
                   >
                     <div
+                      className="board-file-icon"
                       style={{
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "7px",
-                        background: "#0b0f1a",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        fontSize: "16px",
+                        width: "38px",
+                        height: "38px",
+                        fontSize: "18px",
                       }}
                     >
                       {fileIcon(file.type)}
@@ -429,8 +276,8 @@ const FileBellPanel = ({ files, announcements }) => {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
-                          color: "#e2e8f0",
-                          fontSize: "11px",
+                          color: "var(--text)",
+                          fontSize: "13px",
                           fontWeight: 600,
                           margin: 0,
                           overflow: "hidden",
@@ -442,8 +289,8 @@ const FileBellPanel = ({ files, announcements }) => {
                       </p>
                       <p
                         style={{
-                          color: "#64748b",
-                          fontSize: "10px",
+                          color: "var(--muted)",
+                          fontSize: "11px",
                           margin: 0,
                         }}
                       >
@@ -452,16 +299,12 @@ const FileBellPanel = ({ files, announcements }) => {
                     </div>
                     <button
                       onClick={() => downloadFile(file)}
+                      className="btn-outline"
                       style={{
-                        color: "#38bdf8",
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        background: "rgba(14,165,233,0.1)",
-                        border: "1px solid rgba(14,165,233,0.25)",
-                        borderRadius: "6px",
-                        padding: "3px 9px",
-                        cursor: "pointer",
-                        flexShrink: 0,
+                        padding: "6px 12px",
+                        fontSize: "11px",
+                        color: "var(--accent)",
+                        borderColor: "var(--accent)",
                       }}
                     >
                       Download
@@ -470,42 +313,31 @@ const FileBellPanel = ({ files, announcements }) => {
                 ))
               )
             ) : announcements.length === 0 ? (
-              <p
-                style={{
-                  color: "#475569",
-                  fontSize: "11px",
-                  textAlign: "center",
-                  padding: "16px 0",
-                }}
-              >
-                No announcements yet
-              </p>
+              <p className="notif-empty">No announcements yet</p>
             ) : (
               announcements.map((ann, i) => (
                 <div
                   key={i}
-                  style={{
-                    background: "#1a2235",
-                    borderRadius: "10px",
-                    padding: "10px 12px",
-                    marginBottom: "6px",
-                    borderLeft: "3px solid #8b5cf6",
-                  }}
+                  className="board-announcement-item"
+                  style={{ marginBottom: "10px", padding: "16px" }}
                 >
                   <p
                     style={{
-                      color: "#a78bfa",
-                      fontSize: "10px",
+                      color: "var(--accent)",
+                      fontSize: "12px",
                       fontWeight: 700,
-                      margin: "0 0 4px",
+                      margin: "0 0 6px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
                     }}
                   >
-                    📢 {ann.author}
+                    <MdAnnouncement size={14} /> {ann.author}
                   </p>
                   <p
                     style={{
-                      color: "#e2e8f0",
-                      fontSize: "11px",
+                      color: "var(--text)",
+                      fontSize: "13px",
                       lineHeight: 1.5,
                       margin: 0,
                     }}
@@ -515,9 +347,9 @@ const FileBellPanel = ({ files, announcements }) => {
                   {ann.time && (
                     <p
                       style={{
-                        color: "#475569",
-                        fontSize: "9px",
-                        margin: "4px 0 0",
+                        color: "var(--muted)",
+                        fontSize: "11px",
+                        margin: "8px 0 0",
                       }}
                     >
                       {new Date(ann.time).toLocaleTimeString([], {
@@ -598,43 +430,18 @@ export function BoardNotifications({ isInstructor = false }) {
   }, [addToast]);
 
   return (
-    <>
-      <style>{`
-        @keyframes slideInRight {
-          from { opacity:0; transform:translateX(20px); }
-          to   { opacity:1; transform:translateX(0); }
-        }
-        @keyframes toastProgress {
-          from { transform: scaleX(1); }
-          to   { transform: scaleX(0); }
-        }
-      `}</style>
-      <div
-        style={{
-          position: "fixed",
-          top: "52px",
-          right: "10px",
-          zIndex: 150,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: "8px",
-          fontFamily: "sans-serif",
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ pointerEvents: "auto" }}>
-          {!isInstructor && (
-            <FileBellPanel files={allFiles} announcements={allAnnouncements} />
-          )}
-        </div>
-        {[...toasts].reverse().map((toast) => (
-          <div key={toast.id} style={{ pointerEvents: "auto" }}>
-            <ToastCard toast={toast} onDismiss={dismiss} />
-          </div>
-        ))}
+    <div className="notif-wrapper">
+      <div className="notif-interactive">
+        {!isInstructor && (
+          <FileBellPanel files={allFiles} announcements={allAnnouncements} />
+        )}
       </div>
-    </>
+      {[...toasts].reverse().map((toast) => (
+        <div key={toast.id} className="notif-interactive">
+          <ToastCard toast={toast} onDismiss={dismiss} />
+        </div>
+      ))}
+    </div>
   );
 }
 
