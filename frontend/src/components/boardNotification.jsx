@@ -196,10 +196,30 @@ const FileBellPanel = ({ files, announcements }) => {
         onClick={toggle}
         title="Notifications"
         className={`bell-btn ${totalUnread > 0 ? "active" : ""}`}
+        style={{
+          width: "56px",
+          height: "56px",
+        }} /* Forces the button to be larger */
       >
-        {totalUnread > 0 ? <BsBellFill size={26} /> : <BsBell size={26} />}
+        {totalUnread > 0 ? (
+          <BsBellFill
+            style={{ width: "32px", height: "32px" }}
+          /> /* Forces the icon size */
+        ) : (
+          <BsBell style={{ width: "32px", height: "32px" }} />
+        )}
+
         {totalUnread > 0 && (
-          <span className="bell-badge">
+          <span
+            className="bell-badge"
+            style={{
+              fontSize: "13px",
+              minWidth: "24px",
+              height: "24px",
+              top: "-4px",
+              right: "-4px",
+            }}
+          >
             {totalUnread > 9 ? "9+" : totalUnread}
           </span>
         )}
