@@ -8,8 +8,8 @@ import "../App.css"; // Ensure styles are imported
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MODEL_PATHS = {
-  boy: "/model 2/boy.glb",
-  girl: "/model 2/girl.glb",
+  boy: "/fixed model/boy.glb",
+  girl: "/fixed model/girl.glb",
 };
 
 const AVATAR_OPTIONS = [

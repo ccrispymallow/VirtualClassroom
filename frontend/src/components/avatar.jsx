@@ -36,7 +36,7 @@ const AvatarModel = memo(function AvatarModel({
   isSitting = false,
 }) {
   const modelUrl =
-    avatarType === "boy" ? "/model 2/boy.glb" : "/model 2/girl.glb";
+    avatarType === "boy" ? "/fixed model/boy.glb" : "/fixed model/girl.glb";
   const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
@@ -78,8 +78,8 @@ const AvatarModel = memo(function AvatarModel({
     />
   );
 });
-useGLTF.preload("/model 2/boy.glb");
-useGLTF.preload("/model 2/girl.glb");
+useGLTF.preload("/fixed model/boy.glb");
+useGLTF.preload("/fixed model/girl.glb");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getOccupiedChairId(peerPos) {
