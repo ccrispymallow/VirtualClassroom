@@ -197,6 +197,7 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
 const MeetingParticipantsPanel = memo(function MeetingParticipantsPanel({
   open,
   participants,
+  participantCount,
   peerEmotes,
   myEmote,
   userId,
@@ -205,14 +206,16 @@ const MeetingParticipantsPanel = memo(function MeetingParticipantsPanel({
   onRemoveParticipant,
   onPanelMouseEnter,
 }) {
+  if (!open) return null;
+
   return (
     <div
-      className={`${PANEL_CLASS} w-64 ${open ? "" : "hidden"}`}
+      className={`${PANEL_CLASS} w-64`}
       onMouseEnter={onPanelMouseEnter}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
         <p className="text-slate-200 font-semibold text-sm">
-          Participants ({participants.length})
+          Participants ({participantCount})
         </p>
         <button
           type="button"
@@ -291,9 +294,11 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
   onSend,
   onPanelMouseEnter,
 }) {
+  if (!open) return null;
+
   return (
     <div
-      className={`fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col ${open ? "" : "hidden"}`}
+      className="fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col"
       style={{ height: "360px" }}
       onMouseEnter={onPanelMouseEnter}
     >
@@ -381,6 +386,7 @@ const MeetingInterface = () => {
     setChatMessages,
   } = useRoom();
   const safeChatMessages = useMemo(() => chatMessages ?? [], [chatMessages]);
+  const participantCount = participants.length;
 
   const [boxes, setBoxes] = useState({
     settings: false,
@@ -394,6 +400,7 @@ const MeetingInterface = () => {
   const chatEndRef = useRef(null);
   const showChatRef = useRef(showChat);
   const [copyMessage, setCopyMessage] = useState("");
+  const copyTimerRef = useRef(null);
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
@@ -455,6 +462,12 @@ const MeetingInterface = () => {
     }).length;
   }, [participants, user.id, myEmote, peerEmotes]);
 
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
   const userInitial = useMemo(
     () => user.username?.[0]?.toUpperCase() || "?",
     [user.username],
@@ -467,7 +480,7 @@ const MeetingInterface = () => {
   useEffect(() => {
     const activeStream =
       remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
-    setScreenStream(activeStream);
+    setScreenStream((prev) => (prev === activeStream ? prev : activeStream));
   }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
 
   useEffect(() => {
@@ -853,13 +866,14 @@ const MeetingInterface = () => {
   }, []);
 
   const handleCopyRoomCode = useCallback(async () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     try {
       await navigator.clipboard.writeText(roomCode);
       setCopyMessage("Copied!");
-      setTimeout(() => setCopyMessage(""), 2000);
+      copyTimerRef.current = setTimeout(() => setCopyMessage(""), 2000);
     } catch {
       setCopyMessage("Copy failed");
-      setTimeout(() => setCopyMessage(""), 2000);
+      copyTimerRef.current = setTimeout(() => setCopyMessage(""), 2000);
     }
   }, [roomCode]);
 
@@ -1032,6 +1046,7 @@ const MeetingInterface = () => {
       <MeetingParticipantsPanel
         open={boxes.participants}
         participants={participants}
+        participantCount={participantCount}
         peerEmotes={peerEmotes}
         myEmote={myEmote}
         userId={user.id}

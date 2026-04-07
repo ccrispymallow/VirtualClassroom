@@ -1,6 +1,6 @@
 import { useRoom } from "../components/roomContext";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useEffect, useMemo } from "react";
+import { memo, useRef, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useGLTF, useAnimations, Html, Billboard } from "@react-three/drei";
 import { BsMicFill, BsMicMuteFill } from "react-icons/bs";
@@ -12,17 +12,10 @@ import {
 } from "./classroom";
 
 const COLLISION_RADIUS = 0.8;
+const COLLISION_RADIUS_SQ = COLLISION_RADIUS * COLLISION_RADIUS;
 const EMIT_INTERVAL = 50;
-const MOVE_KEYS = [
-  "w",
-  "a",
-  "s",
-  "d",
-  "arrowup",
-  "arrowdown",
-  "arrowleft",
-  "arrowright",
-];
+const CHAIR_SNAP_RADIUS_SQ = CHAIR_SNAP_RADIUS * CHAIR_SNAP_RADIUS;
+const CHAIR_OCCUPIED_EPSILON_SQ = 0.01;
 const SPAWN_SLOTS = [
   [-3, 0, 4],
   [-2, 0, 4],
@@ -34,7 +27,7 @@ const SPAWN_SLOTS = [
   [-1, 0, 8],
 ];
 
-function AvatarModel({
+const AvatarModel = memo(function AvatarModel({
   position,
   yaw = 0,
   avatarType = "boy",
@@ -48,14 +41,6 @@ function AvatarModel({
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
-  const hasInitialized = useRef(false);
-  // At the top of the useEffect, after the guard
-  console.log(
-    "isSitting:",
-    isSitting,
-    "baseAnim would be:",
-    isSitting ? "Sitting" : isMoving ? "Walking" : "Standing",
-  );
 
   useEffect(() => {
     if (names.length === 0 || Object.keys(actions).length === 0) return;
@@ -92,7 +77,7 @@ function AvatarModel({
       scale={1}
     />
   );
-}
+});
 useGLTF.preload("/model 2/boy.glb");
 useGLTF.preload("/model 2/girl.glb");
 
@@ -102,18 +87,22 @@ function getOccupiedChairId(peerPos) {
   const [px, , pz] = peerPos;
   for (const chair of CHAIR_POSITIONS) {
     const [cx, , cz] = chair.position;
-    if (Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < 0.1) return chair.id;
+    const dx = px - cx;
+    const dz = pz - cz;
+    if (dx * dx + dz * dz < CHAIR_OCCUPIED_EPSILON_SQ) return chair.id;
   }
   return null;
 }
 
 function getOccupiedChairIds(participants, userId, peerSitting, peerPositions) {
-  return new Set(
-    participants
-      .filter((p) => p.id !== userId && peerSitting?.[p.id])
-      .map((p) => getOccupiedChairId(peerPositions[p.id]))
-      .filter(Boolean),
-  );
+  const occupied = new Set();
+  for (let i = 0; i < participants.length; i += 1) {
+    const p = participants[i];
+    if (p.id === userId || !peerSitting?.[p.id]) continue;
+    const chairId = getOccupiedChairId(peerPositions[p.id]);
+    if (chairId) occupied.add(chairId);
+  }
+  return occupied;
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
@@ -130,18 +119,26 @@ export default function Avatar() {
     yawRef,
     posRef,
     setAvatarPosition,
-    myEmote,
     peerEmotes,
-    isSitting,
     setIsSitting,
     setNearChair,
   } = useRoom();
 
   const user = JSON.parse(localStorage.getItem("userSession") || "{}");
   const lastEmitRef = useRef(0);
+  const lastSentRef = useRef({ x: null, y: null, z: null, yaw: null });
   const initializedRef = useRef(false);
   const isMovingRef = useRef(false);
   const sittingChairRef = useRef(null);
+  const occupiedChairIds = useMemo(
+    () =>
+      getOccupiedChairIds(participants, user.id, peerSitting, peerPositions),
+    [participants, user.id, peerSitting, peerPositions],
+  );
+  const otherParticipants = useMemo(
+    () => participants.filter((p) => p.id !== user.id),
+    [participants, user.id],
+  );
 
   // ── Spawn ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -206,21 +203,17 @@ export default function Avatar() {
 
       // Sit down — find nearest unoccupied chair
       const [px, , pz] = posRef.current;
-      const occupiedChairIds = getOccupiedChairIds(
-        participants,
-        user.id,
-        peerSitting,
-        peerPositions,
-      );
       let nearest = null,
-        nearestDist = Infinity;
+        nearestDistSq = Infinity;
       for (const chair of CHAIR_POSITIONS) {
         if (occupiedChairIds.has(chair.id)) continue;
         const [cx, , cz] = chair.position;
-        const dist = Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2);
-        if (dist < CHAIR_SNAP_RADIUS && dist < nearestDist) {
+        const dx = px - cx;
+        const dz = pz - cz;
+        const distSq = dx * dx + dz * dz;
+        if (distSq < CHAIR_SNAP_RADIUS_SQ && distSq < nearestDistSq) {
           nearest = chair;
-          nearestDist = dist;
+          nearestDistSq = distSq;
         }
       }
 
@@ -250,9 +243,7 @@ export default function Avatar() {
     setAvatarPosition,
     setIsSitting,
     setNearChair,
-    participants,
-    peerSitting,
-    peerPositions,
+    occupiedChairIds,
   ]);
 
   // ── Sit rejected by server ─────────────────────────────────────────────────
@@ -270,26 +261,34 @@ export default function Avatar() {
   useFrame((_, delta) => {
     const now = Date.now();
     if (socket && roomCode && now - lastEmitRef.current >= EMIT_INTERVAL) {
-      lastEmitRef.current = now;
-      socket.emit("position-update", {
-        roomCode,
-        userId: user.id,
-        position: posRef.current,
-        yaw: yawRef.current,
-      });
+      const [x, y, z] = posRef.current;
+      const yaw = yawRef.current;
+      const last = lastSentRef.current;
+      const hasMoved =
+        last.x === null ||
+        Math.abs(last.x - x) > 0.001 ||
+        Math.abs(last.y - y) > 0.001 ||
+        Math.abs(last.z - z) > 0.001 ||
+        Math.abs(last.yaw - yaw) > 0.001;
+      if (hasMoved) {
+        lastEmitRef.current = now;
+        lastSentRef.current = { x, y, z, yaw };
+        socket.emit("position-update", {
+          roomCode,
+          userId: user.id,
+          position: [x, y, z],
+          yaw,
+        });
+      }
     }
 
     if (!sittingChairRef.current) {
       const [px, , pz] = posRef.current;
-      const occupiedChairIds = getOccupiedChairIds(
-        participants,
-        user.id,
-        peerSitting,
-        peerPositions,
-      );
       const close = CHAIR_POSITIONS.some(({ id, position: [cx, , cz] }) => {
         if (occupiedChairIds.has(id)) return false;
-        return Math.sqrt((px - cx) ** 2 + (pz - cz) ** 2) < CHAIR_SNAP_RADIUS;
+        const dx = px - cx;
+        const dz = pz - cz;
+        return dx * dx + dz * dz < CHAIR_SNAP_RADIUS_SQ;
       });
       setNearChair((prev) => (prev !== close ? close : prev));
     }
@@ -322,7 +321,15 @@ export default function Avatar() {
       dz += sinY * speed * delta;
     }
 
-    const anyMoveKeyHeld = MOVE_KEYS.some((k) => keys[k]);
+    const anyMoveKeyHeld =
+      keys.w ||
+      keys.a ||
+      keys.s ||
+      keys.d ||
+      keys.arrowup ||
+      keys.arrowdown ||
+      keys.arrowleft ||
+      keys.arrowright;
     if (anyMoveKeyHeld !== isMovingRef.current) {
       isMovingRef.current = anyMoveKeyHeld;
       socket?.emit("moving-update", {
@@ -337,12 +344,15 @@ export default function Avatar() {
       const nz = z + dz;
       let blocked = false;
 
-      for (const other of participants.filter((p) => p.id !== user.id)) {
+      for (let i = 0; i < otherParticipants.length; i += 1) {
+        const other = otherParticipants[i];
         const otherPos = peerPositions[other.id];
         if (!otherPos) continue;
         const [ox, , oz] = otherPos;
         if (ox === 0 && oz === 0) continue;
-        if (Math.sqrt((nx - ox) ** 2 + (nz - oz) ** 2) < COLLISION_RADIUS) {
+        const cdx = nx - ox;
+        const cdz = nz - oz;
+        if (cdx * cdx + cdz * cdz < COLLISION_RADIUS_SQ) {
           blocked = true;
           break;
         }
@@ -370,57 +380,55 @@ export default function Avatar() {
   // ── Render peers ───────────────────────────────────────────────────────────
   return (
     <>
-      {participants
-        .filter((p) => p.id !== user.id)
-        .map((p) => {
-          if (!peerPositions[p.id]) return null;
-          const [px, py, pz] = peerPositions[p.id];
-          return (
-            <group key={p.id}>
-              <AvatarModel
-                key={`${p.id}-${p.avatar || "boy"}`}
-                position={[px, py, pz]}
-                avatarType={p.avatar || "boy"}
-                isMoving={peerMoving?.[p.id] || false}
-                emote={peerEmotes?.[p.id] || null}
-                isSitting={peerSitting?.[p.id] || false}
-                yaw={peerYaws?.[p.id] ?? 0}
-              />
-              <Billboard position={[px, py + 2.4, pz]}>
-                <Html
-                  transform
-                  occlude
-                  distanceFactor={8}
-                  center
-                  zIndexRange={[10, 10]}
+      {otherParticipants.map((p) => {
+        if (!peerPositions[p.id]) return null;
+        const [px, py, pz] = peerPositions[p.id];
+        return (
+          <group key={p.id}>
+            <AvatarModel
+              key={`${p.id}-${p.avatar || "boy"}`}
+              position={[px, py, pz]}
+              avatarType={p.avatar || "boy"}
+              isMoving={peerMoving?.[p.id] || false}
+              emote={peerEmotes?.[p.id] || null}
+              isSitting={peerSitting?.[p.id] || false}
+              yaw={peerYaws?.[p.id] ?? 0}
+            />
+            <Billboard position={[px, py + 2.4, pz]}>
+              <Html
+                transform
+                occlude
+                distanceFactor={8}
+                center
+                zIndexRange={[10, 10]}
+              >
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "3px",
+                    background: "rgba(17,24,39,0.8)",
+                    padding: "2px 5px",
+                    borderRadius: "8px",
+                    color: "#fff",
+                    fontSize: "10px",
+                    whiteSpace: "nowrap",
+                    boxShadow: "0 1px 8px rgba(0,0,0,0.5)",
+                    pointerEvents: "none",
+                  }}
                 >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      background: "rgba(17,24,39,0.8)",
-                      padding: "2px 5px",
-                      borderRadius: "8px",
-                      color: "#fff",
-                      fontSize: "10px",
-                      whiteSpace: "nowrap",
-                      boxShadow: "0 1px 8px rgba(0,0,0,0.5)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <span>{p.username || "Guest"}</span>
-                    {p.mic ? (
-                      <BsMicFill size={10} color="#22c55e" />
-                    ) : (
-                      <BsMicMuteFill size={10} color="#f87171" />
-                    )}
-                  </div>
-                </Html>
-              </Billboard>
-            </group>
-          );
-        })}
+                  <span>{p.username || "Guest"}</span>
+                  {p.mic ? (
+                    <BsMicFill size={10} color="#22c55e" />
+                  ) : (
+                    <BsMicMuteFill size={10} color="#f87171" />
+                  )}
+                </div>
+              </Html>
+            </Billboard>
+          </group>
+        );
+      })}
     </>
   );
 }

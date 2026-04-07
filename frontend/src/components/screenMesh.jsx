@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useVideoTexture, Html } from "@react-three/drei";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
@@ -11,12 +11,15 @@ function VideoMaterial({ stream }) {
 
 // ─── Fullscreen overlay ───────────────────────────────────────────────────────
 function FullscreenOverlay({ stream, onClose }) {
-  const videoRef = (el) => {
-    if (el && stream) {
-      el.srcObject = stream;
-      el.play().catch(() => {});
-    }
-  };
+  const videoRef = useCallback(
+    (el) => {
+      if (el && stream) {
+        el.srcObject = stream;
+        el.play().catch(() => {});
+      }
+    },
+    [stream],
+  );
 
   return (
     <div
@@ -76,6 +79,11 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   // F key toggles fullscreen
   useEffect(() => {
     const onKey = (e) => {
+      if (!screenStream) return;
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+        return;
+      }
       if (e.key.toLowerCase() === "f") {
         e.stopPropagation();
         e.preventDefault();
@@ -84,7 +92,7 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, []);
+  }, [screenStream]);
 
   // Fullscreen overlay
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { memo, useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { useRoom } from "./roomContext";
@@ -12,6 +12,7 @@ import { socket } from "../helper/socket";
 
 const INTERACT_DISTANCE = 12;
 const POLL_INTERVAL = 5000;
+const POLL_INTERVAL_MAX = 60000;
 const API_BASE = `${import.meta.env.VITE_BACKEND_URL}/api`;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -98,6 +99,37 @@ const normalizeFile = (f, fallbackUsername) => ({
   type: f.file_type || f.type || "",
   uploader: f.username || f.uploader || f.uploaded_by || fallbackUsername,
 });
+
+const areNoteListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.text === b[idx]?.text &&
+      item.color === b[idx]?.color &&
+      item.author === b[idx]?.author,
+  );
+
+const areAnnouncementListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.text === b[idx]?.text &&
+      item.author === b[idx]?.author &&
+      item.time === b[idx]?.time,
+  );
+
+const areFileListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.name === b[idx]?.name &&
+      item.url === b[idx]?.url &&
+      item.type === b[idx]?.type &&
+      item.uploader === b[idx]?.uploader,
+  );
 
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
   <div
@@ -202,7 +234,7 @@ const canDelete = (role, itemAuthor, currentUsername) => {
   return itemAuthor === currentUsername;
 };
 
-const PostIt = ({ note, onDelete, showDelete }) => {
+const PostIt = memo(function PostIt({ note, onDelete, showDelete }) {
   const colors = {
     yellow: "bg-yellow-200 border-yellow-300 text-yellow-900",
     pink: "bg-pink-200 border-pink-300 text-pink-900",
@@ -226,7 +258,7 @@ const PostIt = ({ note, onDelete, showDelete }) => {
       <p className="mt-2 opacity-50 text-[10px]">{note.author}</p>
     </div>
   );
-};
+});
 
 const Spinner = () => (
   <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
@@ -584,7 +616,11 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [uploading, setUploading] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
   const [broadcasting, setBroadcasting] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(
+    () => !document.hidden,
+  );
   const fileInputRef = useRef(null);
+  const pollFailureCountRef = useRef(0);
 
   const { confirm, ConfirmUI } = useConfirm();
 
@@ -600,6 +636,13 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     green: "bg-green-300",
   };
 
+  useEffect(() => {
+    const onVisibilityChange = () => setIsPageVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
   const fetchAll = useCallback(
     async (showLoading = false) => {
       if (!roomId) return;
@@ -614,27 +657,40 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
           api.getAnnouncements(roomId),
           api.getFiles(roomId),
         ]);
-      if (notesResult.status === "fulfilled") {
-        setNotes(
-          (Array.isArray(notesResult.value) ? notesResult.value : []).map((n) =>
-            normalizeNote(n, username),
-          ),
+      const hasFailure =
+        notesResult.status === "rejected" ||
+        announcementsResult.status === "rejected" ||
+        filesResult.status === "rejected";
+
+      if (hasFailure) {
+        pollFailureCountRef.current = Math.min(
+          pollFailureCountRef.current + 1,
+          6,
         );
+      } else {
+        pollFailureCountRef.current = 0;
+      }
+      if (notesResult.status === "fulfilled") {
+        const nextNotes = (
+          Array.isArray(notesResult.value) ? notesResult.value : []
+        ).map((n) => normalizeNote(n, username));
+        setNotes((prev) => (areNoteListsEqual(prev, nextNotes) ? prev : nextNotes));
       }
       if (announcementsResult.status === "fulfilled") {
-        setAnnouncements(
-          (Array.isArray(announcementsResult.value)
-            ? announcementsResult.value
-            : []
-          ).map((a) => normalizeAnnouncement(a, username)),
+        const nextAnnouncements = (
+          Array.isArray(announcementsResult.value) ? announcementsResult.value : []
+        ).map((a) => normalizeAnnouncement(a, username));
+        setAnnouncements((prev) =>
+          areAnnouncementListsEqual(prev, nextAnnouncements)
+            ? prev
+            : nextAnnouncements,
         );
       }
       if (filesResult.status === "fulfilled") {
-        setBoardFiles(
-          (Array.isArray(filesResult.value) ? filesResult.value : []).map((f) =>
-            normalizeFile(f, username),
-          ),
+        const nextFiles = (Array.isArray(filesResult.value) ? filesResult.value : []).map(
+          (f) => normalizeFile(f, username),
         );
+        setBoardFiles((prev) => (areFileListsEqual(prev, nextFiles) ? prev : nextFiles));
       }
       if (showLoading) {
         setNotesLoading(false);
@@ -647,9 +703,30 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
 
   useEffect(() => {
     fetchAll(true);
-    const interval = setInterval(() => fetchAll(false), POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+    if (!isPageVisible || !isNear) return;
+
+    let cancelled = false;
+    let timeoutId;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const delay = Math.min(
+        POLL_INTERVAL * 2 ** pollFailureCountRef.current,
+        POLL_INTERVAL_MAX,
+      );
+      timeoutId = setTimeout(async () => {
+        await fetchAll(false);
+        scheduleNext();
+      }, delay);
+    };
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [fetchAll, isPageVisible, isNear]);
 
   //  Note handlers
   const addNote = async () => {
@@ -739,23 +816,25 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     if (!files.length || uploading) return;
     setUploading(true);
     try {
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("room_id", roomId);
-        formData.append("uploaded_by", userId);
-        const res = await api.uploadFile(formData);
-        const f = res.file || res;
-        const normalized = normalizeFile(
-          {
-            ...f,
-            name: f.file_name || f.name || file.name,
-            type: f.file_type || f.type || file.type,
-          },
-          username,
-        );
-        setBoardFiles((prev) => [...prev, normalized]);
-      }
+      const uploadedFiles = await Promise.all(
+        files.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("room_id", roomId);
+          formData.append("uploaded_by", userId);
+          const res = await api.uploadFile(formData);
+          const f = res.file || res;
+          return normalizeFile(
+            {
+              ...f,
+              name: f.file_name || f.name || file.name,
+              type: f.file_type || f.type || file.type,
+            },
+            username,
+          );
+        }),
+      );
+      setBoardFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (err) {
       console.error("Failed to upload file:", err);
     } finally {
@@ -1346,19 +1425,31 @@ export default function ClassBoard({
 }) {
   const meshRef = useRef();
   const [isNear, setIsNear] = useState(false);
+  const isNearRef = useRef(false);
   const { avatarPosition } = useRoom();
   const { roomCode } = useParams();
+  const boardPos = useMemo(() => new THREE.Vector3(...position), [position]);
+  const avatarVec = useMemo(() => new THREE.Vector3(), []);
 
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
-  const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
+    [],
+  );
+  const room = useMemo(
+    () => JSON.parse(localStorage.getItem("currentRoom") || "{}"),
+    [],
+  );
   const roomId = room.id || room.room_id || room.room_code;
   const isInstructor = user.role === "instructor";
 
   useFrame(() => {
     if (!meshRef.current || !avatarPosition) return;
-    const boardPos = new THREE.Vector3(...position);
-    const pos = new THREE.Vector3(...avatarPosition);
-    setIsNear(pos.distanceTo(boardPos) < INTERACT_DISTANCE);
+    avatarVec.set(avatarPosition[0], avatarPosition[1], avatarPosition[2]);
+    const nextIsNear = avatarVec.distanceTo(boardPos) < INTERACT_DISTANCE;
+    if (nextIsNear !== isNearRef.current) {
+      isNearRef.current = nextIsNear;
+      setIsNear(nextIsNear);
+    }
   });
 
   return (

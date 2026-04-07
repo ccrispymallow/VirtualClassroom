@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import "../App.css"; // Ensures styles are imported
+import "../App.css";
 
 const LiveBadge = () => (
   <span className="badge live">
@@ -69,9 +69,24 @@ const StartSessionModal = ({ room, onConfirm, onCancel, loading }) => (
     <div className="modal">
       <div
         className="modal-icon"
-        style={{ background: "rgba(59, 130, 246, 0.1)" }}
+        style={{
+          background: "rgba(59, 130, 246, 0.1)",
+          color: "var(--accent)",
+        }}
       >
-        🏫
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+        </svg>
       </div>
       <h3>Start a New Session?</h3>
       <p>
@@ -97,9 +112,22 @@ const AlreadyActiveModal = ({ activeRoom, onCancel }) => (
     <div className="modal">
       <div
         className="modal-icon"
-        style={{ background: "rgba(245, 158, 11, 0.1)" }}
+        style={{ background: "rgba(245, 158, 11, 0.1)", color: "var(--warn)" }}
       >
-        ⚠️
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
       </div>
       <h3>You already have an active session</h3>
       <p>
@@ -135,8 +163,12 @@ const checkRoomLive = async (roomId) => {
 
 export default function Home() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
+    [],
+  );
   const isInstructor = user.role === "instructor" || user.role === "prof";
+  const navTimersRef = useRef(new Set());
 
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("join");
@@ -158,6 +190,14 @@ export default function Home() {
   const [sessionTarget, setSessionTarget] = useState(null);
   const [sessionStarting, setSessionStarting] = useState(false);
   const [alreadyActiveRoom, setAlreadyActiveRoom] = useState(null);
+
+  useEffect(() => {
+    const timers = navTimersRef.current;
+    return () => {
+      timers.forEach((id) => clearTimeout(id));
+      timers.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!user.id) return;
@@ -296,7 +336,7 @@ export default function Home() {
         { ...room, room_password: joinForm.room_password ? "yes" : "" },
         joinForm.room_password || null,
       );
-    } catch (error) {
+    } catch {
       setStatus({ type: "loading", message: "Joining classroom…" });
       try {
         const res = await fetch(
@@ -311,10 +351,11 @@ export default function Home() {
         if (!res.ok) throw new Error(data.error || "Failed to join.");
         localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
         setStatus({ type: "success", message: "Joined! Entering classroom…" });
-        setTimeout(
-          () => navigate("/classroom/" + data.classroom.room_code),
-          1000,
-        );
+        const timerId = setTimeout(() => {
+          navTimersRef.current.delete(timerId);
+          navigate("/classroom/" + data.classroom.room_code);
+        }, 1000);
+        navTimersRef.current.add(timerId);
       } catch (fallbackError) {
         setStatus({ type: "error", message: fallbackError.message });
       }
@@ -353,7 +394,11 @@ export default function Home() {
         type: "success",
         message: `Created! Room code: ${room_code}`,
       });
-      setTimeout(() => navigate("/classroom/" + room_code), 1000);
+      const timerId = setTimeout(() => {
+        navTimersRef.current.delete(timerId);
+        navigate("/classroom/" + room_code);
+      }, 1000);
+      navTimersRef.current.add(timerId);
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -401,10 +446,12 @@ export default function Home() {
     navigate("/");
   };
 
-  const closeAllMenus = () => {
+  const closeAllMenus = useCallback(() => {
+    const hasOpenMenu = myRooms.some((r) => r._menuOpen);
+    if (!showUserPanel && !hasOpenMenu) return;
     setMyRooms((prev) => prev.map((r) => ({ ...r, _menuOpen: false })));
     setShowUserPanel(false);
-  };
+  }, [myRooms, showUserPanel]);
 
   return (
     <div className="app-wrapper" onClick={closeAllMenus}>
@@ -496,10 +543,10 @@ export default function Home() {
                 onClick={() => navigate("/profile")}
                 className="dropdown-action"
               >
-                <span>✏️</span> Edit Profile & Avatar
+                Edit Profile & Avatar
               </button>
               <button onClick={handleLogout} className="dropdown-action danger">
-                <span>🚪</span> Sign Out
+                Sign Out
               </button>
             </div>
           )}
@@ -532,19 +579,14 @@ export default function Home() {
                   }}
                   className={`tab ${activeTab === tab ? "active" : ""}`}
                 >
-                  {tab === "join" ? "🚪 Join Room" : "✨ Create Room"}
+                  {tab === "join" ? "Join Room" : "Create Room"}
                 </button>
               ))}
             </div>
           )}
 
           {status && (
-            <div className={`status ${status.type}`}>
-              {status.type === "loading" && "⏳ "}
-              {status.type === "success" && "✅ "}
-              {status.type === "error" && "❌ "}
-              {status.message}
-            </div>
+            <div className={`status ${status.type}`}>{status.message}</div>
           )}
 
           {!isInstructor || activeTab === "join" ? (
@@ -636,9 +678,7 @@ export default function Home() {
         {/* My Rooms Panel */}
         <div className="card" onClick={(e) => e.stopPropagation()}>
           <h2 className="card-title">
-            {isInstructor
-              ? "🏫 My Created Rooms"
-              : "📚 Previously Joined Rooms"}
+            {isInstructor ? "My Created Rooms" : "Previously Joined Rooms"}
           </h2>
 
           {roomsLoading ? (
@@ -673,15 +713,63 @@ export default function Home() {
                     }}
                     className="room-item"
                   >
-                    <div className="room-icon">🏫</div>
+                    <div
+                      className="room-icon"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                      </svg>
+                    </div>
                     <div className="room-info">
                       <div className="room-header">
                         <p className="room-name">{room.room_name}</p>
                         {isLive ? <LiveBadge /> : <OfflineBadge />}
                       </div>
-                      <p className="room-code">
+                      <p
+                        className="room-code"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
                         {room.room_code}
-                        {room.room_password ? " · 🔒" : ""}
+                        {room.room_password && (
+                          <>
+                            <span>·</span>
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect
+                                x="3"
+                                y="11"
+                                width="18"
+                                height="11"
+                                rx="2"
+                                ry="2"
+                              ></rect>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -720,7 +808,7 @@ export default function Home() {
                               className="dropdown-action danger"
                               style={{ marginBottom: 0, borderRadius: 0 }}
                             >
-                              🗑️ Delete Room
+                              Delete Room
                             </button>
                           ) : (
                             <button
@@ -731,7 +819,7 @@ export default function Home() {
                               className="dropdown-action"
                               style={{ marginBottom: 0, borderRadius: 0 }}
                             >
-                              ✕ Remove from list
+                              Remove from list
                             </button>
                           )}
                         </div>
