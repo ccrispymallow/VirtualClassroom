@@ -47,7 +47,7 @@ function AvatarModel({
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, names } = useAnimations(animations, clone);
   const currentActionRef = useRef(null);
-  const hasInitialized = useRef(false);
+  // const hasInitialized = useRef(false);
   // At the top of the useEffect, after the guard
   console.log(
     "isSitting:",
@@ -129,9 +129,9 @@ export default function Avatar() {
     yawRef,
     posRef,
     setAvatarPosition,
-    myEmote,
+    // myEmote,
     peerEmotes,
-    isSitting,
+    // isSitting,
     setIsSitting,
     setNearChair,
   } = useRoom();
