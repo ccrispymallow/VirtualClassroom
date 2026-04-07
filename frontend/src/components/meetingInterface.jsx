@@ -8,16 +8,36 @@ import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
 import { IoClose, IoSettings, IoPeople } from "react-icons/io5";
 import { ImPhoneHangUp } from "react-icons/im";
-import { BsMicFill, BsMicMuteFill, BsChatFill } from "react-icons/bs";
+import { BsMicFill, BsMicMuteFill, BsChatFill, BsCopy } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
 import { MdEmojiEmotions } from "react-icons/md";
 import { useParams, useNavigate } from "react-router-dom";
-import copyIcon from "../assets/copy.svg";
 import BoardNotifications from "./boardNotification";
+import "../App.css";
 
-const EMOTES = [{ label: "✋ Raise Hand", key: "raise" }];
-const PANEL_CLASS =
-  "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
+// Custom SVG to replace the hand emoji
+const HandIcon = ({ size = 16 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 11V6a2 2 0 0 0-4 0v4" />
+    <path d="M14 10V4a2 2 0 0 0-4 0v6" />
+    <path d="M10 10.5V3a2 2 0 0 0-4 0v9" />
+    <path d="M6 14a2 2 0 0 0-4 0v-2.5a2 2 0 0 1 4 0Z" />
+    <path d="M18 11v5a7 7 0 0 1-14 0" />
+  </svg>
+);
+
+const EMOTES = [
+  { label: "Raise Hand", key: "raise", icon: <HandIcon size={14} /> },
+];
 
 const RemoteMicStreams = memo(function RemoteMicStreams({ streams }) {
   return streams.map((s) => (
@@ -40,45 +60,83 @@ const MeetingTopBar = memo(function MeetingTopBar({
   onCopyRoomCode,
 }) {
   return (
-    <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
-          🎓
+    <div className="meeting-top-bar">
+      <div
+        className="nav-brand"
+        style={{ padding: 0, background: "transparent", border: "none" }}
+      >
+        <div className="brand-icon" style={{ width: "28px", height: "28px" }}>
+          <img
+            src="/logo.svg"
+            style={{ width: "16px", filter: "brightness(0) invert(1)" }}
+            alt="Logo"
+          />
         </div>
-        <span className="text-slate-200 text-sm font-bold">
-          Virtual<span className="text-cyan-400">Class</span>
+        <span className="brand-name" style={{ fontSize: "14px" }}>
+          Virtual<span>Class</span>
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-slate-500 text-xs">Room:</span>
-        <div className="flex items-center gap-1 bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
-          <span className="text-slate-200 text-xs font-mono">{roomCode}</span>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontSize: "12px", color: "var(--muted)" }}>Room:</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            background: "var(--surface2)",
+            padding: "4px 8px",
+            borderRadius: "8px",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "12px",
+              fontFamily: "monospace",
+              color: "var(--text)",
+            }}
+          >
+            {roomCode}
+          </span>
           <button
             type="button"
             onClick={onCopyRoomCode}
-            className="bg-[#1a2235] text-slate-400 hover:text-slate-300 transition-colors p-0.5 rounded"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--muted)",
+              padding: "2px",
+              display: "flex",
+            }}
             title="Copy room code"
           >
-            <img src={copyIcon} alt="Copy" className="w-3 h-3" />
+            <BsCopy size={14} />
           </button>
         </div>
         {copyMessage && (
-          <span className="text-slate-400 text-[10px]">{copyMessage}</span>
-        )}
-        {roomName && (
-          <span className="text-slate-400 text-xs">· {roomName}</span>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        {isInstructor && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
-            Instructor
+          <span style={{ fontSize: "10px", color: "var(--muted)" }}>
+            {copyMessage}
           </span>
         )}
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">
+        {roomName && (
+          <span style={{ fontSize: "12px", color: "var(--muted)" }}>
+            · {roomName}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {isInstructor && (
+          <span className="role-badge role-instructor">Instructor</span>
+        )}
+        <div className="user-avatar" style={{ width: "28px", height: "28px" }}>
           {userInitial}
         </div>
-        <span className="text-slate-300 text-xs font-semibold">
+        <span
+          style={{ fontSize: "12px", fontWeight: "600", color: "var(--text)" }}
+        >
           {userUsername}
         </span>
       </div>
@@ -107,87 +165,85 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
   onOpenLeave,
 }) {
   return (
-    <div className="fixed w-full bottom-3 flex justify-center z-20">
-      <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
+    <div className="meeting-bottom-bar">
+      <div className="toolbar-container">
         <button
           type="button"
           onClick={onMicToggle}
-          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${micOn ? "active-blue" : ""}`}
         >
-          {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
-          <span className="text-[10px] mt-1 select-none">Mic</span>
+          {micOn ? <BsMicFill size={20} /> : <BsMicMuteFill size={20} />}
+          <span className="label">Mic</span>
         </button>
         <button
           type="button"
           onClick={onScreenToggle}
-          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${screenOn ? "active-green" : ""}`}
         >
-          <LuScreenShare size={22} />
-          <span className="text-[10px] mt-1 select-none">
-            {screenOn ? "Sharing" : "Screen"}
-          </span>
+          <LuScreenShare size={20} />
+          <span className="label">{screenOn ? "Sharing" : "Screen"}</span>
         </button>
         {isInstructor && (
           <button
             type="button"
             onClick={onTogglePollPanel}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${isPollPanelOpen ? "text-blue-400" : "text-slate-500"}`}
+            className={`toolbar-btn ${isPollPanelOpen ? "active-blue" : ""}`}
           >
-            <FaCheck size={22} />
-            <span className="text-[10px] mt-1 select-none">Start Check</span>
+            <FaCheck size={20} />
+            <span className="label">Start Check</span>
           </button>
         )}
-        <div className="w-px h-8 bg-[#1e2d45] mx-1" />
+        <div className="toolbar-divider" />
         <button
           type="button"
           onClick={onToggleParticipants}
-          className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxesParticipants ? "text-blue-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${boxesParticipants ? "active-blue" : ""}`}
         >
-          <IoPeople size={22} />
+          <IoPeople size={20} />
           {raisedHandCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-[10px] rounded-full flex items-center justify-center">
-              ✋
+            <span className="badge-icon">
+              <HandIcon size={10} />
             </span>
           )}
-          <span className="text-[10px] mt-1 select-none">People</span>
+          <span className="label">People</span>
         </button>
         <button
           type="button"
           onClick={onToggleChat}
-          className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showChat ? "text-blue-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${showChat ? "active-blue" : ""}`}
         >
-          <BsChatFill size={20} />
+          <BsChatFill size={18} />
           {unreadCount > 0 && !showChat && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+            <span className="badge-dot">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
-          <span className="text-[10px] mt-1 select-none">Chat</span>
+          <span className="label">Chat</span>
         </button>
         <button
           type="button"
           onClick={onToggleEmotes}
-          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showEmotes ? "text-yellow-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${showEmotes ? "active-yellow" : ""}`}
         >
-          <MdEmojiEmotions size={22} />
-          <span className="text-[10px] mt-1 select-none">React</span>
+          <MdEmojiEmotions size={20} />
+          <span className="label">React</span>
         </button>
         <button
           type="button"
           onClick={onToggleSettings}
-          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxesSettings ? "text-blue-400" : "text-slate-500"}`}
+          className={`toolbar-btn ${boxesSettings ? "active-blue" : ""}`}
         >
-          <IoSettings size={22} />
-          <span className="text-[10px] mt-1 select-none">Settings</span>
+          <IoSettings size={20} />
+          <span className="label">Settings</span>
         </button>
-        <div className="w-px h-8 bg-[#1e2d45] mx-1" />
+        <div className="toolbar-divider" />
         <button
           type="button"
           onClick={onOpenLeave}
-          className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
+          className="toolbar-btn danger"
         >
-          <ImPhoneHangUp size={22} />
-          <span className="text-[10px] mt-1 select-none">Leave</span>
+          <ImPhoneHangUp size={20} />
+          <span className="label">Leave</span>
         </button>
       </div>
     </div>
@@ -210,64 +266,91 @@ const MeetingParticipantsPanel = memo(function MeetingParticipantsPanel({
 
   return (
     <div
-      className={`${PANEL_CLASS} w-64`}
+      className="meeting-panel"
+      style={{ width: "260px" }}
       onMouseEnter={onPanelMouseEnter}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-        <p className="text-slate-200 font-semibold text-sm">
-          Participants ({participantCount})
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-500 hover:text-slate-300"
-        >
+      <div className="panel-header">
+        <h3>Participants ({participantCount})</h3>
+        <button type="button" onClick={onClose} className="panel-close">
           <IoClose size={18} />
         </button>
       </div>
-      <div className="p-3 flex flex-col gap-2 max-h-72 overflow-y-auto">
+      <div className="panel-content" style={{ maxHeight: "280px" }}>
         {participants.map((p) => {
           const isMe = p.id === userId;
           const hasHandRaised = isMe
             ? myEmote === "raise"
             : peerEmotes?.[p.id] === "raise";
           return (
-            <div
-              key={p.id}
-              className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
-            >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+            <div key={p.id} className="participant-item">
+              <div
+                className="user-avatar"
+                style={{ width: "32px", height: "32px", flexShrink: 0 }}
+              >
                 {p.username?.[0]?.toUpperCase() || "?"}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-200 text-xs font-semibold truncate">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "var(--text)",
+                    margin: 0,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   {p.username}{" "}
-                  {isMe && <span className="text-slate-500">(you)</span>}
-                </p>
-                <p className="text-[11px] capitalize">
-                  {p.role === "instructor" ? (
-                    <span className="text-violet-400">{p.role}</span>
-                  ) : (
-                    <span className="text-slate-500">{p.role}</span>
+                  {isMe && (
+                    <span
+                      style={{ color: "var(--muted)", fontWeight: "normal" }}
+                    >
+                      (you)
+                    </span>
                   )}
                 </p>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    margin: 0,
+                    textTransform: "capitalize",
+                    color: p.role === "instructor" ? "#a78bfa" : "var(--muted)",
+                  }}
+                >
+                  {p.role}
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  flexShrink: 0,
+                }}
+              >
                 {hasHandRaised && (
-                  <span className="text-sm" title="Hand raised">
-                    ✋
+                  <span style={{ color: "var(--warn)" }} title="Hand raised">
+                    <HandIcon size={14} />
                   </span>
                 )}
                 {p.mic ? (
-                  <BsMicFill size={12} color="#3b82f6" />
+                  <BsMicFill size={12} color="var(--accent)" />
                 ) : (
-                  <BsMicMuteFill size={12} color="#64748b" />
+                  <BsMicMuteFill size={12} color="var(--muted)" />
                 )}
                 {isInstructor && !isMe && p.role !== "instructor" && (
                   <button
                     type="button"
                     onClick={() => onRemoveParticipant(p.id, p.username)}
-                    className="ml-1 text-rose-400 hover:text-rose-300 transition-colors"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "var(--error)",
+                      cursor: "pointer",
+                      padding: "2px",
+                    }}
                     title="Remove participant"
                   >
                     <IoClose size={14} />
@@ -298,23 +381,26 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
 
   return (
     <div
-      className="fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col"
-      style={{ height: "360px" }}
+      className="meeting-panel"
+      style={{ width: "280px", height: "380px" }}
       onMouseEnter={onPanelMouseEnter}
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45] flex-shrink-0">
-        <p className="text-slate-200 font-semibold text-sm">Chat</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-500 hover:text-slate-300"
-        >
+      <div className="panel-header">
+        <h3>Chat</h3>
+        <button type="button" onClick={onClose} className="panel-close">
           <IoClose size={18} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+      <div className="panel-content" style={{ flex: 1 }}>
         {messages.length === 0 && (
-          <p className="text-slate-600 text-xs text-center mt-4">
+          <p
+            style={{
+              fontSize: "12px",
+              color: "var(--muted)",
+              textAlign: "center",
+              marginTop: "16px",
+            }}
+          >
             No messages yet
           </p>
         )}
@@ -327,33 +413,30 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
           return (
             <div
               key={key}
-              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+              className={`chat-msg-wrapper ${isMe ? "me" : "others"}`}
             >
-              <span className="text-[10px] text-slate-500 mb-0.5 px-1">
+              <span className="chat-sender">
                 {msg.username || (isMe ? userUsername : "Guest")}
               </span>
-              <div
-                className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${isMe ? "bg-blue-500 text-white rounded-tr-sm" : "bg-[#1a2235] text-slate-200 rounded-tl-sm"}`}
-              >
-                {msg.message}
-              </div>
+              <div className="chat-bubble">{msg.message}</div>
             </div>
           );
         })}
         <div ref={chatEndRef} />
       </div>
-      <div className="flex-shrink-0 p-3 border-t border-[#1e2d45] flex gap-2">
+      <div className="chat-input-area">
         <input
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
           placeholder="Type a message…"
-          className="flex-1 px-3 py-2 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-xs outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+          className="chat-input"
         />
         <button
           type="button"
           onClick={onSend}
-          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition-colors"
+          className="btn"
+          style={{ padding: "10px 16px", width: "auto" }}
         >
           Send
         </button>
@@ -492,7 +575,6 @@ const MeetingInterface = () => {
     return () => socket.off("you-were-removed");
   }, [navigate]);
 
-  // ✅ FIXED: only screen-share-update here, approved/rejected handled inline in handleScreenToggle
   useEffect(() => {
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
       if (active && sharingUserId !== user.id && screenOnRef.current) {
@@ -652,28 +734,22 @@ const MeetingInterface = () => {
     setParticipants,
   ]);
 
-  // ✅ FIXED: check if someone is already sharing BEFORE opening the browser picker
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
       stopScreen(handleNetworkScreenStop);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
-      // Block immediately if a remote screen share is already active — no picker popup
       if (remoteScreen) {
         alert("Someone is already sharing their screen.");
         return;
       }
-
       const stream = await startScreen(handleNetworkScreenStop);
-      if (!stream) return; // user cancelled
-
+      if (!stream) return;
       socket.emit("screen-share-start", { roomCode, userId: user.id });
-
       const approved = await new Promise((resolve) => {
         socket.once("screen-share-approved", () => resolve(true));
         socket.once("screen-share-rejected", () => resolve(false));
       });
-
       if (approved) {
         broadcastScreen(stream);
       } else {
@@ -881,7 +957,6 @@ const MeetingInterface = () => {
     () => setIsPollPanelOpen((p) => !p),
     [],
   );
-
   const onToggleParticipants = useCallback(() => {
     setShowEmotes(false);
     setShowChat(false);
@@ -942,26 +1017,47 @@ const MeetingInterface = () => {
   return (
     <>
       <BoardNotifications isInstructor={isInstructor} />
+
       {pollQuestion.active && !isInstructor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-          <div className="bg-[#0f172a] border border-[#1e2d45] rounded-xl p-5 w-80">
-            <h3 className="text-white text-sm font-bold mb-3">Quick Check</h3>
-            <p className="text-white text-sm font-bold mb-3">
-              Do you understand this topic?
-            </p>
-            <p className="text-slate-300 text-xs mb-4">
+        <div className="modal-overlay">
+          <div className="modal">
+            <div
+              className="modal-icon"
+              style={{
+                background: "rgba(59, 130, 246, 0.1)",
+                color: "var(--accent)",
+              }}
+            >
+              <FaCheck size={24} />
+            </div>
+            <h3>Quick Check</h3>
+            <p>Do you understand this topic?</p>
+            <p
+              style={{
+                marginBottom: "20px",
+                fontSize: "12px",
+                color: "var(--muted)",
+              }}
+            >
               This is anonymous and just for the instructor.
             </p>
-            <div className="flex justify-between gap-2">
+            <div className="modal-actions" style={{ gap: "12px" }}>
               <button
-                className="flex-1 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white"
+                className="btn"
+                style={{
+                  flex: 1,
+                  backgroundColor: "var(--success)",
+                  borderColor: "var(--success)",
+                  color: "#fff",
+                }}
                 onClick={() => submitUnderstandingAnswer("yes")}
                 disabled={pollQuestion.answered}
               >
                 Yes
               </button>
               <button
-                className="flex-1 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white"
+                className="btn-danger"
+                style={{ flex: 1 }}
                 onClick={() => submitUnderstandingAnswer("no")}
                 disabled={pollQuestion.answered}
               >
@@ -969,7 +1065,13 @@ const MeetingInterface = () => {
               </button>
             </div>
             {pollQuestion.answered && (
-              <p className="text-slate-300 text-[11px] mt-3">
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "var(--muted)",
+                  marginTop: "16px",
+                }}
+              >
                 Thanks! Your answer has been recorded.
               </p>
             )}
@@ -1008,37 +1110,51 @@ const MeetingInterface = () => {
         onOpenLeave={onOpenLeave}
       />
 
+      {/* Instructor Poll Panel */}
       {isInstructor && isPollPanelOpen && (
-        <div className="fixed bottom-20 right-4 z-30 w-72 p-3 bg-[#0f172a] border border-[#1e2d45] rounded-xl shadow-xl">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-white text-sm font-semibold">
-              Start understanding check
-            </p>
+        <div
+          className="meeting-panel"
+          style={{ width: "260px", bottom: "84px", right: "20px" }}
+        >
+          <div className="panel-header" style={{ padding: "12px 16px" }}>
+            <h3>Start understanding check</h3>
             <button
               type="button"
               onClick={() => setIsPollPanelOpen(false)}
-              className="text-slate-400 hover:text-white"
+              className="panel-close"
             >
-              ✕
+              <IoClose size={18} />
             </button>
           </div>
-          <button
-            onClick={startUnderstandingPoll}
-            className="w-full py-2 mb-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black text-xs font-semibold"
-          >
-            Check Understanding
-          </button>
-          <button
-            onClick={endUnderstandingPoll}
-            className="w-full py-2 mb-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
-            disabled={!pollResults.pollId && !pollResults.active}
-          >
-            End poll early
-          </button>
-          <div className="text-slate-300 text-[11px] space-y-1">
-            <div>Yes: {pollResults.yes}</div>
-            <div>No: {pollResults.no}</div>
-            <div>{pollResults.summary}</div>
+          <div className="panel-content">
+            <button
+              className="btn"
+              style={{ padding: "8px" }}
+              onClick={startUnderstandingPoll}
+            >
+              Check Understanding
+            </button>
+            <button
+              className="btn-outline"
+              style={{ padding: "8px" }}
+              onClick={endUnderstandingPoll}
+              disabled={!pollResults.pollId && !pollResults.active}
+            >
+              End poll early
+            </button>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "var(--muted)",
+                marginTop: "8px",
+              }}
+            >
+              <p>Yes: {pollResults.yes}</p>
+              <p>No: {pollResults.no}</p>
+              <p style={{ marginTop: "4px", fontWeight: "600" }}>
+                {pollResults.summary}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -1068,69 +1184,99 @@ const MeetingInterface = () => {
         onPanelMouseEnter={handlePanelMouseEnter}
       />
 
+      {/* Emotes Panel */}
       <div
-        className={`${PANEL_CLASS} w-56 ${showEmotes ? "" : "hidden"}`}
+        className={`meeting-panel ${showEmotes ? "" : "hidden"}`}
+        style={{ width: "200px" }}
         onMouseEnter={handlePanelMouseEnter}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-          <p className="text-slate-200 font-semibold text-sm">Reactions</p>
-          <button
-            onClick={() => setShowEmotes(false)}
-            className="text-slate-500 hover:text-slate-300"
-          >
+        <div className="panel-header">
+          <h3>Reactions</h3>
+          <button onClick={() => setShowEmotes(false)} className="panel-close">
             <IoClose size={18} />
           </button>
         </div>
-        <div className="p-3 grid grid-cols-2 gap-2">
+        <div className="panel-content">
           {EMOTES.map((e) => (
             <button
               key={e.key}
               onClick={() => handleEmote(e.key)}
-              className={`py-2 px-3 rounded-xl text-xs font-semibold transition-colors border ${myEmote === e.key ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-[#1a2235] text-slate-300 border-[#1e2d45] hover:bg-[#1e2d45]"}`}
+              className={`react-btn ${myEmote === e.key ? "active" : ""}`}
             >
-              {e.label}
+              {e.icon} {e.label}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Settings Panel */}
       <div
-        className={`${PANEL_CLASS} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
+        className={`meeting-panel ${boxes.settings ? "" : "hidden"}`}
+        style={{ width: "260px" }}
         onMouseEnter={handlePanelMouseEnter}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-          <p className="text-slate-200 font-semibold text-sm">Settings</p>
-          <button
-            onClick={() => closeBox("settings")}
-            className="text-slate-500 hover:text-slate-300"
-          >
+        <div className="panel-header">
+          <h3>Settings</h3>
+          <button onClick={() => closeBox("settings")} className="panel-close">
             <IoClose size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="panel-content">
           <button
             onClick={() => setDeviceDropDown(!deviceDropDown)}
-            className="flex items-center justify-between p-2.5 rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-300 text-sm transition-colors"
+            className="btn-outline"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "10px",
+              width: "100%",
+            }}
           >
             Audio Devices
-            {deviceDropDown ? <IoMdArrowDropdown /> : <IoMdArrowDropright />}
+            {deviceDropDown ? (
+              <IoMdArrowDropdown size={16} />
+            ) : (
+              <IoMdArrowDropright size={16} />
+            )}
           </button>
-          <div className={`mt-1 pl-2 ${deviceDropDown ? "" : "hidden"}`}>
+
+          <div
+            className={`${deviceDropDown ? "" : "hidden"}`}
+            style={{ marginTop: "8px", paddingLeft: "8px" }}
+          >
             <button
               onClick={() =>
                 setDeviceSections((prev) => ({ audio: !prev.audio }))
               }
-              className="flex items-center mt-1 py-2 px-2.5 justify-between rounded-xl w-full bg-[#1a2235] hover:bg-[#1e2d45] text-slate-400 text-xs transition-colors"
+              style={{
+                background: "var(--surface2)",
+                border: "none",
+                color: "var(--text)",
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: "600",
+              }}
             >
               Audio Input
               {deviceSections.audio ? (
-                <IoMdArrowDropdown />
+                <IoMdArrowDropdown size={16} />
               ) : (
-                <IoMdArrowDropright />
+                <IoMdArrowDropright size={16} />
               )}
             </button>
             <div
-              className={`${deviceSections.audio && !loading ? "" : "hidden"} w-full p-1`}
+              className={`${deviceSections.audio && !loading ? "" : "hidden"}`}
+              style={{
+                marginTop: "4px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+              }}
             >
               {audioDevices.map((value, index) => (
                 <button
@@ -1141,11 +1287,35 @@ const MeetingInterface = () => {
                       audio: value.deviceId,
                     }))
                   }
-                  className={`flex items-center justify-between bg-[#1a2235] hover:bg-[#1e2d45] py-2 px-2.5 w-full text-slate-400 text-xs transition-colors ${index === 0 ? "rounded-t-xl" : ""} ${index === audioDevices.length - 1 ? "rounded-b-xl" : ""}`}
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    color: "var(--muted)",
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    textAlign: "left",
+                  }}
                 >
-                  <span className="truncate">{value.label}</span>
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {value.label}
+                  </span>
                   {value.deviceId === selectedDevice.audio && (
-                    <FaCheck color="#3b82f6" size={10} />
+                    <FaCheck
+                      color="var(--accent)"
+                      size={12}
+                      style={{ flexShrink: 0, marginLeft: "8px" }}
+                    />
                   )}
                 </button>
               ))}
@@ -1154,31 +1324,28 @@ const MeetingInterface = () => {
         </div>
       </div>
 
+      {/* Leave Panel */}
       <div
-        className={`${PANEL_CLASS} w-56 ${boxes.leave ? "" : "hidden"}`}
+        className={`meeting-panel ${boxes.leave ? "" : "hidden"}`}
+        style={{ width: "220px" }}
         onMouseEnter={handlePanelMouseEnter}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-          <p className="text-slate-200 font-semibold text-sm">Leave Room</p>
-          <button
-            onClick={() => closeBox("leave")}
-            className="text-slate-500 hover:text-slate-300"
-          >
+        <div className="panel-header">
+          <h3>Leave Room</h3>
+          <button onClick={() => closeBox("leave")} className="panel-close">
             <IoClose size={18} />
           </button>
         </div>
-        <div className="p-3 flex flex-col gap-2">
+        <div className="panel-content">
           <button
             onClick={handleLeave}
-            className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
+            className="btn-outline"
+            style={{ color: "var(--error)", borderColor: "var(--error)" }}
           >
             Leave Meeting
           </button>
           {isInstructor && (
-            <button
-              onClick={handleEndForAll}
-              className="w-full py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 text-xs font-semibold rounded-xl transition-colors border border-rose-500/25"
-            >
+            <button onClick={handleEndForAll} className="btn-danger">
               End for All
             </button>
           )}

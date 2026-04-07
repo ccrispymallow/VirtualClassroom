@@ -1,7 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, lazy, useMemo } from "react";
-import { RoomProvider } from "../components/roomContext";
-import { useRoom } from "../components/roomContext";
+import { RoomProvider, useRoom } from "../components/roomContext";
+import "../App.css"; // Ensures your global styles are loaded
 
 const MeetingInterface = lazy(() => import("../components/meetingInterface"));
 const Avatar = lazy(() => import("../components/avatar"));
@@ -13,47 +13,30 @@ const FollowCamera = lazy(() => import("../components/followCamera"));
 function SitPrompt() {
   const { isSitting, nearChair } = useRoom();
   const visible = isSitting || nearChair;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: "100px",
-        left: "50%",
-        transform: `translateX(-50%) translateY(${visible ? "0px" : "12px"})`,
-        opacity: visible ? 1 : 0,
-        pointerEvents: "none",
-        transition: "opacity 0.2s ease, transform 0.2s ease",
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255,255,255,0.13)",
-        borderRadius: "14px",
-        padding: "10px 20px",
-        color: "#fff",
-        fontSize: "13px",
-        fontFamily: "sans-serif",
-        whiteSpace: "nowrap",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.45)",
-        zIndex: 9999,
-      }}
-    >
-      <span style={{ fontSize: "16px" }}>🪑</span>
-      <kbd
-        style={{
-          background: "rgba(255,255,255,0.14)",
-          border: "1px solid rgba(255,255,255,0.28)",
-          borderRadius: "6px",
-          padding: "2px 10px",
-          fontSize: "12px",
-          fontWeight: "bold",
-          color: "#fff",
-        }}
-      >
-        SPACE
-      </kbd>
-      <span style={{ color: "rgba(255,255,255,0.85)" }}>
+    <div className={`sit-prompt ${visible ? "visible" : "hidden"}`}>
+      <div className="sit-prompt-icon">
+        {/* Minimalist SVG Chair Icon */}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 3v18"></path>
+          <path d="M5 13h14"></path>
+          <path d="M19 13v8"></path>
+        </svg>
+      </div>
+
+      <kbd className="sit-prompt-key">SPACE</kbd>
+
+      <span className="sit-prompt-text">
         {isSitting ? "Stand up" : "Sit down"}
       </span>
     </div>
@@ -86,7 +69,9 @@ export default function MainEngine() {
             <FollowCamera />
           </Suspense>
         </Canvas>
+
         <SitPrompt />
+
         <Suspense fallback={null}>
           <MeetingInterface />
         </Suspense>
