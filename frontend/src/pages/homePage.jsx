@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../App.css";
 
@@ -163,8 +163,12 @@ const checkRoomLive = async (roomId) => {
 
 export default function Home() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
+    [],
+  );
   const isInstructor = user.role === "instructor" || user.role === "prof";
+  const navTimersRef = useRef(new Set());
 
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [activeTab, setActiveTab] = useState("join");
@@ -186,6 +190,14 @@ export default function Home() {
   const [sessionTarget, setSessionTarget] = useState(null);
   const [sessionStarting, setSessionStarting] = useState(false);
   const [alreadyActiveRoom, setAlreadyActiveRoom] = useState(null);
+
+  useEffect(() => {
+    const timers = navTimersRef.current;
+    return () => {
+      timers.forEach((id) => clearTimeout(id));
+      timers.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (!user.id) return;
@@ -339,10 +351,11 @@ export default function Home() {
         if (!res.ok) throw new Error(data.error || "Failed to join.");
         localStorage.setItem("currentRoom", JSON.stringify(data.classroom));
         setStatus({ type: "success", message: "Joined! Entering classroom…" });
-        setTimeout(
-          () => navigate("/classroom/" + data.classroom.room_code),
-          1000,
-        );
+        const timerId = setTimeout(() => {
+          navTimersRef.current.delete(timerId);
+          navigate("/classroom/" + data.classroom.room_code);
+        }, 1000);
+        navTimersRef.current.add(timerId);
       } catch (fallbackError) {
         setStatus({ type: "error", message: fallbackError.message });
       }
@@ -381,7 +394,11 @@ export default function Home() {
         type: "success",
         message: `Created! Room code: ${room_code}`,
       });
-      setTimeout(() => navigate("/classroom/" + room_code), 1000);
+      const timerId = setTimeout(() => {
+        navTimersRef.current.delete(timerId);
+        navigate("/classroom/" + room_code);
+      }, 1000);
+      navTimersRef.current.add(timerId);
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -429,10 +446,12 @@ export default function Home() {
     navigate("/");
   };
 
-  const closeAllMenus = () => {
+  const closeAllMenus = useCallback(() => {
+    const hasOpenMenu = myRooms.some((r) => r._menuOpen);
+    if (!showUserPanel && !hasOpenMenu) return;
     setMyRooms((prev) => prev.map((r) => ({ ...r, _menuOpen: false })));
     setShowUserPanel(false);
-  };
+  }, [myRooms, showUserPanel]);
 
   return (
     <div className="app-wrapper" onClick={closeAllMenus}>

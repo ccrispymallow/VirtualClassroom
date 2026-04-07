@@ -1,5 +1,7 @@
 import express from "express";
 import multer from "multer";
+import path from "path";
+import { uploadsDir } from "../server.js";
 import {
   createNote,
   getNotesByRoom,
@@ -15,9 +17,10 @@ import {
 const router = express.Router();
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
+  destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
+
 const upload = multer({ storage });
 
 // Notes

@@ -8,8 +8,8 @@ import "../App.css"; // Ensure styles are imported
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MODEL_PATHS = {
-  boy: "/boy.glb",
-  girl: "/girl.glb",
+  boy: "/model 2/boy.glb",
+  girl: "/model 2/girl.glb",
 };
 
 const AVATAR_OPTIONS = [
@@ -121,7 +121,7 @@ function AvatarModel({ avatarType }) {
 
 function Avatar3DViewer({ avatarType }) {
   return (
-    <Canvas camera={CAMERA_CONFIG}>
+    <Canvas camera={CAMERA_CONFIG} dpr={[1, 1.5]} gl={{ powerPreference: "high-performance" }}>
       <ambientLight intensity={0.7} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <pointLight position={[-5, 5, 5]} intensity={0.5} />
@@ -226,7 +226,10 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const selectedOption = AVATAR_OPTIONS.find((o) => o.id === selectedAvatar);
+  const selectedOption = useMemo(
+    () => AVATAR_OPTIONS.find((o) => o.id === selectedAvatar),
+    [selectedAvatar],
+  );
 
   return (
     <div className="app-wrapper">

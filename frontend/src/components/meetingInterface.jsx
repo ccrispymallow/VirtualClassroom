@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useMedia } from "../helper/useMedia";
 import { socket } from "../helper/socket";
 import { usePeer } from "../helper/usePeer";
@@ -16,12 +16,363 @@ import copyIcon from "../assets/copy.svg";
 import BoardNotifications from "./boardNotification";
 
 const EMOTES = [{ label: "✋ Raise Hand", key: "raise" }];
+const PANEL_CLASS =
+  "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
+
+const RemoteMicStreams = memo(function RemoteMicStreams({ streams }) {
+  return streams.map((s) => (
+    <RemoteStream
+      key={`${s.peerId}-mic`}
+      stream={s.stream}
+      type={s.type}
+      username={s.username}
+    />
+  ));
+});
+
+const MeetingTopBar = memo(function MeetingTopBar({
+  roomCode,
+  roomName,
+  isInstructor,
+  userUsername,
+  userInitial,
+  copyMessage,
+  onCopyRoomCode,
+}) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
+          🎓
+        </div>
+        <span className="text-slate-200 text-sm font-bold">
+          Virtual<span className="text-cyan-400">Class</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-slate-500 text-xs">Room:</span>
+        <div className="flex items-center gap-1 bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
+          <span className="text-slate-200 text-xs font-mono">{roomCode}</span>
+          <button
+            type="button"
+            onClick={onCopyRoomCode}
+            className="bg-[#1a2235] text-slate-400 hover:text-slate-300 transition-colors p-0.5 rounded"
+            title="Copy room code"
+          >
+            <img src={copyIcon} alt="Copy" className="w-3 h-3" />
+          </button>
+        </div>
+        {copyMessage && (
+          <span className="text-slate-400 text-[10px]">{copyMessage}</span>
+        )}
+        {roomName && (
+          <span className="text-slate-400 text-xs">· {roomName}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {isInstructor && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
+            Instructor
+          </span>
+        )}
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">
+          {userInitial}
+        </div>
+        <span className="text-slate-300 text-xs font-semibold">
+          {userUsername}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
+  micOn,
+  screenOn,
+  isInstructor,
+  isPollPanelOpen,
+  boxesParticipants,
+  boxesSettings,
+  showChat,
+  showEmotes,
+  unreadCount,
+  raisedHandCount,
+  onMicToggle,
+  onScreenToggle,
+  onTogglePollPanel,
+  onToggleParticipants,
+  onToggleChat,
+  onToggleEmotes,
+  onToggleSettings,
+  onOpenLeave,
+}) {
+  return (
+    <div className="fixed w-full bottom-3 flex justify-center z-20">
+      <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
+        <button
+          type="button"
+          onClick={onMicToggle}
+          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
+        >
+          {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
+          <span className="text-[10px] mt-1 select-none">Mic</span>
+        </button>
+        <button
+          type="button"
+          onClick={onScreenToggle}
+          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
+        >
+          <LuScreenShare size={22} />
+          <span className="text-[10px] mt-1 select-none">
+            {screenOn ? "Sharing" : "Screen"}
+          </span>
+        </button>
+        {isInstructor && (
+          <button
+            type="button"
+            onClick={onTogglePollPanel}
+            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${isPollPanelOpen ? "text-blue-400" : "text-slate-500"}`}
+          >
+            <FaCheck size={22} />
+            <span className="text-[10px] mt-1 select-none">Start Check</span>
+          </button>
+        )}
+        <div className="w-px h-8 bg-[#1e2d45] mx-1" />
+        <button
+          type="button"
+          onClick={onToggleParticipants}
+          className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxesParticipants ? "text-blue-400" : "text-slate-500"}`}
+        >
+          <IoPeople size={22} />
+          {raisedHandCount > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-[10px] rounded-full flex items-center justify-center">
+              ✋
+            </span>
+          )}
+          <span className="text-[10px] mt-1 select-none">People</span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggleChat}
+          className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showChat ? "text-blue-400" : "text-slate-500"}`}
+        >
+          <BsChatFill size={20} />
+          {unreadCount > 0 && !showChat && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+          <span className="text-[10px] mt-1 select-none">Chat</span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggleEmotes}
+          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showEmotes ? "text-yellow-400" : "text-slate-500"}`}
+        >
+          <MdEmojiEmotions size={22} />
+          <span className="text-[10px] mt-1 select-none">React</span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggleSettings}
+          className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxesSettings ? "text-blue-400" : "text-slate-500"}`}
+        >
+          <IoSettings size={22} />
+          <span className="text-[10px] mt-1 select-none">Settings</span>
+        </button>
+        <div className="w-px h-8 bg-[#1e2d45] mx-1" />
+        <button
+          type="button"
+          onClick={onOpenLeave}
+          className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
+        >
+          <ImPhoneHangUp size={22} />
+          <span className="text-[10px] mt-1 select-none">Leave</span>
+        </button>
+      </div>
+    </div>
+  );
+});
+
+const MeetingParticipantsPanel = memo(function MeetingParticipantsPanel({
+  open,
+  participants,
+  participantCount,
+  peerEmotes,
+  myEmote,
+  userId,
+  isInstructor,
+  onClose,
+  onRemoveParticipant,
+  onPanelMouseEnter,
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className={`${PANEL_CLASS} w-64`}
+      onMouseEnter={onPanelMouseEnter}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
+        <p className="text-slate-200 font-semibold text-sm">
+          Participants ({participantCount})
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-slate-500 hover:text-slate-300"
+        >
+          <IoClose size={18} />
+        </button>
+      </div>
+      <div className="p-3 flex flex-col gap-2 max-h-72 overflow-y-auto">
+        {participants.map((p) => {
+          const isMe = p.id === userId;
+          const hasHandRaised = isMe
+            ? myEmote === "raise"
+            : peerEmotes?.[p.id] === "raise";
+          return (
+            <div
+              key={p.id}
+              className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                {p.username?.[0]?.toUpperCase() || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-200 text-xs font-semibold truncate">
+                  {p.username}{" "}
+                  {isMe && <span className="text-slate-500">(you)</span>}
+                </p>
+                <p className="text-[11px] capitalize">
+                  {p.role === "instructor" ? (
+                    <span className="text-violet-400">{p.role}</span>
+                  ) : (
+                    <span className="text-slate-500">{p.role}</span>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {hasHandRaised && (
+                  <span className="text-sm" title="Hand raised">
+                    ✋
+                  </span>
+                )}
+                {p.mic ? (
+                  <BsMicFill size={12} color="#3b82f6" />
+                ) : (
+                  <BsMicMuteFill size={12} color="#64748b" />
+                )}
+                {isInstructor && !isMe && p.role !== "instructor" && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveParticipant(p.id, p.username)}
+                    className="ml-1 text-rose-400 hover:text-rose-300 transition-colors"
+                    title="Remove participant"
+                  >
+                    <IoClose size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+const MeetingChatPanel = memo(function MeetingChatPanel({
+  open,
+  messages,
+  chatInput,
+  userId,
+  userUsername,
+  chatEndRef,
+  onClose,
+  onChatInputChange,
+  onSend,
+  onPanelMouseEnter,
+}) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col"
+      style={{ height: "360px" }}
+      onMouseEnter={onPanelMouseEnter}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45] flex-shrink-0">
+        <p className="text-slate-200 font-semibold text-sm">Chat</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-slate-500 hover:text-slate-300"
+        >
+          <IoClose size={18} />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+        {messages.length === 0 && (
+          <p className="text-slate-600 text-xs text-center mt-4">
+            No messages yet
+          </p>
+        )}
+        {messages.map((msg, i) => {
+          const isMe = msg.user_id === userId || msg.userId === userId;
+          const key =
+            msg.id != null
+              ? String(msg.id)
+              : `${msg.sent_at ?? ""}-${msg.user_id ?? msg.userId ?? "u"}-${i}`;
+          return (
+            <div
+              key={key}
+              className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+            >
+              <span className="text-[10px] text-slate-500 mb-0.5 px-1">
+                {msg.username || (isMe ? userUsername : "Guest")}
+              </span>
+              <div
+                className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${isMe ? "bg-blue-500 text-white rounded-tr-sm" : "bg-[#1a2235] text-slate-200 rounded-tl-sm"}`}
+              >
+                {msg.message}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
+      </div>
+      <div className="flex-shrink-0 p-3 border-t border-[#1e2d45] flex gap-2">
+        <input
+          value={chatInput}
+          onChange={(e) => onChatInputChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onSend()}
+          placeholder="Type a message…"
+          className="flex-1 px-3 py-2 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-xs outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
+        />
+        <button
+          type="button"
+          onClick={onSend}
+          className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition-colors"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+});
 
 const MeetingInterface = () => {
   const { roomCode } = useParams();
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
-  const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
+    [],
+  );
+  const room = useMemo(
+    () => JSON.parse(localStorage.getItem("currentRoom") || "{}"),
+    [],
+  );
   const isInstructor = user.role === "instructor";
 
   const {
@@ -34,8 +385,8 @@ const MeetingInterface = () => {
     peerEmotes,
     setChatMessages,
   } = useRoom();
-
-  const safeChatMessages = chatMessages ?? [];
+  const safeChatMessages = useMemo(() => chatMessages ?? [], [chatMessages]);
+  const participantCount = participants.length;
 
   const [boxes, setBoxes] = useState({
     settings: false,
@@ -48,14 +399,13 @@ const MeetingInterface = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const chatEndRef = useRef(null);
   const showChatRef = useRef(showChat);
-
   const [copyMessage, setCopyMessage] = useState("");
+  const copyTimerRef = useRef(null);
   const [deviceDropDown, setDeviceDropDown] = useState(false);
   const [deviceSections, setDeviceSections] = useState({ audio: false });
   const [audioDevices, setAudioDevices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState({ audio: null });
-
   const [pollQuestion, setPollQuestion] = useState({
     active: false,
     pollId: null,
@@ -83,21 +433,45 @@ const MeetingInterface = () => {
     startScreen,
     stopScreen,
   } = useMedia();
+  const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
+    usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
-  const { remoteStreams, broadcastMic, broadcastScreen } = usePeer({
-    roomCode,
-    user,
-    socket,
-    micStreamRef,
-    screenStreamRef,
-  });
+  const handleNetworkScreenStop = useCallback(() => {
+    stopScreenCalls();
+    socket.emit("screen-share-stop", { roomCode, userId: user.id });
+  }, [stopScreenCalls, roomCode, user.id]);
 
-  const remoteScreen = remoteStreams.find((s) => s.type === "screen");
+  const screenOnRef = useRef(screenOn);
+  useEffect(() => {
+    screenOnRef.current = screenOn;
+  }, [screenOn]);
 
-  const raisedHandCount = participants.filter((p) => {
-    if (p.id === user.id) return myEmote === "raise";
-    return peerEmotes?.[p.id] === "raise";
-  }).length;
+  const remoteScreen = useMemo(
+    () => remoteStreams.find((s) => s.type === "screen"),
+    [remoteStreams],
+  );
+  const micRemoteStreams = useMemo(
+    () => remoteStreams.filter((s) => s.type === "mic"),
+    [remoteStreams],
+  );
+
+  const raisedHandCount = useMemo(() => {
+    return participants.filter((p) => {
+      if (p.id === user.id) return myEmote === "raise";
+      return peerEmotes?.[p.id] === "raise";
+    }).length;
+  }, [participants, user.id, myEmote, peerEmotes]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  const userInitial = useMemo(
+    () => user.username?.[0]?.toUpperCase() || "?",
+    [user.username],
+  );
 
   useEffect(() => {
     showChatRef.current = showChat;
@@ -106,15 +480,8 @@ const MeetingInterface = () => {
   useEffect(() => {
     const activeStream =
       remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
-    setScreenStream(activeStream);
+    setScreenStream((prev) => (prev === activeStream ? prev : activeStream));
   }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
-
-  useEffect(() => {
-    socket.on("participants-update", (updatedList) => {
-      setParticipants(updatedList);
-    });
-    return () => socket.off("participants-update");
-  }, [setParticipants]);
 
   useEffect(() => {
     socket.on("you-were-removed", () => {
@@ -125,39 +492,17 @@ const MeetingInterface = () => {
     return () => socket.off("you-were-removed");
   }, [navigate]);
 
+  // ✅ FIXED: only screen-share-update here, approved/rejected handled inline in handleScreenToggle
   useEffect(() => {
-    socket.on("screen-share-approved", async () => {
-      const stream = await startScreen();
-      if (stream) broadcastScreen(stream);
-    });
-    socket.on("screen-share-rejected", () => {
-      alert("Someone is already sharing their screen.");
-    });
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
-      if (active && sharingUserId !== user.id && screenOn) {
-        stopScreen();
-        socket.emit("screen-share-stop", { roomCode, userId: user.id });
+      if (active && sharingUserId !== user.id && screenOnRef.current) {
+        stopScreen(handleNetworkScreenStop);
       }
     });
     return () => {
-      socket.off("screen-share-approved");
-      socket.off("screen-share-rejected");
       socket.off("screen-share-update");
     };
-  }, [screenOn, roomCode, user.id, startScreen, stopScreen, broadcastScreen]);
-
-  useEffect(() => {
-    const stream = screenStreamRef.current;
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
-    const handleEnded = () => {
-      stopScreen();
-      socket.emit("screen-share-stop", { roomCode, userId: user.id });
-    };
-    track.addEventListener("ended", handleEnded);
-    return () => track.removeEventListener("ended", handleEnded);
-  }, [screenOn, roomCode, user.id, stopScreen]);
+  }, [stopScreen, handleNetworkScreenStop, user.id]);
 
   useEffect(() => {
     const handleRoomEnded = ({ message }) => {
@@ -182,7 +527,7 @@ const MeetingInterface = () => {
       socket.off("room-ended-by-you", handleRoomEndedByYou);
       socket.off("room-end-error", handleRoomEndError);
     };
-  }, [navigate]);
+  }, [navigate, setChatMessages]);
 
   useEffect(() => {
     if (!room.id) return;
@@ -190,17 +535,11 @@ const MeetingInterface = () => {
       .then((r) => r.json())
       .then((data) => setChatMessages?.(data.messages || []))
       .catch(console.error);
-  }, [room.id]);
+  }, [room.id, setChatMessages]);
 
   useEffect(() => {
-    if (showChat) {
-      chatEndRef.current?.scrollIntoView({ behavior: "instant" });
-    }
-  }, [safeChatMessages, showChat]);
-
-  useEffect(() => {
-    if (showChat) setUnreadCount(0);
-  }, [showChat]);
+    if (showChat) chatEndRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [safeChatMessages.length, showChat]);
 
   useEffect(() => {
     socket.on("understanding-question", ({ pollId, totalStudents }) => {
@@ -291,9 +630,7 @@ const MeetingInterface = () => {
     check();
   }, [deviceSections]);
 
-  // Handlers
-
-  const handleMicToggle = async () => {
+  const handleMicToggle = useCallback(async () => {
     const nextMic = !micOn;
     if (nextMic) {
       const stream = await startMic();
@@ -305,18 +642,57 @@ const MeetingInterface = () => {
     setParticipants((prev) =>
       prev.map((p) => (p.id === user.id ? { ...p, mic: nextMic } : p)),
     );
-  };
+  }, [
+    micOn,
+    startMic,
+    broadcastMic,
+    stopMic,
+    roomCode,
+    user.id,
+    setParticipants,
+  ]);
 
-  const handleScreenToggle = async () => {
+  // ✅ FIXED: check if someone is already sharing BEFORE opening the browser picker
+  const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
-      stopScreen();
+      stopScreen(handleNetworkScreenStop);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
-      socket.emit("screen-share-start", { roomCode, userId: user.id });
-    }
-  };
+      // Block immediately if a remote screen share is already active — no picker popup
+      if (remoteScreen) {
+        alert("Someone is already sharing their screen.");
+        return;
+      }
 
-  const handleLeave = () => {
+      const stream = await startScreen(handleNetworkScreenStop);
+      if (!stream) return; // user cancelled
+
+      socket.emit("screen-share-start", { roomCode, userId: user.id });
+
+      const approved = await new Promise((resolve) => {
+        socket.once("screen-share-approved", () => resolve(true));
+        socket.once("screen-share-rejected", () => resolve(false));
+      });
+
+      if (approved) {
+        broadcastScreen(stream);
+      } else {
+        stream.getTracks().forEach((t) => t.stop());
+        alert("Someone is already sharing their screen.");
+      }
+    }
+  }, [
+    screenOn,
+    remoteScreen,
+    stopScreen,
+    startScreen,
+    broadcastScreen,
+    handleNetworkScreenStop,
+    roomCode,
+    user.id,
+  ]);
+
+  const handleLeave = useCallback(() => {
     const confirmed = window.confirm(
       "Are you sure you want to leave the meeting?",
     );
@@ -325,9 +701,9 @@ const MeetingInterface = () => {
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     }
-  };
+  }, [roomCode, user.id, navigate]);
 
-  const handleEndForAll = async () => {
+  const handleEndForAll = useCallback(async () => {
     const confirmed = window.confirm(
       "Are you sure you want to end the meeting for everyone?",
     );
@@ -343,9 +719,7 @@ const MeetingInterface = () => {
           if (liveData?.session?.id) {
             await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/sessions/end/${liveData.session.id}`,
-              {
-                method: "POST",
-              },
+              { method: "POST" },
             );
           }
         }
@@ -354,27 +728,30 @@ const MeetingInterface = () => {
       }
     }
     socket.emit("end-room", { roomCode, userId: user.id });
-  };
+  }, [room.id, roomCode, user.id]);
 
-  const handleEmote = (emoteKey) => {
-    const next = myEmote === emoteKey ? null : emoteKey;
-    setMyEmote?.(next);
-    setShowEmotes(false);
-    socket.emit("emote", { roomCode, userId: user.id, emote: next });
-  };
+  const handleEmote = useCallback(
+    (emoteKey) => {
+      const next = myEmote === emoteKey ? null : emoteKey;
+      setMyEmote?.(next);
+      setShowEmotes(false);
+      socket.emit("emote", { roomCode, userId: user.id, emote: next });
+    },
+    [myEmote, setMyEmote, roomCode, user.id],
+  );
 
-  const handleRemoveParticipant = (participantId, username) => {
-    const confirmed = window.confirm(`Remove ${username} from the room?`);
-    if (!confirmed) return;
-    socket.emit("remove-participant", { roomCode, userId: participantId });
-  };
+  const handleRemoveParticipant = useCallback(
+    (participantId, username) => {
+      const confirmed = window.confirm(`Remove ${username} from the room?`);
+      if (!confirmed) return;
+      socket.emit("remove-participant", { roomCode, userId: participantId });
+    },
+    [roomCode],
+  );
 
-  const handleSendChat = () => {
+  const handleSendChat = useCallback(() => {
     const msg = chatInput.trim();
     if (!msg) return;
-
-    console.log("SENDING:", msg);
-
     setChatMessages?.((prev) => [
       ...(prev ?? []),
       {
@@ -385,7 +762,6 @@ const MeetingInterface = () => {
         sent_at: new Date().toISOString(),
       },
     ]);
-
     socket.emit("send-message", {
       roomCode,
       userId: user.id,
@@ -393,11 +769,9 @@ const MeetingInterface = () => {
       message: msg,
     });
     setChatInput("");
-  };
+  }, [chatInput, setChatMessages, user.id, user.username, roomCode]);
 
-  // Poll handlers
-
-  const startUnderstandingPoll = () => {
+  const startUnderstandingPoll = useCallback(() => {
     if (!isInstructor) return;
     setIsPollPanelOpen(true);
     const pollId = `${roomCode}-${Date.now()}`;
@@ -421,30 +795,33 @@ const MeetingInterface = () => {
       initiatedBy: user.id,
       pollId,
     });
-  };
+  }, [isInstructor, roomCode, user.id, participants]);
 
-  const submitUnderstandingAnswer = (answer) => {
-    if (!pollQuestion.active || pollQuestion.answered) return;
-    const { pollId } = pollQuestion;
-    socket.emit("understanding-answer", {
-      roomCode,
-      userId: user.id,
-      pollId,
-      answer,
-    });
-    setPollQuestion((prev) => ({
-      ...prev,
-      answered: true,
-      response: answer,
-      active: false,
-    }));
-    setPollResults((prev) => ({
-      ...prev,
-      summary: `You answered: ${answer.toUpperCase()}`,
-    }));
-  };
+  const submitUnderstandingAnswer = useCallback(
+    (answer) => {
+      if (!pollQuestion.active || pollQuestion.answered) return;
+      const { pollId } = pollQuestion;
+      socket.emit("understanding-answer", {
+        roomCode,
+        userId: user.id,
+        pollId,
+        answer,
+      });
+      setPollQuestion((prev) => ({
+        ...prev,
+        answered: true,
+        response: answer,
+        active: false,
+      }));
+      setPollResults((prev) => ({
+        ...prev,
+        summary: `You answered: ${answer.toUpperCase()}`,
+      }));
+    },
+    [pollQuestion, roomCode, user.id],
+  );
 
-  const endUnderstandingPoll = () => {
+  const endUnderstandingPoll = useCallback(() => {
     if (!isInstructor) return;
     const pollId = pollResults.pollId || pollQuestion.pollId;
     if (!pollId) {
@@ -467,11 +844,9 @@ const MeetingInterface = () => {
           ? `Ended: ${pollResults.yes} understand, ${pollResults.no} don't understand`
           : "Poll ended with no responses",
     });
-  };
+  }, [isInstructor, pollResults, pollQuestion.pollId, roomCode]);
 
-  // Box helpers
-
-  const openBox = (name) => {
+  const openBox = useCallback((name) => {
     setShowEmotes(false);
     setShowChat(false);
     setBoxes({
@@ -480,19 +855,78 @@ const MeetingInterface = () => {
       participants: false,
       [name]: true,
     });
-  };
+  }, []);
 
-  const closeBox = (name) => setBoxes((p) => ({ ...p, [name]: false }));
-
-  const handlePanelMouseEnter = () => {
+  const closeBox = useCallback(
+    (name) => setBoxes((p) => ({ ...p, [name]: false })),
+    [],
+  );
+  const handlePanelMouseEnter = useCallback(() => {
     if (document.pointerLockElement) document.exitPointerLock();
-  };
+  }, []);
 
-  const panelClass =
-    "fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl";
+  const handleCopyRoomCode = useCallback(async () => {
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopyMessage("Copied!");
+      copyTimerRef.current = setTimeout(() => setCopyMessage(""), 2000);
+    } catch {
+      setCopyMessage("Copy failed");
+      copyTimerRef.current = setTimeout(() => setCopyMessage(""), 2000);
+    }
+  }, [roomCode]);
+
+  const onTogglePollPanel = useCallback(
+    () => setIsPollPanelOpen((p) => !p),
+    [],
+  );
+
+  const onToggleParticipants = useCallback(() => {
+    setShowEmotes(false);
+    setShowChat(false);
+    setBoxes((b) =>
+      b.participants
+        ? { ...b, participants: false }
+        : { settings: false, leave: false, participants: true },
+    );
+  }, []);
+
+  const onToggleChat = useCallback(() => {
+    setShowChat((c) => {
+      const next = !c;
+      if (next) setUnreadCount(0);
+      return next;
+    });
+    setShowEmotes(false);
+    setBoxes({ settings: false, leave: false, participants: false });
+  }, []);
+
+  const onToggleEmotes = useCallback(() => {
+    setShowEmotes((e) => !e);
+    setShowChat(false);
+    setBoxes({ settings: false, leave: false, participants: false });
+  }, []);
+
+  const onToggleSettings = useCallback(() => {
+    setShowEmotes(false);
+    setShowChat(false);
+    setBoxes((b) =>
+      b.settings
+        ? { ...b, settings: false }
+        : { settings: true, leave: false, participants: false },
+    );
+  }, []);
+
+  const onOpenLeave = useCallback(() => openBox("leave"), [openBox]);
+  const onChatInputChange = useCallback((value) => setChatInput(value), []);
+  const onCloseParticipants = useCallback(
+    () => closeBox("participants"),
+    [closeBox],
+  );
+  const onCloseChat = useCallback(() => setShowChat(false), []);
 
   const prevMessageCountRef = useRef(0);
-
   useEffect(() => {
     const newCount = safeChatMessages.length;
     if (newCount > prevMessageCountRef.current && !showChatRef.current) {
@@ -500,17 +934,14 @@ const MeetingInterface = () => {
       const othersCount = newMessages.filter(
         (msg) => msg.user_id !== user.id && msg.userId !== user.id,
       ).length;
-      if (othersCount > 0) {
-        setUnreadCount((prev) => prev + othersCount);
-      }
+      if (othersCount > 0) setUnreadCount((prev) => prev + othersCount);
     }
     prevMessageCountRef.current = newCount;
-  }, [safeChatMessages.length]);
+  }, [safeChatMessages, user.id]);
 
   return (
     <>
       <BoardNotifications isInstructor={isInstructor} />
-      {/* Understanding poll modal for students */}
       {pollQuestion.active && !isInstructor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
           <div className="bg-[#0f172a] border border-[#1e2d45] rounded-xl p-5 w-80">
@@ -546,173 +977,37 @@ const MeetingInterface = () => {
         </div>
       )}
 
-      {/* Remote audio streams */}
-      {remoteStreams
-        .filter((s) => s.type === "mic")
-        .map((s, i) => (
-          <RemoteStream
-            key={i}
-            stream={s.stream}
-            type={s.type}
-            username={s.username}
-          />
-        ))}
+      <RemoteMicStreams streams={micRemoteStreams} />
+      <MeetingTopBar
+        roomCode={roomCode}
+        roomName={room.room_name}
+        isInstructor={isInstructor}
+        userUsername={user.username}
+        userInitial={userInitial}
+        copyMessage={copyMessage}
+        onCopyRoomCode={handleCopyRoomCode}
+      />
+      <MeetingBottomToolbar
+        micOn={micOn}
+        screenOn={screenOn}
+        isInstructor={isInstructor}
+        isPollPanelOpen={isPollPanelOpen}
+        boxesParticipants={boxes.participants}
+        boxesSettings={boxes.settings}
+        showChat={showChat}
+        showEmotes={showEmotes}
+        unreadCount={unreadCount}
+        raisedHandCount={raisedHandCount}
+        onMicToggle={handleMicToggle}
+        onScreenToggle={handleScreenToggle}
+        onTogglePollPanel={onTogglePollPanel}
+        onToggleParticipants={onToggleParticipants}
+        onToggleChat={onToggleChat}
+        onToggleEmotes={onToggleEmotes}
+        onToggleSettings={onToggleSettings}
+        onOpenLeave={onOpenLeave}
+      />
 
-      {/* TOP BAR */}
-      <div className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-2 bg-[#111827] border-b border-[#1e2d45]">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-sm">
-            🎓
-          </div>
-          <span className="text-slate-200 text-sm font-bold">
-            Virtual<span className="text-cyan-400">Class</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-xs">Room:</span>
-          <div className="flex items-center gap-1 bg-[#1a2235] px-2 py-1 rounded-lg border border-[#1e2d45]">
-            <span className="text-slate-200 text-xs font-mono">{roomCode}</span>
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(roomCode);
-                  setCopyMessage("Copied!");
-                  setTimeout(() => setCopyMessage(""), 2000);
-                } catch {
-                  setCopyMessage("Copy failed");
-                  setTimeout(() => setCopyMessage(""), 2000);
-                }
-              }}
-              className="bg-[#1a2235] text-slate-400 hover:text-slate-300 transition-colors p-0.5 rounded"
-              title="Copy room code"
-            >
-              <img src={copyIcon} alt="Copy" className="w-3 h-3" />
-            </button>
-          </div>
-          {copyMessage && (
-            <span className="text-slate-400 text-[10px]">{copyMessage}</span>
-          )}
-          {room.room_name && (
-            <span className="text-slate-400 text-xs">· {room.room_name}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {isInstructor && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 font-medium">
-              Instructor
-            </span>
-          )}
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs">
-            {user.username?.[0]?.toUpperCase() || "?"}
-          </div>
-          <span className="text-slate-300 text-xs font-semibold">
-            {user.username}
-          </span>
-        </div>
-      </div>
-
-      {/* BOTTOM BAR */}
-      <div className="fixed w-full bottom-3 flex justify-center z-20">
-        <div className="flex items-center gap-2 bg-[#111827] border border-[#1e2d45] px-4 py-2 rounded-2xl shadow-xl">
-          <button
-            onClick={handleMicToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${micOn ? "text-blue-400" : "text-slate-500"}`}
-          >
-            {micOn ? <BsMicFill size={22} /> : <BsMicMuteFill size={22} />}
-            <span className="text-[10px] mt-1 select-none">Mic</span>
-          </button>
-
-          <button
-            onClick={handleScreenToggle}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${screenOn ? "text-emerald-400" : "text-slate-500"}`}
-          >
-            <LuScreenShare size={22} />
-            <span className="text-[10px] mt-1 select-none">
-              {screenOn ? "Sharing" : "Screen"}
-            </span>
-          </button>
-
-          {isInstructor && (
-            <button
-              onClick={() => setIsPollPanelOpen((p) => !p)}
-              className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${isPollPanelOpen ? "text-blue-400" : "text-slate-500"}`}
-            >
-              <FaCheck size={22} />
-              <span className="text-[10px] mt-1 select-none">Start Check</span>
-            </button>
-          )}
-
-          <div className="w-px h-8 bg-[#1e2d45] mx-1" />
-
-          <button
-            onClick={() =>
-              boxes.participants
-                ? closeBox("participants")
-                : openBox("participants")
-            }
-            className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.participants ? "text-blue-400" : "text-slate-500"}`}
-          >
-            <IoPeople size={22} />
-            {raisedHandCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-[10px] rounded-full flex items-center justify-center">
-                ✋
-              </span>
-            )}
-            <span className="text-[10px] mt-1 select-none">People</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setShowChat(!showChat);
-              setShowEmotes(false);
-              setBoxes({ settings: false, leave: false, participants: false });
-            }}
-            className={`relative flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showChat ? "text-blue-400" : "text-slate-500"}`}
-          >
-            <BsChatFill size={20} />
-            {unreadCount > 0 && !showChat && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-            <span className="text-[10px] mt-1 select-none">Chat</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setShowEmotes(!showEmotes);
-              setShowChat(false);
-              setBoxes({ settings: false, leave: false, participants: false });
-            }}
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${showEmotes ? "text-yellow-400" : "text-slate-500"}`}
-          >
-            <MdEmojiEmotions size={22} />
-            <span className="text-[10px] mt-1 select-none">React</span>
-          </button>
-
-          <button
-            onClick={() =>
-              boxes.settings ? closeBox("settings") : openBox("settings")
-            }
-            className={`flex flex-col items-center px-3 py-2 rounded-xl hover:bg-[#1a2235] transition-colors ${boxes.settings ? "text-blue-400" : "text-slate-500"}`}
-          >
-            <IoSettings size={22} />
-            <span className="text-[10px] mt-1 select-none">Settings</span>
-          </button>
-
-          <div className="w-px h-8 bg-[#1e2d45] mx-1" />
-
-          <button
-            onClick={() => openBox("leave")}
-            className="flex flex-col items-center px-3 py-2 rounded-xl hover:bg-rose-500/10 transition-colors text-rose-400"
-          >
-            <ImPhoneHangUp size={22} />
-            <span className="text-[10px] mt-1 select-none">Leave</span>
-          </button>
-        </div>
-      </div>
-
-      {/* INSTRUCTOR POLL PANEL */}
       {isInstructor && isPollPanelOpen && (
         <div className="fixed bottom-20 right-4 z-30 w-72 p-3 bg-[#0f172a] border border-[#1e2d45] rounded-xl shadow-xl">
           <div className="flex items-center justify-between mb-2">
@@ -720,6 +1015,7 @@ const MeetingInterface = () => {
               Start understanding check
             </p>
             <button
+              type="button"
               onClick={() => setIsPollPanelOpen(false)}
               className="text-slate-400 hover:text-white"
             >
@@ -747,138 +1043,33 @@ const MeetingInterface = () => {
         </div>
       )}
 
-      {/* PARTICIPANTS PANEL */}
-      <div
-        className={`${panelClass} w-64 ${boxes.participants ? "" : "hidden"}`}
-        onMouseEnter={handlePanelMouseEnter}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
-          <p className="text-slate-200 font-semibold text-sm">
-            Participants ({participants.length})
-          </p>
-          <button
-            onClick={() => closeBox("participants")}
-            className="text-slate-500 hover:text-slate-300"
-          >
-            <IoClose size={18} />
-          </button>
-        </div>
-        <div className="p-3 flex flex-col gap-2 max-h-72 overflow-y-auto">
-          {participants.map((p, i) => {
-            const isMe = p.id === user.id;
-            const hasHandRaised = isMe
-              ? myEmote === "raise"
-              : peerEmotes?.[p.id] === "raise";
+      <MeetingParticipantsPanel
+        open={boxes.participants}
+        participants={participants}
+        participantCount={participantCount}
+        peerEmotes={peerEmotes}
+        myEmote={myEmote}
+        userId={user.id}
+        isInstructor={isInstructor}
+        onClose={onCloseParticipants}
+        onRemoveParticipant={handleRemoveParticipant}
+        onPanelMouseEnter={handlePanelMouseEnter}
+      />
+      <MeetingChatPanel
+        open={showChat}
+        messages={safeChatMessages}
+        chatInput={chatInput}
+        userId={user.id}
+        userUsername={user.username}
+        chatEndRef={chatEndRef}
+        onClose={onCloseChat}
+        onChatInputChange={onChatInputChange}
+        onSend={handleSendChat}
+        onPanelMouseEnter={handlePanelMouseEnter}
+      />
 
-            return (
-              <div
-                key={i}
-                className="flex items-center gap-2.5 bg-[#1a2235] rounded-xl px-3 py-2"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                  {p.username?.[0]?.toUpperCase() || "?"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-200 text-xs font-semibold truncate">
-                    {p.username}{" "}
-                    {isMe && <span className="text-slate-500">(you)</span>}
-                  </p>
-                  <p className="text-[11px] capitalize">
-                    {p.role === "instructor" ? (
-                      <span className="text-violet-400">{p.role}</span>
-                    ) : (
-                      <span className="text-slate-500">{p.role}</span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {hasHandRaised && (
-                    <span className="text-sm" title="Hand raised">
-                      ✋
-                    </span>
-                  )}
-                  {p.mic ? (
-                    <BsMicFill size={12} color="#3b82f6" />
-                  ) : (
-                    <BsMicMuteFill size={12} color="#64748b" />
-                  )}
-                  {isInstructor && !isMe && p.role !== "instructor" && (
-                    <button
-                      onClick={() => handleRemoveParticipant(p.id, p.username)}
-                      className="ml-1 text-rose-400 hover:text-rose-300 transition-colors"
-                      title="Remove participant"
-                    >
-                      <IoClose size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* CHAT PANEL */}
       <div
-        className={`fixed bottom-[70px] right-2 z-20 bg-[#111827] border border-[#1e2d45] rounded-2xl shadow-xl w-72 flex flex-col ${showChat ? "" : "hidden"}`}
-        style={{ height: "360px" }}
-        onMouseEnter={handlePanelMouseEnter}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45] flex-shrink-0">
-          <p className="text-slate-200 font-semibold text-sm">Chat</p>
-          <button
-            onClick={() => setShowChat(false)}
-            className="text-slate-500 hover:text-slate-300"
-          >
-            <IoClose size={18} />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-          {safeChatMessages.length === 0 && (
-            <p className="text-slate-600 text-xs text-center mt-4">
-              No messages yet
-            </p>
-          )}
-          {safeChatMessages.map((msg, i) => {
-            const isMe = msg.user_id === user.id || msg.userId === user.id;
-            return (
-              <div
-                key={i}
-                className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-              >
-                <span className="text-[10px] text-slate-500 mb-0.5 px-1">
-                  {msg.username || (isMe ? user.username : "Guest")}
-                </span>
-                <div
-                  className={`px-3 py-2 rounded-2xl text-xs max-w-[85%] break-words ${isMe ? "bg-blue-500 text-white rounded-tr-sm" : "bg-[#1a2235] text-slate-200 rounded-tl-sm"}`}
-                >
-                  {msg.message}
-                </div>
-              </div>
-            );
-          })}
-          <div ref={chatEndRef} />
-        </div>
-        <div className="flex-shrink-0 p-3 border-t border-[#1e2d45] flex gap-2">
-          <input
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
-            placeholder="Type a message…"
-            className="flex-1 px-3 py-2 bg-[#0b0f1a] border border-[#1e2d45] rounded-xl text-slate-200 text-xs outline-none focus:border-blue-500 transition-colors placeholder:text-slate-600"
-          />
-          <button
-            onClick={handleSendChat}
-            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-xl transition-colors"
-          >
-            Send
-          </button>
-        </div>
-      </div>
-
-      {/* EMOTE PICKER PANEL */}
-      <div
-        className={`${panelClass} w-56 ${showEmotes ? "" : "hidden"}`}
+        className={`${PANEL_CLASS} w-56 ${showEmotes ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
@@ -903,9 +1094,8 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* SETTINGS PANEL */}
       <div
-        className={`${panelClass} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
+        className={`${PANEL_CLASS} w-72 flex flex-col ${boxes.settings ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">
@@ -964,9 +1154,8 @@ const MeetingInterface = () => {
         </div>
       </div>
 
-      {/* LEAVE PANEL */}
       <div
-        className={`${panelClass} w-56 ${boxes.leave ? "" : "hidden"}`}
+        className={`${PANEL_CLASS} w-56 ${boxes.leave ? "" : "hidden"}`}
         onMouseEnter={handlePanelMouseEnter}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2d45]">

@@ -1,6 +1,7 @@
 import * as boardService from "../services/board.service.js";
 import path from "path";
 import fs from "fs";
+import { uploadsDir } from "../server.js";
 
 // Notes
 export const createNote = async (req, res, next) => {
@@ -121,8 +122,8 @@ export const deleteFile = async (req, res, next) => {
     const deleted = await boardService.deleteFile(req.params.id);
     if (!deleted) return res.status(404).json({ error: "File not found" });
 
-    // Also remove from /uploads folder
-    const filePath = path.join(process.cwd(), deleted.file_url);
+    const filename = path.basename(deleted.file_url);
+    const filePath = path.join(uploadsDir, filename);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({ message: "File deleted" });

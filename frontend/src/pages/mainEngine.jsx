@@ -1,13 +1,14 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense } from "react";
-import MeetingInterface from "../components/meetingInterface";
-import Avatar from "../components/avatar";
-import Classroom from "../components/classroom";
-import BoardMesh from "../components/boardMesh";
-import ScreenMesh from "../components/screenMesh";
-import FollowCamera from "../components/followCamera";
+import { Suspense, lazy, useMemo } from "react";
 import { RoomProvider } from "../components/roomContext";
 import { useRoom } from "../components/roomContext";
+
+const MeetingInterface = lazy(() => import("../components/meetingInterface"));
+const Avatar = lazy(() => import("../components/avatar"));
+const Classroom = lazy(() => import("../components/classroom"));
+const BoardMesh = lazy(() => import("../components/boardMesh"));
+const ScreenMesh = lazy(() => import("../components/screenMesh"));
+const FollowCamera = lazy(() => import("../components/followCamera"));
 
 function SitPrompt() {
   const { isSitting, nearChair } = useRoom();
@@ -60,11 +61,14 @@ function SitPrompt() {
 }
 
 export default function MainEngine() {
+  const cameraConfig = useMemo(() => ({ position: [0, 1.6, 0] }), []);
+
   return (
     <RoomProvider>
       <div style={{ width: "100vw", height: "100vh" }}>
         <Canvas
-          camera={{ position: [0, 1.6, 0] }}
+          camera={cameraConfig}
+          dpr={[1, 1.5]}
           tabIndex={0}
           style={{ outline: "none" }}
         >
@@ -79,11 +83,13 @@ export default function MainEngine() {
             <Avatar />
             <BoardMesh position={[-4, 2, -2.25]} />
             <ScreenMesh position={[0, 2, 4.5]} />
+            <FollowCamera />
           </Suspense>
-          <FollowCamera />
         </Canvas>
         <SitPrompt />
-        <MeetingInterface />
+        <Suspense fallback={null}>
+          <MeetingInterface />
+        </Suspense>
       </div>
     </RoomProvider>
   );

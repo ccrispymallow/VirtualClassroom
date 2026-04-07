@@ -10,34 +10,91 @@ export const usePeer = ({
 }) => {
   const peerRef = useRef(null);
   const callsRef = useRef({});
+  const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
+
+  // KEY FIX: a map of peerId -> <audio> element so remote voices auto-play
+  // independently of whether YOUR mic is on or off.
+  const audioElementsRef = useRef({});
 
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
   const userAvatar = user?.avatar ?? "boy";
 
-  const addStream = useCallback((peerId, stream, type, uname) => {
-    setRemoteStreams((prev) => {
-      const filtered = prev.filter(
-        (s) => !(s.peerId === peerId && s.type === type),
-      );
-      return [...filtered, { peerId, stream, type, username: uname }];
+  // ── Attach a remote mic stream to a real <audio> element and play it ──
+  const playRemoteAudio = useCallback((peerId, stream) => {
+    // Reuse the existing element for this peer, or create a new one
+    if (!audioElementsRef.current[peerId]) {
+      const audio = new Audio();
+      audio.autoplay = true;
+      audioElementsRef.current[peerId] = audio;
+    }
+
+    const audio = audioElementsRef.current[peerId];
+    audio.srcObject = stream;
+    audio.play().catch((err) => {
+      // Autoplay can be blocked by the browser on the very first interaction.
+      // This is rare once the user has already clicked something in your app.
+      console.warn("Remote audio autoplay blocked for peer:", peerId, err);
     });
   }, []);
 
-  const removeStreams = useCallback((peerId) => {
-    setRemoteStreams((prev) => prev.filter((s) => s.peerId !== peerId));
+  // ── Stop and remove the audio element for a peer that left ──
+  const stopRemoteAudio = useCallback((peerId) => {
+    const audio = audioElementsRef.current[peerId];
+    if (audio) {
+      audio.pause();
+      audio.srcObject = null;
+      delete audioElementsRef.current[peerId];
+    }
   }, []);
+
+  const addStream = useCallback(
+    (peerId, stream, type, uname) => {
+      // If this is a mic stream, also wire it up to an audio element right away
+      if (type === "mic") {
+        playRemoteAudio(peerId, stream);
+      }
+
+      setRemoteStreams((prev) => {
+        const existing = prev.find(
+          (s) => s.peerId === peerId && s.type === type,
+        );
+        if (existing?.stream === stream && existing?.username === uname) {
+          return prev;
+        }
+        const filtered = prev.filter(
+          (s) => !(s.peerId === peerId && s.type === type),
+        );
+        return [...filtered, { peerId, stream, type, username: uname }];
+      });
+    },
+    [playRemoteAudio],
+  );
+
+  const removeStreams = useCallback(
+    (peerId) => {
+      stopRemoteAudio(peerId);
+      setRemoteStreams((prev) => {
+        const next = prev.filter((s) => s.peerId !== peerId);
+        return next.length === prev.length ? prev : next;
+      });
+    },
+    [stopRemoteAudio],
+  );
 
   const callPeer = useCallback(
     (peerId, stream, type, uname) => {
       if (!peerRef.current || !stream) return;
 
       const callKey = `${peerId}-${type}`;
-      if (callsRef.current[callKey]) return;
 
-      console.log("Calling peer:", peerId, "type:", type);
+      if (callsRef.current[callKey]) {
+        callsRef.current[callKey].close();
+        delete callsRef.current[callKey];
+      }
+
       const call = peerRef.current.call(peerId, stream, {
         metadata: { type, username: uname },
       });
@@ -51,12 +108,16 @@ export const usePeer = ({
         delete callsRef.current[callKey];
       });
 
-      call.on("error", (err) => console.error("📞 Call error:", err));
+      call.on("error", (err) => console.error("Call error:", err));
 
       callsRef.current[callKey] = call;
     },
     [removeStreams, addStream],
   );
+
+  const getAllPeerIds = useCallback(() => {
+    return Array.from(knownPeersRef.current);
+  }, []);
 
   useEffect(() => {
     if (!userId || !roomCode) return;
@@ -68,14 +129,13 @@ export const usePeer = ({
     const peer = new Peer(undefined, {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
       port: isLocal ? 9000 : 443,
-      path: isLocal ? "/peerjs" : "/",
+      path: "/peerjs",
       secure: !isLocal,
     });
 
     peerRef.current = peer;
 
     peer.on("open", (peerId) => {
-      console.log("PeerJS connected, my peerId:", peerId);
       socket.emit("join-room", {
         roomCode,
         user: { id: userId, username, role: userRole, avatar: userAvatar },
@@ -89,6 +149,9 @@ export const usePeer = ({
           ? screenStreamRef.current
           : micStreamRef.current;
 
+      // Answer with your stream if available, or an empty answer if not.
+      // This is what was broken before: you were answering with micStreamRef
+      // which could be null if mic was off, AND you weren't playing their audio.
       call.answer(localStream ?? undefined);
 
       call.on("stream", (remoteStream) => {
@@ -101,15 +164,17 @@ export const usePeer = ({
       });
 
       call.on("close", () => removeStreams(call.peer));
-      call.on("error", (err) => console.error("📞 Call error:", err));
+      call.on("error", (err) => console.error("Call error:", err));
 
       callsRef.current[`${call.peer}-${call.metadata?.type}`] = call;
     });
 
     peer.on("error", (err) => console.error("PeerJS error:", err));
 
-    socket.on("user-joined", ({ peerId, username: joinedUsername }) => {
-      console.log("User joined:", joinedUsername, peerId);
+    socket.on("user-joined", ({ peerId }) => {
+      if (!peerId) return;
+      knownPeersRef.current.add(peerId);
+
       if (micStreamRef.current) {
         callPeer(peerId, micStreamRef.current, "mic", username);
       }
@@ -119,8 +184,10 @@ export const usePeer = ({
     });
 
     socket.on("existing-peers", (peers) => {
-      console.log("Existing peers in room:", peers);
       peers.forEach(({ peerId }) => {
+        if (!peerId) return;
+        knownPeersRef.current.add(peerId);
+
         if (micStreamRef.current) {
           callPeer(peerId, micStreamRef.current, "mic", username);
         }
@@ -131,6 +198,13 @@ export const usePeer = ({
     });
 
     return () => {
+      // Clean up all audio elements on unmount
+      Object.values(audioElementsRef.current).forEach((audio) => {
+        audio.pause();
+        audio.srcObject = null;
+      });
+      audioElementsRef.current = {};
+
       peer.destroy();
       peerRef.current = null;
       callsRef.current = {};
@@ -150,27 +224,38 @@ export const usePeer = ({
 
   const broadcastMic = useCallback(
     (stream) => {
-      Object.keys(callsRef.current).forEach((key) => {
-        if (key.endsWith("-mic")) {
-          const peerId = key.replace("-mic", "");
-          callPeer(peerId, stream, "mic", username);
-        }
+      getAllPeerIds().forEach((peerId) => {
+        callPeer(peerId, stream, "mic", username);
       });
     },
-    [callPeer, username],
+    [callPeer, username, getAllPeerIds],
   );
 
   const broadcastScreen = useCallback(
     (stream) => {
-      Object.keys(callsRef.current).forEach((key) => {
-        if (key.endsWith("-screen")) {
-          const peerId = key.replace("-screen", "");
-          callPeer(peerId, stream, "screen", username);
-        }
+      const peerIds = getAllPeerIds();
+      peerIds.forEach((peerId) => {
+        callPeer(peerId, stream, "screen", username);
       });
     },
-    [callPeer, username],
+    [callPeer, username, getAllPeerIds],
   );
 
-  return { remoteStreams, peerRef, broadcastMic, broadcastScreen };
+  const stopScreenCalls = useCallback(() => {
+    Object.keys(callsRef.current)
+      .filter((key) => key.endsWith("-screen"))
+      .forEach((key) => {
+        callsRef.current[key].close();
+        delete callsRef.current[key];
+      });
+    setRemoteStreams((prev) => prev.filter((s) => s.type !== "screen"));
+  }, []);
+
+  return {
+    remoteStreams,
+    peerRef,
+    broadcastMic,
+    broadcastScreen,
+    stopScreenCalls,
+  };
 };

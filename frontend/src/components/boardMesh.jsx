@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { memo, useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { useRoom } from "./roomContext";
@@ -12,9 +12,11 @@ import { socket } from "../helper/socket";
 
 const INTERACT_DISTANCE = 12;
 const POLL_INTERVAL = 5000;
+const POLL_INTERVAL_MAX = 60000;
 const API_BASE = `${import.meta.env.VITE_BACKEND_URL}/api`;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+// API
 const api = {
   getNotes: (roomId) =>
     fetch(`${API_BASE}/board/notes/room/${roomId}`).then((r) => {
@@ -76,7 +78,6 @@ const api = {
     }),
 };
 
-// ─── Normalizers ──────────────────────────────────────────────────────────────
 const normalizeNote = (n, fallbackUsername) => ({
   id: n.id,
   text: n.text,
@@ -99,7 +100,37 @@ const normalizeFile = (f, fallbackUsername) => ({
   uploader: f.username || f.uploader || f.uploaded_by || fallbackUsername,
 });
 
-// ─── ConfirmDialog ────────────────────────────────────────────────────────────
+const areNoteListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.text === b[idx]?.text &&
+      item.color === b[idx]?.color &&
+      item.author === b[idx]?.author,
+  );
+
+const areAnnouncementListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.text === b[idx]?.text &&
+      item.author === b[idx]?.author &&
+      item.time === b[idx]?.time,
+  );
+
+const areFileListsEqual = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (item, idx) =>
+      item.id === b[idx]?.id &&
+      item.name === b[idx]?.name &&
+      item.url === b[idx]?.url &&
+      item.type === b[idx]?.type &&
+      item.uploader === b[idx]?.uploader,
+  );
+
 const ConfirmDialog = ({ message, onConfirm, onCancel }) => (
   <div
     style={{
@@ -203,8 +234,7 @@ const canDelete = (role, itemAuthor, currentUsername) => {
   return itemAuthor === currentUsername;
 };
 
-// ─── PostIt ───────────────────────────────────────────────────────────────────
-const PostIt = ({ note, onDelete, showDelete }) => {
+const PostIt = memo(function PostIt({ note, onDelete, showDelete }) {
   const colors = {
     yellow: "bg-yellow-200 border-yellow-300 text-yellow-900",
     pink: "bg-pink-200 border-pink-300 text-pink-900",
@@ -228,7 +258,7 @@ const PostIt = ({ note, onDelete, showDelete }) => {
       <p className="mt-2 opacity-50 text-[10px]">{note.author}</p>
     </div>
   );
-};
+});
 
 const Spinner = () => (
   <div style={{ display: "flex", justifyContent: "center", padding: "12px 0" }}>
@@ -246,7 +276,6 @@ const Spinner = () => (
   </div>
 );
 
-// ─── File icon helper ─────────────────────────────────────────────────────────
 const fileIcon = (type) => {
   if (!type) return "📁";
   if (type.startsWith("image/")) return "🖼️";
@@ -258,14 +287,34 @@ const fileIcon = (type) => {
   return "📁";
 };
 
-// ─── File Notification Panel (student) ───────────────────────────────────────
+const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
+
+const downloadFile = async (file) => {
+  const fullUrl = buildFileUrl(file.url);
+  try {
+    const res = await fetch(fullUrl);
+    if (!res.ok) throw new Error("fail");
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(fullUrl, "_blank");
+  }
+};
+
+// File Notification Panel
 export const FileNotificationPanel = () => {
   const [notifFiles, setNotifFiles] = useState([]);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    // Handle single file notify (legacy)
     const handleFileNotif = (data) => {
       const files = Array.isArray(data.files) ? data.files : [data.file];
       setNotifFiles((prev) => [...files, ...prev]);
@@ -278,24 +327,6 @@ export const FileNotificationPanel = () => {
   const handleOpen = () => {
     setOpen((o) => !o);
     if (!open) setUnread(0);
-  };
-
-  const downloadFile = async (file) => {
-    try {
-      const res = await fetch(file.url);
-      if (!res.ok) throw new Error("fail");
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(file.url, "_blank");
-    }
   };
 
   return (
@@ -482,7 +513,7 @@ export const FileNotificationPanel = () => {
   );
 };
 
-// ─── Announcement Toast (student) ─────────────────────────────────────────────
+// Announcement Toast
 export const AnnouncementToast = () => {
   const [toasts, setToasts] = useState([]);
 
@@ -568,7 +599,6 @@ export const AnnouncementToast = () => {
   );
 };
 
-// ─── BoardUI ──────────────────────────────────────────────────────────────────
 const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [notes, setNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -584,10 +614,13 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   const [boardFiles, setBoardFiles] = useState([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // Multi-select: set of file ids currently checked
   const [selectedFileIds, setSelectedFileIds] = useState(new Set());
   const [broadcasting, setBroadcasting] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(
+    () => !document.hidden,
+  );
   const fileInputRef = useRef(null);
+  const pollFailureCountRef = useRef(0);
 
   const { confirm, ConfirmUI } = useConfirm();
 
@@ -603,6 +636,13 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     green: "bg-green-300",
   };
 
+  useEffect(() => {
+    const onVisibilityChange = () => setIsPageVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
   const fetchAll = useCallback(
     async (showLoading = false) => {
       if (!roomId) return;
@@ -617,27 +657,40 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
           api.getAnnouncements(roomId),
           api.getFiles(roomId),
         ]);
-      if (notesResult.status === "fulfilled") {
-        setNotes(
-          (Array.isArray(notesResult.value) ? notesResult.value : []).map((n) =>
-            normalizeNote(n, username),
-          ),
+      const hasFailure =
+        notesResult.status === "rejected" ||
+        announcementsResult.status === "rejected" ||
+        filesResult.status === "rejected";
+
+      if (hasFailure) {
+        pollFailureCountRef.current = Math.min(
+          pollFailureCountRef.current + 1,
+          6,
         );
+      } else {
+        pollFailureCountRef.current = 0;
+      }
+      if (notesResult.status === "fulfilled") {
+        const nextNotes = (
+          Array.isArray(notesResult.value) ? notesResult.value : []
+        ).map((n) => normalizeNote(n, username));
+        setNotes((prev) => (areNoteListsEqual(prev, nextNotes) ? prev : nextNotes));
       }
       if (announcementsResult.status === "fulfilled") {
-        setAnnouncements(
-          (Array.isArray(announcementsResult.value)
-            ? announcementsResult.value
-            : []
-          ).map((a) => normalizeAnnouncement(a, username)),
+        const nextAnnouncements = (
+          Array.isArray(announcementsResult.value) ? announcementsResult.value : []
+        ).map((a) => normalizeAnnouncement(a, username));
+        setAnnouncements((prev) =>
+          areAnnouncementListsEqual(prev, nextAnnouncements)
+            ? prev
+            : nextAnnouncements,
         );
       }
       if (filesResult.status === "fulfilled") {
-        setBoardFiles(
-          (Array.isArray(filesResult.value) ? filesResult.value : []).map((f) =>
-            normalizeFile(f, username),
-          ),
+        const nextFiles = (Array.isArray(filesResult.value) ? filesResult.value : []).map(
+          (f) => normalizeFile(f, username),
         );
+        setBoardFiles((prev) => (areFileListsEqual(prev, nextFiles) ? prev : nextFiles));
       }
       if (showLoading) {
         setNotesLoading(false);
@@ -650,11 +703,32 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
 
   useEffect(() => {
     fetchAll(true);
-    const interval = setInterval(() => fetchAll(false), POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+    if (!isPageVisible || !isNear) return;
 
-  // ── Note handlers ──────────────────────────────────────────────────────────
+    let cancelled = false;
+    let timeoutId;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const delay = Math.min(
+        POLL_INTERVAL * 2 ** pollFailureCountRef.current,
+        POLL_INTERVAL_MAX,
+      );
+      timeoutId = setTimeout(async () => {
+        await fetchAll(false);
+        scheduleNext();
+      }, delay);
+    };
+
+    scheduleNext();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [fetchAll, isPageVisible, isNear]);
+
+  //  Note handlers
   const addNote = async () => {
     if (!newNoteText.trim() || notePosting) return;
     setNotePosting(true);
@@ -688,7 +762,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // ── Announcement handlers (instructor only) ────────────────────────────────
+  //  Announcement handlers
   const addAnnouncement = async (notify = false) => {
     if (!newAnnouncement.trim() || announcementPosting) return;
     setAnnouncementPosting(true);
@@ -736,29 +810,31 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // ── File handlers ──────────────────────────────────────────────────────────
+  // File handlers
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length || uploading) return;
     setUploading(true);
     try {
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("room_id", roomId);
-        formData.append("uploaded_by", userId);
-        const res = await api.uploadFile(formData);
-        const f = res.file || res;
-        const normalized = normalizeFile(
-          {
-            ...f,
-            name: f.file_name || f.name || file.name,
-            type: f.file_type || f.type || file.type,
-          },
-          username,
-        );
-        setBoardFiles((prev) => [...prev, normalized]);
-      }
+      const uploadedFiles = await Promise.all(
+        files.map(async (file) => {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("room_id", roomId);
+          formData.append("uploaded_by", userId);
+          const res = await api.uploadFile(formData);
+          const f = res.file || res;
+          return normalizeFile(
+            {
+              ...f,
+              name: f.file_name || f.name || file.name,
+              type: f.file_type || f.type || file.type,
+            },
+            username,
+          );
+        }),
+      );
+      setBoardFiles((prev) => [...prev, ...uploadedFiles]);
     } catch (err) {
       console.error("Failed to upload file:", err);
     } finally {
@@ -767,7 +843,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  // Toggle a single file selection
   const toggleFileSelect = (id) => {
     setSelectedFileIds((prev) => {
       const next = new Set(prev);
@@ -777,12 +852,10 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     });
   };
 
-  // Broadcast all selected files to students via socket
   const broadcastSelected = () => {
     if (!roomCode || selectedFileIds.size === 0 || broadcasting) return;
     setBroadcasting(true);
     const filesToSend = boardFiles.filter((f) => selectedFileIds.has(f.id));
-    // Emit all selected files in one event
     socket.emit("board-file-notify", {
       roomCode,
       files: filesToSend,
@@ -807,25 +880,7 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
     }
   };
 
-  const downloadFile = async (file) => {
-    try {
-      const res = await fetch(file.url);
-      if (!res.ok) throw new Error("fail");
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(file.url, "_blank");
-    }
-  };
-
-  // ── Styles ─────────────────────────────────────────────────────────────────
+  // Styles
   const colStyle = {
     flex: 1,
     background: "#0f172a",
@@ -970,7 +1025,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
         <div style={colStyle}>
           <div style={headerStyle}>
             <LuUpload size={12} /> Files
-            {/* Broadcast selected button — appears when any file is checked */}
             {isInstructor && selectedFileIds.size > 0 && (
               <button
                 onClick={broadcastSelected}
@@ -998,7 +1052,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             )}
           </div>
 
-          {/* Upload — instructor only */}
           {isInstructor && (
             <>
               <button
@@ -1072,7 +1125,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
                       transition: "background 0.15s, border-color 0.15s",
                     }}
                   >
-                    {/* Checkbox — instructor only */}
                     {isInstructor && (
                       <input
                         type="checkbox"
@@ -1184,7 +1236,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             )}
           </div>
 
-          {/* Hint text for instructor when no files selected */}
           {isInstructor &&
             boardFiles.length > 0 &&
             selectedFileIds.size === 0 && (
@@ -1208,7 +1259,6 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
             <MdAnnouncement size={12} /> Announcements
           </div>
 
-          {/* Post area — instructor only */}
           {isInstructor && (
             <>
               <textarea
@@ -1369,26 +1419,37 @@ const BoardUI = ({ user, isInstructor, isNear, roomId, roomCode }) => {
   );
 };
 
-// ─── ClassBoard ───────────────────────────────────────────────────────────────
 export default function ClassBoard({
   position = [-3, 1.8, 0],
   rotation = [0, Math.PI / 2, 0],
 }) {
   const meshRef = useRef();
   const [isNear, setIsNear] = useState(false);
+  const isNearRef = useRef(false);
   const { avatarPosition } = useRoom();
   const { roomCode } = useParams();
+  const boardPos = useMemo(() => new THREE.Vector3(...position), [position]);
+  const avatarVec = useMemo(() => new THREE.Vector3(), []);
 
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
-  const room = JSON.parse(localStorage.getItem("currentRoom") || "{}");
+  const user = useMemo(
+    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
+    [],
+  );
+  const room = useMemo(
+    () => JSON.parse(localStorage.getItem("currentRoom") || "{}"),
+    [],
+  );
   const roomId = room.id || room.room_id || room.room_code;
   const isInstructor = user.role === "instructor";
 
   useFrame(() => {
     if (!meshRef.current || !avatarPosition) return;
-    const boardPos = new THREE.Vector3(...position);
-    const pos = new THREE.Vector3(...avatarPosition);
-    setIsNear(pos.distanceTo(boardPos) < INTERACT_DISTANCE);
+    avatarVec.set(avatarPosition[0], avatarPosition[1], avatarPosition[2]);
+    const nextIsNear = avatarVec.distanceTo(boardPos) < INTERACT_DISTANCE;
+    if (nextIsNear !== isNearRef.current) {
+      isNearRef.current = nextIsNear;
+      setIsNear(nextIsNear);
+    }
   });
 
   return (
