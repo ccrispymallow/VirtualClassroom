@@ -4,13 +4,12 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate:up": "node-pg-migrate up --migrations-dir src/migrations",
     "migrate:down": "node-pg-migrate down --migrations-dir src/migrations",
-    "migrate:create": "node-pg-migrate create --migrations-dir src/migrations",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "migrate:create": "node-pg-migrate create --migrations-dir src/migrations"
   },
   "keywords": [],
   "author": "",
@@ -28,6 +27,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^30.3.0",
+    "@playwright/test": "^1.59.1",
     "jest": "^30.3.0",
     "nodemon": "^3.1.14"
   }

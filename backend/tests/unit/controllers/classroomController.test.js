@@ -51,7 +51,7 @@ const mockNext = jest.fn();
 afterEach(() => jest.clearAllMocks());
 
 describe("createClassroom", () => {
-  test("1. should return 201 with classroom on valid input", async () => {
+  test("should return 201 with classroom on valid input", async () => {
     const req = {
       body: {
         room_name: "CS101",
@@ -70,14 +70,14 @@ describe("createClassroom", () => {
       classroom: { id: 10, room_name: "CS101" },
     });
   });
-  test("2. should return 400 when required fields are missing", async () => {
+  test("should return 400 when required fields are missing", async () => {
     const req = { body: { room_name: "CS101" } };
     const res = mockRes();
     await createClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(mockCreateClassroom).not.toHaveBeenCalled();
   });
-  test("3. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = {
       body: { room_name: "CS101", room_code: "ABC", creator_id: 1 },
     };
@@ -89,14 +89,14 @@ describe("createClassroom", () => {
 });
 
 describe("getAllClassrooms", () => {
-  test("1. should return all classrooms", async () => {
+  test("should return all classrooms", async () => {
     const req = {};
     const res = mockRes();
     mockGetAllClassrooms.mockResolvedValue([{ id: 1 }, { id: 2 }]);
     await getAllClassrooms(req, res, mockNext);
     expect(res.json).toHaveBeenCalledWith([{ id: 1 }, { id: 2 }]);
   });
-  test("2. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = {};
     const res = mockRes();
     mockGetAllClassrooms.mockRejectedValue(new Error("DB error"));
@@ -106,21 +106,21 @@ describe("getAllClassrooms", () => {
 });
 
 describe("getClassroomById", () => {
-  test("1. should return classroom when found", async () => {
+  test("should return classroom when found", async () => {
     const req = { params: { id: "10" } };
     const res = mockRes();
     mockGetClassroomById.mockResolvedValue({ id: 10, room_name: "CS101" });
     await getClassroomById(req, res, mockNext);
     expect(res.json).toHaveBeenCalledWith({ id: 10, room_name: "CS101" });
   });
-  test("2. should return 404 when classroom not found", async () => {
+  test("should return 404 when classroom not found", async () => {
     const req = { params: { id: "999" } };
     const res = mockRes();
     mockGetClassroomById.mockResolvedValue(null);
     await getClassroomById(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(404);
   });
-  test("3. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { params: { id: "10" } };
     const res = mockRes();
     mockGetClassroomById.mockRejectedValue(new Error("DB error"));
@@ -130,7 +130,7 @@ describe("getClassroomById", () => {
 });
 
 describe("joinClassroom", () => {
-  test("1. should return classroom on successful join", async () => {
+  test("should return classroom on successful join", async () => {
     const req = {
       body: { room_code: "ABC123", room_password: "secret", user_id: 5 },
     };
@@ -142,20 +142,20 @@ describe("joinClassroom", () => {
       classroom: { id: 10, room_name: "CS101" },
     });
   });
-  test("2. should return 400 when room_code or user_id is missing", async () => {
+  test("should return 400 when room_code or user_id is missing", async () => {
     const req = { body: { room_code: "ABC123" } };
     const res = mockRes();
     await joinClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(400);
   });
-  test("3. should return 404 when classroom not found", async () => {
+  test("should return 404 when classroom not found", async () => {
     const req = { body: { room_code: "XXXXX", user_id: 5 } };
     const res = mockRes();
     mockJoinClassroom.mockResolvedValue(null);
     await joinClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(404);
   });
-  test("4. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { body: { room_code: "ABC123", user_id: 5 } };
     const res = mockRes();
     mockJoinClassroom.mockRejectedValue(new Error("Wrong password"));
@@ -165,7 +165,7 @@ describe("joinClassroom", () => {
 });
 
 describe("getParticipants", () => {
-  test("1. should return participants with total count", async () => {
+  test("should return participants with total count", async () => {
     const req = { params: { room_id: "10" } };
     const res = mockRes();
     mockGetParticipants.mockResolvedValue([{ user_id: 1 }, { user_id: 2 }]);
@@ -176,7 +176,7 @@ describe("getParticipants", () => {
       participants: [{ user_id: 1 }, { user_id: 2 }],
     });
   });
-  test("2. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { params: { room_id: "10" } };
     const res = mockRes();
     mockGetParticipants.mockRejectedValue(new Error("DB error"));
@@ -186,7 +186,7 @@ describe("getParticipants", () => {
 });
 
 describe("endClassroom", () => {
-  test("1. should end classroom successfully", async () => {
+  test("should end classroom successfully", async () => {
     const req = { body: { room_code: "ABC123", user_id: 1 } };
     const res = mockRes();
     mockEndClassroom.mockResolvedValue({ id: 10, room_name: "CS101" });
@@ -196,13 +196,13 @@ describe("endClassroom", () => {
       classroom: { id: 10, room_name: "CS101" },
     });
   });
-  test("2. should return 400 when room_code or user_id is missing", async () => {
+  test("should return 400 when room_code or user_id is missing", async () => {
     const req = { body: { room_code: "ABC123" } };
     const res = mockRes();
     await endClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(400);
   });
-  test("3. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { body: { room_code: "ABC123", user_id: 99 } };
     const res = mockRes();
     mockEndClassroom.mockRejectedValue(
@@ -214,7 +214,7 @@ describe("endClassroom", () => {
 });
 
 describe("deleteClassroom", () => {
-  test("1. should delete classroom successfully", async () => {
+  test("should delete classroom successfully", async () => {
     const req = { body: { id: "10", user_id: 1 } };
     const res = mockRes();
     mockDeleteClassroom.mockResolvedValue({ id: 10, room_name: "CS101" });
@@ -224,13 +224,13 @@ describe("deleteClassroom", () => {
       classroom: { id: 10, room_name: "CS101" },
     });
   });
-  test("2. should return 400 when id or user_id is missing", async () => {
+  test("should return 400 when id or user_id is missing", async () => {
     const req = { body: { id: "10" } };
     const res = mockRes();
     await deleteClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(400);
   });
-  test("3. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { body: { id: "10", user_id: 99 } };
     const res = mockRes();
     mockDeleteClassroom.mockRejectedValue(
@@ -242,7 +242,7 @@ describe("deleteClassroom", () => {
 });
 
 describe("getClassroomsByUserId", () => {
-  test("1. should call getClassroomsByUserId for instructor role", async () => {
+  test("should call getClassroomsByUserId for instructor role", async () => {
     const req = { params: { user_id: "1" }, query: { role: "instructor" } };
     const res = mockRes();
     mockGetClassroomsByUserId.mockResolvedValue([{ id: 10 }]);
@@ -250,21 +250,21 @@ describe("getClassroomsByUserId", () => {
     expect(mockGetClassroomsByUserId).toHaveBeenCalledWith("1");
     expect(res.json).toHaveBeenCalledWith({ rooms: [{ id: 10 }] });
   });
-  test("2. should call getClassroomsByUserId for prof role", async () => {
+  test("should call getClassroomsByUserId for prof role", async () => {
     const req = { params: { user_id: "1" }, query: { role: "prof" } };
     const res = mockRes();
     mockGetClassroomsByUserId.mockResolvedValue([{ id: 10 }]);
     await getClassroomsByUserId(req, res, mockNext);
     expect(mockGetClassroomsByUserId).toHaveBeenCalledWith("1");
   });
-  test("3. should call getJoinedClassroomsByUserId for student role", async () => {
+  test("should call getJoinedClassroomsByUserId for student role", async () => {
     const req = { params: { user_id: "2" }, query: { role: "student" } };
     const res = mockRes();
     mockGetJoinedClassrooms.mockResolvedValue([{ id: 10 }]);
     await getClassroomsByUserId(req, res, mockNext);
     expect(mockGetJoinedClassrooms).toHaveBeenCalledWith("2");
   });
-  test("4. should return 400 when user_id is missing", async () => {
+  test("should return 400 when user_id is missing", async () => {
     const req = { params: {}, query: { role: "student" } };
     const res = mockRes();
     await getClassroomsByUserId(req, res, mockNext);
@@ -273,14 +273,14 @@ describe("getClassroomsByUserId", () => {
 });
 
 describe("getJoinedClassroomsByUserId", () => {
-  test("1. should return joined classrooms for user", async () => {
+  test("should return joined classrooms for user", async () => {
     const req = { params: { user_id: "2" } };
     const res = mockRes();
     mockGetJoinedClassrooms.mockResolvedValue([{ id: 10 }]);
     await getJoinedClassroomsByUserId(req, res, mockNext);
     expect(res.json).toHaveBeenCalledWith({ rooms: [{ id: 10 }] });
   });
-  test("2. should return 400 when user_id is missing", async () => {
+  test("should return 400 when user_id is missing", async () => {
     const req = { params: {} };
     const res = mockRes();
     await getJoinedClassroomsByUserId(req, res, mockNext);
@@ -289,7 +289,7 @@ describe("getJoinedClassroomsByUserId", () => {
 });
 
 describe("leaveClassroom", () => {
-  test("1. should leave classroom successfully", async () => {
+  test("should leave classroom successfully", async () => {
     const req = { params: { room_id: "10" }, body: { user_id: 5 } };
     const res = mockRes();
     mockLeaveClassroom.mockResolvedValue({ room_id: 10, user_id: 5 });
@@ -299,13 +299,13 @@ describe("leaveClassroom", () => {
       record: { room_id: 10, user_id: 5 },
     });
   });
-  test("2. should return 400 when room_id or user_id is missing", async () => {
+  test("should return 400 when room_id or user_id is missing", async () => {
     const req = { params: { room_id: "10" }, body: {} };
     const res = mockRes();
     await leaveClassroom(req, res, mockNext);
     expect(res.status).toHaveBeenCalledWith(400);
   });
-  test("3. should call next(error) when service throws", async () => {
+  test("should call next(error) when service throws", async () => {
     const req = { params: { room_id: "10" }, body: { user_id: 5 } };
     const res = mockRes();
     mockLeaveClassroom.mockRejectedValue(new Error("DB error"));

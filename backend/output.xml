@@ -1,0 +1,1767 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.4.2 (Python 3.11.11 on darwin)" generated="2026-04-07T20:11:36.688361" rpa="false" schemaversion="5">
+<suite id="s1" name="System" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system">
+<suite id="s1-s1" name="01 User" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system/01_user.robot">
+<test id="s1-s1-t1" name="TC-01-01: Successful Registration With Valid Data" line="9">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:36.923135" level="INFO">Starting Browser process /opt/homebrew/lib/python3.11/site-packages/Browser/wrapper/index.js using at 127.0.0.1:61547</msg>
+<msg time="2026-04-07T20:11:39.223042" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:39.223364" level="INFO">No browser and context was open. New browser and context was automatically opened when page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:36.871521" elapsed="2.352105"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:39.224828" level="INFO">Clicks the element 'text=Register'.</msg>
+<arg>text=Register</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.224212" elapsed="0.120832"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:39.350047" level="INFO">Waited for Element with selector input[placeholder="johndoe"] at state visible</msg>
+<arg>input[placeholder="johndoe"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.345235" elapsed="0.004892"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:39.350644" level="INFO">Fills the text 'testuser' in the given field.</msg>
+<arg>input[placeholder="johndoe"]</arg>
+<arg>testuser</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.350274" elapsed="0.011216"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:39.361970" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>test@email.com</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.361670" elapsed="0.006931"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:39.369068" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.368772" elapsed="0.007746"/>
+</kw>
+<kw name="Select Options By" owner="Browser">
+<msg time="2026-04-07T20:11:39.377037" level="INFO">Selects the option(s) instructor by attribute SelectAttribute.value from element select.</msg>
+<arg>select</arg>
+<arg>value</arg>
+<arg>instructor</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Selects options from select element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.376701" elapsed="0.024672"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:39.401855" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.401559" elapsed="0.031673"/>
+</kw>
+<msg time="2026-04-07T20:11:39.438511" level="INFO">Switching context to context=1975ebe4-8052-4b18-9ab0-938019604159 in CURRENT</msg>
+<msg time="2026-04-07T20:11:39.441091" level="INFO">Successfully changed active context: context=1975ebe4-8052-4b18-9ab0-938019604159</msg>
+<msg time="2026-04-07T20:11:39.446132" level="INFO">Successfully closed Context</msg>
+<status status="PASS" start="2026-04-07T20:11:36.869566" elapsed="2.563864"/>
+</test>
+<test id="s1-s1-t2" name="TC-01-02: Registration With Missing Fields Returns Error" line="24">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:39.657255" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:39.657329" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.447758" elapsed="0.209677"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:39.658227" level="INFO">Clicks the element 'text=Register'.</msg>
+<arg>text=Register</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.657689" elapsed="0.213135"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:39.911966" level="INFO">Waited for Element with selector input[placeholder="johndoe"] at state visible</msg>
+<arg>input[placeholder="johndoe"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.871041" elapsed="0.041012"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:39.912591" level="INFO">Fills the text 'testuser' in the given field.</msg>
+<arg>input[placeholder="johndoe"]</arg>
+<arg>testuser</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.912243" elapsed="0.006125"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:39.918816" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.918505" elapsed="0.020927"/>
+</kw>
+<kw name="Select Options By" owner="Browser">
+<msg time="2026-04-07T20:11:39.939906" level="INFO">Selects the option(s) instructor by attribute SelectAttribute.value from element select.</msg>
+<arg>select</arg>
+<arg>value</arg>
+<arg>instructor</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Selects options from select element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.939600" elapsed="0.017368"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:39.957472" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:39.957178" elapsed="0.037672"/>
+</kw>
+<msg time="2026-04-07T20:11:39.999642" level="INFO">Switching context to context=e0a8880a-ea85-48a1-a245-18f6f0d21ee6 in CURRENT</msg>
+<msg time="2026-04-07T20:11:40.002409" level="INFO">Successfully changed active context: context=e0a8880a-ea85-48a1-a245-18f6f0d21ee6</msg>
+<msg time="2026-04-07T20:11:40.005402" level="INFO">Successfully closed Context</msg>
+<status status="PASS" start="2026-04-07T20:11:39.446471" elapsed="0.548535"/>
+</test>
+<test id="s1-s1-t3" name="TC-01-03: Successful Login With Valid Credentials" line="36">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:40.230368" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:40.230607" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.006811" elapsed="0.224043"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:40.231726" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.231131" elapsed="0.216149"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:40.451405" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.447500" elapsed="0.003995"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:40.451940" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>test@email.com</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.451645" elapsed="0.008005"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:40.460183" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.459843" elapsed="0.043415"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:40.503692" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.503414" elapsed="0.023216"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:40.527191" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:41.085412" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:40.526866" elapsed="0.558810"/>
+</kw>
+<msg time="2026-04-07T20:11:41.094151" level="INFO">Switching context to context=e15ef513-8206-4ad1-a027-f38de02359cc in CURRENT</msg>
+<msg time="2026-04-07T20:11:41.097124" level="INFO">Successfully changed active context: context=e15ef513-8206-4ad1-a027-f38de02359cc</msg>
+<msg time="2026-04-07T20:11:41.102061" level="INFO">Successfully closed Context</msg>
+<status status="PASS" start="2026-04-07T20:11:40.005667" elapsed="1.080375"/>
+</test>
+<test id="s1-s1-t4" name="TC-01-04: Login With Wrong Password Returns Error" line="50">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:41.320472" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:41.320570" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.103811" elapsed="0.216893"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:41.321685" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.321090" elapsed="0.209025"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:41.533738" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.530347" elapsed="0.003480"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:41.534258" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>test@email.com</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.533962" elapsed="0.007821"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:41.542160" level="INFO">Fills the text 'wrongpass' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>wrongpass</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.541909" elapsed="0.039702"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:41.582050" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.581767" elapsed="0.025607"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:41.607940" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:42.132969" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:41.607525" elapsed="0.525711"/>
+</kw>
+<msg time="2026-04-07T20:11:42.142887" level="INFO">Switching context to context=fd9e89e1-04eb-4385-a101-4eae17f89bcf in CURRENT</msg>
+<msg time="2026-04-07T20:11:42.146836" level="INFO">Successfully changed active context: context=fd9e89e1-04eb-4385-a101-4eae17f89bcf</msg>
+<msg time="2026-04-07T20:11:42.150543" level="INFO">Successfully closed Context</msg>
+<status status="PASS" start="2026-04-07T20:11:41.102346" elapsed="1.031372"/>
+</test>
+<test id="s1-s1-t5" name="TC-01-05: Update Username Successfully" line="64">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:42.449501" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173/profile</msg>
+<msg time="2026-04-07T20:11:42.449555" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}/profile</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:42.152294" elapsed="0.297336"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:42.450119" level="INFO">Fills the text 'newusername' in the given field.</msg>
+<arg>input[placeholder="Enter your username"]</arg>
+<arg>newusername</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:42.449781" elapsed="0.146065"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:42.596311" level="INFO">Clicks the element 'button:has-text("Save Changes")'.</msg>
+<arg>button:has-text("Save Changes")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:42.596005" elapsed="0.019372"/>
+</kw>
+<msg time="2026-04-07T20:11:42.653600" level="INFO">Switching context to context=a1fb7aa2-84e3-4a1f-b93f-cc0cd0928238 in CURRENT</msg>
+<msg time="2026-04-07T20:11:42.655924" level="INFO">Successfully changed active context: context=a1fb7aa2-84e3-4a1f-b93f-cc0cd0928238</msg>
+<msg time="2026-04-07T20:11:42.658820" level="INFO">Successfully closed Context</msg>
+<status status="PASS" start="2026-04-07T20:11:42.150904" elapsed="0.464674"/>
+</test>
+<status status="PASS" start="2026-04-07T20:11:36.710468" elapsed="5.948859"/>
+</suite>
+<suite id="s1-s2" name="02 Classroom" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system/02_classroom.robot">
+<kw name="Setup Browser And Login" type="SETUP">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:42.858132" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:42.858198" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:42.664074" elapsed="0.194215"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:42.858772" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:42.858420" elapsed="0.304372"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:43.165867" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.162939" elapsed="0.003002"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:43.166292" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>test@email.com</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.166041" elapsed="0.006919"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:43.173345" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.173068" elapsed="0.039128"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:43.212580" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.212317" elapsed="0.018770"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:43.231490" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:43.776693" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.231211" elapsed="0.545728"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:43.785794" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.777235" elapsed="0.008700"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:42.663889" elapsed="1.122171"/>
+</kw>
+<test id="s1-s2-t1" name="TC-02-01: Create Classroom With Valid Data" line="31">
+<kw name="Go To Homepage">
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:11:43.808704" level="INFO">Successfully opened URL http://localhost:5173/homepage</msg>
+<arg>${BASE_URL}/homepage</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.789035" elapsed="0.019776"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:43.809370" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:44.654097" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:43.808983" elapsed="0.845329"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:44.672330" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.654559" elapsed="0.017984"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:43.788727" elapsed="0.884015"/>
+</kw>
+<kw name="Run Keyword And Ignore Error" owner="BuiltIn">
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:44.677974" level="INFO">Waited for Element with selector text=Create Room at state visible</msg>
+<arg>text=Create Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.673693" elapsed="0.004446"/>
+</kw>
+<arg>Wait For Elements State</arg>
+<arg>text=Create Room</arg>
+<arg>visible</arg>
+<doc>Runs the given keyword with the given arguments and ignores possible error.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.673053" elapsed="0.005192"/>
+</kw>
+<kw name="Run Keyword And Ignore Error" owner="BuiltIn">
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:44.679206" level="INFO">Clicks the element 'css=button.tab:has-text("Create Room")'.</msg>
+<arg>css=button.tab:has-text("Create Room")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.678911" elapsed="0.031036"/>
+</kw>
+<arg>Click</arg>
+<arg>css=button.tab:has-text("Create Room")</arg>
+<doc>Runs the given keyword with the given arguments and ignores possible error.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.678458" elapsed="0.031582"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:44.710481" level="INFO">Fills the text 'Newroom' in the given field.</msg>
+<arg>input[placeholder="My Classroom"]</arg>
+<arg>Newroom</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.710175" elapsed="0.009675"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:44.720309" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.720016" elapsed="0.012227"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:44.732743" level="INFO">Fills the text '5' in the given field.</msg>
+<arg>input[placeholder="Max students"]</arg>
+<arg>5</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.732403" elapsed="0.012302"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:44.745178" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.744902" elapsed="0.035568"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:43.786186" elapsed="0.994446"/>
+</test>
+<test id="s1-s2-t2" name="TC-02-02: Create Classroom Missing Required Fields" line="45">
+<kw name="Go To Homepage">
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:11:44.800172" level="INFO">Successfully opened URL http://localhost:5173/homepage</msg>
+<arg>${BASE_URL}/homepage</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.786811" elapsed="0.013460"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:44.801019" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:45.619229" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:44.800481" elapsed="0.818908"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:45.632999" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.619581" elapsed="0.013533"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:44.786577" elapsed="0.846634"/>
+</kw>
+<kw name="Run Keyword And Ignore Error" owner="BuiltIn">
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:45.633929" level="INFO">Clicks the element 'css=button.tab:has-text("Create Room")'.</msg>
+<arg>css=button.tab:has-text("Create Room")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.633671" elapsed="0.029660"/>
+</kw>
+<arg>Click</arg>
+<arg>css=button.tab:has-text("Create Room")</arg>
+<doc>Runs the given keyword with the given arguments and ignores possible error.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.633358" elapsed="0.030051"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:45.663838" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.663532" elapsed="0.012835"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:45.676825" level="INFO">Fills the text '5' in the given field.</msg>
+<arg>input[placeholder="Max students"]</arg>
+<arg>5</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.676527" elapsed="0.013038"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:45.690266" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.689817" elapsed="0.034639"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:44.783234" elapsed="0.941455"/>
+</test>
+<test id="s1-s2-t3" name="TC-02-03: Join Classroom With Wrong Password" line="56">
+<kw name="Go To Homepage">
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:11:45.742191" level="INFO">Successfully opened URL http://localhost:5173/homepage</msg>
+<arg>${BASE_URL}/homepage</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.729542" elapsed="0.012835"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:45.743123" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:46.572981" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:45.742516" elapsed="0.830731"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:46.583928" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.573534" elapsed="0.010500"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:45.729341" elapsed="0.854795"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:46.587342" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.584278" elapsed="0.003176"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:46.588028" level="INFO">Clicks the element 'css=button.tab:has-text("Join Room")'.</msg>
+<arg>css=button.tab:has-text("Join Room")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.587641" elapsed="0.031613"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:46.619794" level="INFO">Fills the text '08T1DL' in the given field.</msg>
+<arg>input[placeholder="Enter room code"]</arg>
+<arg>08T1DL</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.619443" elapsed="0.012042"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:46.631913" level="INFO">Fills the text 'wrongpass' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>wrongpass</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.631649" elapsed="0.013202"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:46.645334" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.645036" elapsed="0.036493"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:45.727304" elapsed="0.954372"/>
+</test>
+<test id="s1-s2-t4" name="TC-02-04: Join Classroom With Valid Room Code" line="67">
+<kw name="Go To Homepage">
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:11:46.698563" level="INFO">Successfully opened URL http://localhost:5173/homepage</msg>
+<arg>${BASE_URL}/homepage</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.686769" elapsed="0.011892"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:46.699946" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:47.543676" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:46.698904" elapsed="0.845099"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:47.561533" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.544389" elapsed="0.017305"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:46.686582" elapsed="0.875243"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:47.566004" level="INFO">Waited for Element with selector text=Join Room at state visible</msg>
+<arg>text=Join Room</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.562029" elapsed="0.004093"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:47.566921" level="INFO">Clicks the element 'css=button.tab:has-text("Join Room")'.</msg>
+<arg>css=button.tab:has-text("Join Room")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.566425" elapsed="0.027312"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:47.594200" level="INFO">Fills the text '08T1DL' in the given field.</msg>
+<arg>input[placeholder="Enter room code"]</arg>
+<arg>08T1DL</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.593902" elapsed="0.011807"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:47.606303" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>123456</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.606017" elapsed="0.012423"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:47.618901" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.618617" elapsed="0.212446"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:11:46.685093" elapsed="1.146140"/>
+</test>
+<status status="PASS" start="2026-04-07T20:11:42.661573" elapsed="5.177355"/>
+</suite>
+<suite id="s1-s3" name="03 Session" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system/03_session.robot">
+<test id="s1-s3-t1" name="TC-03-01: Start Session For A Room" line="12">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:48.081495" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:48.081597" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:47.853394" elapsed="0.228339"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:48.082898" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.082262" elapsed="0.214220"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:48.300067" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.296690" elapsed="0.003473"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:48.300640" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.300304" elapsed="0.007181"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:48.308025" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.307697" elapsed="0.043823"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:48.352036" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.351678" elapsed="0.021360"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:48.373497" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:11:48.887119" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:48.373209" elapsed="0.514679"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:58.966722" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-1.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-1.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:11:58.966809" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:11:58.967042" level="FAIL">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</msg>
+<arg>css=.room-item</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:11:48.888844" elapsed="10.081307">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=.room-item:has-text("${TEST_ROOM_NAME}")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:11:58.970312" elapsed="0.000056"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.modal</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:11:58.970448" elapsed="0.000030"/>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=.modal &gt;&gt; button:has-text("Start Session")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:11:58.970536" elapsed="0.000022"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.badge.live</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:11:58.970787" elapsed="0.000023"/>
+</kw>
+<msg time="2026-04-07T20:11:58.974638" level="INFO">Switching context to context=c64ed03b-d3ff-43d5-857f-a89fc6a9ceb8 in CURRENT</msg>
+<msg time="2026-04-07T20:11:58.976630" level="INFO">Successfully changed active context: context=c64ed03b-d3ff-43d5-857f-a89fc6a9ceb8</msg>
+<msg time="2026-04-07T20:11:58.979115" level="INFO">Successfully closed Context</msg>
+<doc>Verify instructor can start a live session.</doc>
+<tag>priority-critical</tag>
+<tag>session</tag>
+<tag>smoke</tag>
+<tag>start</tag>
+<status status="FAIL" start="2026-04-07T20:11:47.852565" elapsed="11.118354">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</test>
+<test id="s1-s3-t2" name="TC-03-02: Room Shows As Active After Session Starts" line="28">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:11:59.205414" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:11:59.205511" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:11:58.980353" elapsed="0.225313"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:59.206569" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.206000" elapsed="0.215233"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:11:59.423805" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.421393" elapsed="0.002505"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:59.424366" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.424081" elapsed="0.006723"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:11:59.431311" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.430965" elapsed="0.042543"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:11:59.474013" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.473708" elapsed="0.025086"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:11:59.499241" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:00.010605" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:11:59.498946" elapsed="0.511877"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:10.076486" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-2.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-2.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:12:10.076555" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:12:10.076631" level="FAIL">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</msg>
+<arg>css=.room-item</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:00.011146" elapsed="10.065882">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.room-item:has-text("${TEST_ROOM_NAME}") .badge.live</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:10.077172" elapsed="0.000044"/>
+</kw>
+<msg time="2026-04-07T20:12:10.081135" level="INFO">Switching context to context=e4705de5-df78-4a71-aa5c-98692203312f in CURRENT</msg>
+<msg time="2026-04-07T20:12:10.083016" level="INFO">Successfully changed active context: context=e4705de5-df78-4a71-aa5c-98692203312f</msg>
+<msg time="2026-04-07T20:12:10.085983" level="INFO">Successfully closed Context</msg>
+<doc>Verify room status updates to live on the home page.</doc>
+<tag>priority-high</tag>
+<tag>session</tag>
+<tag>status</tag>
+<status status="FAIL" start="2026-04-07T20:11:58.979332" elapsed="11.097990">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</test>
+<test id="s1-s3-t3" name="TC-03-03: Get Live Session Info" line="41">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:12:10.326793" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:12:10.326879" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.087348" elapsed="0.239646"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:10.328031" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.327510" elapsed="0.211256"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:10.542511" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.538982" elapsed="0.003625"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:10.543198" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.542797" elapsed="0.008246"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:10.552037" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.551600" elapsed="0.043529"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:10.595575" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.595289" elapsed="0.025711"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:12:10.621587" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:11.134090" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:12:10.621280" elapsed="0.513012"/>
+</kw>
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:12:11.148013" level="INFO">Successfully opened URL http://localhost:5173/classroom/08T1DL</msg>
+<arg>${BASE_URL}/classroom/${TEST_ROOM_CODE}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:12:11.134546" elapsed="0.013571"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:22.689750" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-3.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-3.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:12:22.689938" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:12:22.690329" level="FAIL">Error: locator.waitFor: Unexpected token "=" while parsing css selector "text=Session active". Did you mean to CSS.escape it?
+Call log:
+  - waiting for css=text=Session active to be visible
+</msg>
+<arg>css=text=Session active</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:11.148263" elapsed="11.542829">Error: locator.waitFor: Unexpected token "=" while parsing css selector "text=Session active". Did you mean to CSS.escape it?
+Call log:
+  - waiting for css=text=Session active to be visible
+</status>
+</kw>
+<msg time="2026-04-07T20:12:22.944100" level="INFO">Switching context to context=391085e6-0ca0-4db9-8a20-6ea865fe4890 in CURRENT</msg>
+<msg time="2026-04-07T20:12:22.948097" level="INFO">Successfully changed active context: context=391085e6-0ca0-4db9-8a20-6ea865fe4890</msg>
+<msg time="2026-04-07T20:12:22.952464" level="INFO">Successfully closed Context</msg>
+<doc>Verify live session data is visible inside the classroom.</doc>
+<tag>priority-high</tag>
+<tag>read</tag>
+<tag>session</tag>
+<status status="FAIL" start="2026-04-07T20:12:10.086207" elapsed="12.605379">Error: locator.waitFor: Unexpected token "=" while parsing css selector "text=Session active". Did you mean to CSS.escape it?
+Call log:
+  - waiting for css=text=Session active to be visible
+</status>
+</test>
+<test id="s1-s3-t4" name="TC-03-04: End Session Successfully" line="54">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:12:23.278418" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:12:23.278475" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:12:22.955749" elapsed="0.322814"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:23.279293" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.278870" elapsed="0.205349"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:23.487883" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.484461" elapsed="0.003511"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:23.488556" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.488164" elapsed="0.007890"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:23.496615" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.496264" elapsed="0.043368"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:23.540186" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.539876" elapsed="0.020859"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:12:23.561198" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:24.077626" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:12:23.560890" elapsed="0.516873"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:34.173336" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-4.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-4.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:12:34.173425" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:12:34.173527" level="FAIL">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</msg>
+<arg>css=.room-item</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:24.077976" elapsed="10.096010">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=.room-item:has-text("${TEST_ROOM_NAME}")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:34.174170" elapsed="0.000051"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.modal</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:34.174668" elapsed="0.000086"/>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=.modal &gt;&gt; button:has-text("End Session")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:34.174920" elapsed="0.000055"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.badge.offline</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:34.175059" elapsed="0.000031"/>
+</kw>
+<msg time="2026-04-07T20:12:34.179537" level="INFO">Switching context to context=431f2cff-bd42-4b90-8229-7d5df3bce0a3 in CURRENT</msg>
+<msg time="2026-04-07T20:12:34.181843" level="INFO">Successfully changed active context: context=431f2cff-bd42-4b90-8229-7d5df3bce0a3</msg>
+<msg time="2026-04-07T20:12:34.185948" level="INFO">Successfully closed Context</msg>
+<doc>Verify instructor can end the live session.</doc>
+<tag>end</tag>
+<tag>priority-high</tag>
+<tag>session</tag>
+<status status="FAIL" start="2026-04-07T20:12:22.953216" elapsed="11.221987">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</test>
+<test id="s1-s3-t5" name="TC-03-05: Room Shows As Offline After Session Ends" line="70">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:12:34.434528" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:12:34.434667" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.187821" elapsed="0.246962"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:34.435431" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.434995" elapsed="0.208303"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:34.647297" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.643576" elapsed="0.003812"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:34.647914" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.647542" elapsed="0.009242"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:34.657543" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.657036" elapsed="0.046449"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:34.704033" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.703689" elapsed="0.023007"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:12:34.727286" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:35.246487" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:12:34.726855" elapsed="0.519820"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:45.329297" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-5.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-5.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:12:45.329491" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:12:45.329853" level="FAIL">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</msg>
+<arg>css=.room-item</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:35.246959" elapsed="10.083625">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.room-item:has-text("${TEST_ROOM_NAME}") .badge.offline</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:45.331005" elapsed="0.000071"/>
+</kw>
+<msg time="2026-04-07T20:12:45.334848" level="INFO">Switching context to context=32af9d80-24ae-482d-8413-89be7731e1ef in CURRENT</msg>
+<msg time="2026-04-07T20:12:45.336253" level="INFO">Successfully changed active context: context=32af9d80-24ae-482d-8413-89be7731e1ef</msg>
+<msg time="2026-04-07T20:12:45.338957" level="INFO">Successfully closed Context</msg>
+<doc>Verify room status returns to offline after session ends.</doc>
+<tag>priority-medium</tag>
+<tag>session</tag>
+<tag>status</tag>
+<status status="FAIL" start="2026-04-07T20:12:34.186303" elapsed="11.144962">TimeoutError: locator.waitFor: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('.room-item') to be visible
+</status>
+</test>
+<status status="FAIL" start="2026-04-07T20:11:47.850012" elapsed="57.489284"/>
+</suite>
+<suite id="s1-s4" name="04 Message" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system/04_message.robot">
+<test id="s1-s4-t1" name="TC-04-01: Send Message Successfully" line="11">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:12:45.626086" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:12:45.626163" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.344661" elapsed="0.281596"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:45.627334" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.626831" elapsed="0.206476"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:45.837519" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.834517" elapsed="0.003078"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:45.838089" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.837761" elapsed="0.007429"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:45.845572" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.845336" elapsed="0.044799"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:45.890670" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.890302" elapsed="0.021868"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:12:45.912835" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:46.470168" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:12:45.912516" elapsed="0.557819"/>
+</kw>
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:12:46.488023" level="INFO">Successfully opened URL http://localhost:5173/classroom/08T1DL</msg>
+<arg>${BASE_URL}/classroom/${ROOM_CODE}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:12:46.470573" elapsed="0.017560"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:47.315019" level="INFO">Waited for Element with selector css=button:has-text("Chat") at state visible</msg>
+<arg>css=button:has-text("Chat")</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:46.488299" elapsed="0.826833"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:47.316135" level="INFO">Clicks the element 'css=button:has-text("Chat")'.</msg>
+<arg>css=button:has-text("Chat")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:47.315777" elapsed="2.685963"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:55.774717" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-6.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-6.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:12:55.774798" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:12:55.774880" level="FAIL">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</msg>
+<arg>css=input[placeholder="Type a message..."]</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:50.002119" elapsed="5.773182">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</status>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<arg>css=input[placeholder="Type a message..."]</arg>
+<arg>Hello everyone!</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:55.775445" elapsed="0.000046"/>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=button:has-text("Send")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:55.775551" elapsed="0.000025"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=text=Hello everyone!</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:12:55.775628" elapsed="0.000021"/>
+</kw>
+<msg time="2026-04-07T20:12:55.916258" level="INFO">Switching context to context=dba050a1-1724-40c7-a6f4-dbde41fbbc41 in CURRENT</msg>
+<msg time="2026-04-07T20:12:55.924881" level="INFO">Successfully changed active context: context=dba050a1-1724-40c7-a6f4-dbde41fbbc41</msg>
+<msg time="2026-04-07T20:12:55.930832" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2026-04-07T20:12:45.343586" elapsed="10.432152">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</status>
+</test>
+<test id="s1-s4-t2" name="TC-04-02: Message Sender Displayed" line="27">
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:12:56.176528" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:12:56.176638" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:12:55.934083" elapsed="0.242637"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:56.177157" level="INFO">Clicks the element 'css=button.tab:has-text("Sign In")'.</msg>
+<arg>css=button.tab:has-text("Sign In")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.176859" elapsed="0.215947"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:56.396987" level="INFO">Waited for Element with selector input[placeholder="you@school.edu"] at state visible</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>visible</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.393034" elapsed="0.004082"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:56.397834" level="INFO">Fills the text 'test@email.com' in the given field.</msg>
+<arg>input[placeholder="you@school.edu"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.397328" elapsed="0.008955"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:12:56.406735" level="INFO">Fills the text '123456' in the given field.</msg>
+<arg>input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.406438" elapsed="0.037823"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:56.445013" level="INFO">Clicks the element 'button.btn[type="submit"]'.</msg>
+<arg>button.btn[type="submit"]</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.444576" elapsed="0.023824"/>
+</kw>
+<kw name="Wait For Load State" owner="Browser">
+<msg time="2026-04-07T20:12:56.468854" level="INFO">Waiting page load to state to receive networkidle in 10000.0</msg>
+<msg time="2026-04-07T20:12:57.014181" level="INFO">Load state networkidle got in 10000</msg>
+<arg>networkidle</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits that the page reaches the required load state.</doc>
+<status status="PASS" start="2026-04-07T20:12:56.468552" elapsed="0.545741"/>
+</kw>
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:12:57.028386" level="INFO">Successfully opened URL http://localhost:5173/classroom/08T1DL</msg>
+<arg>${BASE_URL}/classroom/${ROOM_CODE}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:12:57.014472" elapsed="0.014016"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:12:57.362094" level="INFO">Waited for Element with selector css=button:has-text("Chat") at state visible</msg>
+<arg>css=button:has-text("Chat")</arg>
+<arg>visible</arg>
+<arg>timeout=10s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="PASS" start="2026-04-07T20:12:57.028642" elapsed="0.333572"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:12:57.362844" level="INFO">Clicks the element 'css=button:has-text("Chat")'.</msg>
+<arg>css=button:has-text("Chat")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:12:57.362502" elapsed="0.022072"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<msg time="2026-04-07T20:13:03.122689" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-7.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-7.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:13:03.122783" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:13:03.122918" level="FAIL">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</msg>
+<arg>css=input[placeholder="Type a message..."]</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="FAIL" start="2026-04-07T20:12:57.384744" elapsed="5.738650">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</status>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<arg>css=input[placeholder="Type a message..."]</arg>
+<arg>Hello everyone!</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:13:03.123666" elapsed="0.000099"/>
+</kw>
+<kw name="Click" owner="Browser">
+<arg>css=button:has-text("Send")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="NOT RUN" start="2026-04-07T20:13:03.123855" elapsed="0.000026"/>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=text=testuser</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:13:03.123938" elapsed="0.000022"/>
+</kw>
+<msg time="2026-04-07T20:13:03.250853" level="INFO">Switching context to context=8d714a13-985e-4c92-af97-b13d36c06bc4 in CURRENT</msg>
+<msg time="2026-04-07T20:13:03.259530" level="INFO">Successfully changed active context: context=8d714a13-985e-4c92-af97-b13d36c06bc4</msg>
+<msg time="2026-04-07T20:13:03.264081" level="INFO">Successfully closed Context</msg>
+<status status="FAIL" start="2026-04-07T20:12:55.931074" elapsed="7.193001">TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('input[placeholder="Type a message..."]') to be visible
+</status>
+</test>
+<status status="FAIL" start="2026-04-07T20:12:45.341111" elapsed="17.923263"/>
+</suite>
+<suite id="s1-s5" name="05 Board" source="/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/tests/system/05_board.robot">
+<kw name="Setup Board Suite" type="SETUP">
+<kw name="Open Application" owner="common">
+<kw name="New Browser" owner="Browser">
+<msg time="2026-04-07T20:13:03.273327" level="INFO">{"browser": "chromium", "headless": true, "chromiumSandbox": false, "devtools": false, "handleSIGHUP": true, "handleSIGINT": true, "handleSIGTERM": true, "slowMo": 0.0, "timeout": 30000.0, "tracesDir": "/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/browser/traces/temp/a3e7de92-7def-464e-a0ca-a40df84dccc9"}</msg>
+<msg time="2026-04-07T20:13:03.393647" level="INFO">Successfully created browser with options: {"browser":"chromium","headless":true,"chromiumSandbox":false,"devtools":false,"handleSIGHUP":true,"handleSIGINT":true,"handleSIGTERM":true,"slowMo":0,"timeout":30000,"tracesDir":"/Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/browser/traces/temp/a3e7de92-7def-464e-a0ca-a40df84dccc9"}</msg>
+<arg>${BROWSER}</arg>
+<arg>headless=${HEADLESS}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Create a new playwright Browser with specified options.</doc>
+<status status="PASS" start="2026-04-07T20:13:03.272893" elapsed="0.120857"/>
+</kw>
+<kw name="New Page" owner="Browser">
+<msg time="2026-04-07T20:13:03.646748" level="INFO">Successfully initialized new page object and opened url: http://localhost:5173</msg>
+<msg time="2026-04-07T20:13:03.646821" level="INFO">No context was open. New context was automatically opened when this page is created.</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Open a new Page.</doc>
+<status status="PASS" start="2026-04-07T20:13:03.393863" elapsed="0.253045"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:13:03.272783" elapsed="0.374204"/>
+</kw>
+<kw name="Login As Test User" owner="common">
+<kw name="Go To" owner="Browser">
+<msg time="2026-04-07T20:13:03.660267" level="INFO">Successfully opened URL http://localhost:5173</msg>
+<arg>${BASE_URL}</arg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Navigates to the given ``url``.</doc>
+<status status="PASS" start="2026-04-07T20:13:03.647397" elapsed="0.012973"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:13:03.660840" level="INFO">Fills the text 'testuser@test.com' in the given field.</msg>
+<arg>css=input[type="email"]</arg>
+<arg>${VALID_EMAIL}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:13:03.660490" elapsed="0.825870"/>
+</kw>
+<kw name="Fill Text" owner="Browser">
+<msg time="2026-04-07T20:13:04.487000" level="INFO">Fills the text 'SecurePass1' in the given field.</msg>
+<arg>css=input[type="password"]</arg>
+<arg>${VALID_PASSWORD}</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Clears and fills the given ``txt`` into the text field found by ``selector``.</doc>
+<status status="PASS" start="2026-04-07T20:13:04.486571" elapsed="0.036228"/>
+</kw>
+<kw name="Click" owner="Browser">
+<msg time="2026-04-07T20:13:04.523423" level="INFO">Clicks the element 'css=button[type="submit"]:has-text("Login")'.</msg>
+<msg time="2026-04-07T20:13:14.609397" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="browser/screenshot/fail-screenshot-8.png" target="_blank"&gt;&lt;img src="browser/screenshot/fail-screenshot-8.png" width="800px"/&gt;&lt;/a&gt;</msg>
+<msg time="2026-04-07T20:13:14.609478" level="INFO">See also file:///Users/shisaklaysuban/Documents/GitHub/VirtualClassroom/backend/playwright-log.txt for additional details.</msg>
+<msg time="2026-04-07T20:13:14.609562" level="FAIL">TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</msg>
+<arg>css=button[type="submit"]:has-text("Login")</arg>
+<tag>PageContent</tag>
+<tag>Setter</tag>
+<doc>Simulates mouse click on the element found by ``selector``.</doc>
+<status status="FAIL" start="2026-04-07T20:13:04.523143" elapsed="10.087959">TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</kw>
+<kw name="Wait For Elements State" owner="Browser">
+<arg>css=.home-layout</arg>
+<arg>visible</arg>
+<arg>timeout=5s</arg>
+<tag>PageContent</tag>
+<tag>Wait</tag>
+<doc>Waits for the element found by ``selector`` to satisfy state option.</doc>
+<status status="NOT RUN" start="2026-04-07T20:13:14.611229" elapsed="0.000076"/>
+</kw>
+<status status="FAIL" start="2026-04-07T20:13:03.647127" elapsed="10.964317">TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</kw>
+<status status="FAIL" start="2026-04-07T20:13:03.272577" elapsed="11.338922">TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</kw>
+<test id="s1-s5-t1" name="TC-05-01: Create A Note On The Board" line="20">
+<doc>Verify user can create a sticky note.</doc>
+<tag>board</tag>
+<tag>note</tag>
+<tag>priority-critical</tag>
+<tag>smoke</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.611564" elapsed="0.001888">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t2" name="TC-05-02: Create Note Without Text Shows Error" line="27">
+<doc>Verify note creation fails with empty text.</doc>
+<tag>board</tag>
+<tag>note</tag>
+<tag>priority-high</tag>
+<tag>validation</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.615225" elapsed="0.001052">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t3" name="TC-05-03: Delete A Note" line="37">
+<doc>Verify user can delete their own note.</doc>
+<tag>board</tag>
+<tag>delete</tag>
+<tag>note</tag>
+<tag>priority-high</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.617849" elapsed="0.001058">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t4" name="TC-05-04: Create An Announcement" line="45">
+<doc>Verify instructor can post an announcement.</doc>
+<tag>announcement</tag>
+<tag>board</tag>
+<tag>priority-critical</tag>
+<tag>smoke</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.620762" elapsed="0.001223">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t5" name="TC-05-05: Delete An Announcement" line="52">
+<doc>Verify instructor can delete an announcement.</doc>
+<tag>announcement</tag>
+<tag>board</tag>
+<tag>delete</tag>
+<tag>priority-high</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.623686" elapsed="0.001348">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t6" name="TC-05-06: Upload A File To The Board" line="60">
+<doc>Verify user can upload a file.</doc>
+<tag>board</tag>
+<tag>file</tag>
+<tag>priority-high</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.626954" elapsed="0.001438">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<test id="s1-s5-t7" name="TC-05-07: Delete An Uploaded File" line="67">
+<doc>Verify user can delete an uploaded file.</doc>
+<tag>board</tag>
+<tag>delete</tag>
+<tag>file</tag>
+<tag>priority-medium</tag>
+<status status="FAIL" start="2026-04-07T20:13:14.630389" elapsed="0.001442">Parent suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</test>
+<kw name="Close Application" owner="common" type="TEARDOWN">
+<kw name="Close Browser" owner="Browser">
+<msg time="2026-04-07T20:13:14.655905" level="INFO">Closed browser</msg>
+<tag>BrowserControl</tag>
+<tag>Setter</tag>
+<doc>Closes the current browser.</doc>
+<status status="PASS" start="2026-04-07T20:13:14.634170" elapsed="0.021829"/>
+</kw>
+<status status="PASS" start="2026-04-07T20:13:14.633979" elapsed="0.022089"/>
+</kw>
+<status status="FAIL" start="2026-04-07T20:13:03.266185" elapsed="11.389906">Suite setup failed:
+TimeoutError: locator.click: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('button[type="submit"]:has-text("Login")')
+</status>
+</suite>
+<status status="FAIL" start="2026-04-07T20:11:36.689456" elapsed="97.968609"/>
+</suite>
+<statistics>
+<total>
+<stat pass="9" fail="14" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat pass="0" fail="2" skip="0">announcement</stat>
+<stat pass="0" fail="7" skip="0">board</stat>
+<stat pass="0" fail="3" skip="0">delete</stat>
+<stat pass="0" fail="1" skip="0">end</stat>
+<stat pass="0" fail="2" skip="0">file</stat>
+<stat pass="0" fail="3" skip="0">note</stat>
+<stat pass="0" fail="3" skip="0">priority-critical</stat>
+<stat pass="0" fail="7" skip="0">priority-high</stat>
+<stat pass="0" fail="2" skip="0">priority-medium</stat>
+<stat pass="0" fail="1" skip="0">read</stat>
+<stat pass="0" fail="5" skip="0">session</stat>
+<stat pass="0" fail="3" skip="0">smoke</stat>
+<stat pass="0" fail="1" skip="0">start</stat>
+<stat pass="0" fail="2" skip="0">status</stat>
+<stat pass="0" fail="1" skip="0">validation</stat>
+</tag>
+<suite>
+<stat name="System" id="s1" pass="9" fail="14" skip="0">System</stat>
+<stat name="01 User" id="s1-s1" pass="5" fail="0" skip="0">System.01 User</stat>
+<stat name="02 Classroom" id="s1-s2" pass="4" fail="0" skip="0">System.02 Classroom</stat>
+<stat name="03 Session" id="s1-s3" pass="0" fail="5" skip="0">System.03 Session</stat>
+<stat name="04 Message" id="s1-s4" pass="0" fail="2" skip="0">System.04 Message</stat>
+<stat name="05 Board" id="s1-s5" pass="0" fail="7" skip="0">System.05 Board</stat>
+</suite>
+</statistics>
+<errors>
+</errors>
+</robot>

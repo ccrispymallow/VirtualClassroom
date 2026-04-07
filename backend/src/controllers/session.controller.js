@@ -64,21 +64,3 @@ export const checkRoomActive = async (req, res) => {
     return res.status(500).json({ error: "Failed to check room status" });
   }
 };
-
-export const getMyRooms = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { role } = req.query;
-
-    if (role === "prof" || role === "instructor") {
-      const rooms = await sessionService.getRoomsCreatedByInstructor(userId);
-      return res.json({ rooms });
-    } else {
-      const rooms = await sessionService.getRoomsJoinedByStudent(userId);
-      return res.json({ rooms });
-    }
-  } catch (err) {
-    console.error("getMyRooms error:", err);
-    return res.status(500).json({ error: "Failed to fetch rooms" });
-  }
-};

@@ -1,13 +1,11 @@
 import { jest } from "@jest/globals";
 
-// ─── 1. Define mocks ───────────────────────────────────────────
 const mockCreateUser = jest.fn();
 const mockGetAllUsers = jest.fn();
 const mockGetUserById = jest.fn();
 const mockLogin = jest.fn();
 const mockUpdateUser = jest.fn();
 
-// ─── 2. Register mocks BEFORE importing anything ───────────────
 await jest.unstable_mockModule("../../../src/services/user.service.js", () => ({
   createUser: mockCreateUser,
   getAllUsers: mockGetAllUsers,
@@ -16,11 +14,9 @@ await jest.unstable_mockModule("../../../src/services/user.service.js", () => ({
   updateUser: mockUpdateUser,
 }));
 
-// ─── 3. Dynamic import AFTER mocking ───────────────────────────
 const { registerUser, getAllUsers, getUserById, loginUser, updateUser } =
   await import("../../../src/controllers/user.controller.js");
 
-// ─── Helpers ───────────────────────────────────────────────────
 const mockRes = () => {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
@@ -31,12 +27,8 @@ const mockNext = jest.fn();
 
 afterEach(() => jest.clearAllMocks());
 
-// ──────────────────────────────────────────────────────────────
-// registerUser
-// ──────────────────────────────────────────────────────────────
 describe("registerUser", () => {
   test("should return 201 with created user on valid input", async () => {
-    // Arrange
     const req = {
       body: {
         username: "panchaya",
@@ -54,10 +46,8 @@ describe("registerUser", () => {
     };
     mockCreateUser.mockResolvedValue(mockUser);
 
-    // Act
     await registerUser(req, res, mockNext);
 
-    // Assert
     expect(mockCreateUser).toHaveBeenCalledWith(req.body);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({
@@ -67,14 +57,11 @@ describe("registerUser", () => {
   });
 
   test("should return 400 when required fields are missing", async () => {
-    // Arrange
-    const req = { body: { username: "panchaya" } }; // missing email, password, role
+    const req = { body: { username: "panchaya" } };
     const res = mockRes();
 
-    // Act
     await registerUser(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: "username, email, password and role are required",
@@ -83,7 +70,6 @@ describe("registerUser", () => {
   });
 
   test("should call next(error) when service throws", async () => {
-    // Arrange
     const req = {
       body: { username: "x", email: "x@x.com", password: "p", role: "student" },
     };
@@ -91,20 +77,14 @@ describe("registerUser", () => {
     const err = new Error("DB error");
     mockCreateUser.mockRejectedValue(err);
 
-    // Act
     await registerUser(req, res, mockNext);
 
-    // Assert
     expect(mockNext).toHaveBeenCalledWith(err);
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// getAllUsers
-// ──────────────────────────────────────────────────────────────
 describe("getAllUsers", () => {
   test("should return list of users", async () => {
-    // Arrange
     const req = {};
     const res = mockRes();
     const mockUsers = [
@@ -113,67 +93,49 @@ describe("getAllUsers", () => {
     ];
     mockGetAllUsers.mockResolvedValue(mockUsers);
 
-    // Act
     await getAllUsers(req, res, mockNext);
 
-    // Assert
     expect(res.json).toHaveBeenCalledWith(mockUsers);
   });
 
   test("should call next(error) on failure", async () => {
-    // Arrange
     const req = {};
     const res = mockRes();
     mockGetAllUsers.mockRejectedValue(new Error("Query failed"));
 
-    // Act
     await getAllUsers(req, res, mockNext);
 
-    // Assert
     expect(mockNext).toHaveBeenCalled();
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// getUserById
-// ──────────────────────────────────────────────────────────────
 describe("getUserById", () => {
   test("should return user when found", async () => {
-    // Arrange
     const req = { params: { id: "1" } };
     const res = mockRes();
     const mockUser = { id: 1, username: "panchaya", avatar: "female" };
     mockGetUserById.mockResolvedValue(mockUser);
 
-    // Act
     await getUserById(req, res, mockNext);
 
-    // Assert
     expect(mockGetUserById).toHaveBeenCalledWith("1");
     expect(res.json).toHaveBeenCalledWith(mockUser);
   });
 
   test("should return 404 when user not found", async () => {
-    // Arrange
     const req = { params: { id: "999" } };
     const res = mockRes();
     mockGetUserById.mockResolvedValue(null);
 
-    // Act
     await getUserById(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: "User not found" });
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// loginUser
-// ──────────────────────────────────────────────────────────────
 describe("loginUser", () => {
   test("should return user on successful login", async () => {
-    // Arrange
     const req = { body: { email: "a@a.com", password: "Pass1234" } };
     const res = mockRes();
     const mockUser = {
@@ -184,10 +146,8 @@ describe("loginUser", () => {
     };
     mockLogin.mockResolvedValue(mockUser);
 
-    // Act
     await loginUser(req, res, mockNext);
 
-    // Assert
     expect(mockLogin).toHaveBeenCalledWith("a@a.com");
     expect(res.json).toHaveBeenCalledWith({
       message: "Login successful",
@@ -196,7 +156,6 @@ describe("loginUser", () => {
   });
 
   test("should return 401 when password is incorrect", async () => {
-    // Arrange
     const req = { body: { email: "a@a.com", password: "WrongPass" } };
     const res = mockRes();
     mockLogin.mockResolvedValue({
@@ -205,10 +164,8 @@ describe("loginUser", () => {
       password: "CorrectPass",
     });
 
-    // Act
     await loginUser(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       error: "Invalid email or password",
@@ -216,15 +173,12 @@ describe("loginUser", () => {
   });
 
   test("should return 401 when user does not exist", async () => {
-    // Arrange
     const req = { body: { email: "nobody@x.com", password: "any" } };
     const res = mockRes();
     mockLogin.mockResolvedValue(null);
 
-    // Act
     await loginUser(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
       error: "Invalid email or password",
@@ -232,12 +186,8 @@ describe("loginUser", () => {
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// updateUser
-// ──────────────────────────────────────────────────────────────
 describe("updateUser", () => {
   test("should return updated user on success", async () => {
-    // Arrange
     const req = {
       params: { id: "1" },
       body: { username: "new_name", avatar: "male" },
@@ -246,10 +196,8 @@ describe("updateUser", () => {
     const mockUpdated = { id: 1, username: "new_name", avatar: "male" };
     mockUpdateUser.mockResolvedValue(mockUpdated);
 
-    // Act
     await updateUser(req, res, mockNext);
 
-    // Assert
     expect(mockUpdateUser).toHaveBeenCalledWith("1", {
       username: "new_name",
       avatar: "male",
@@ -261,14 +209,11 @@ describe("updateUser", () => {
   });
 
   test("should return 400 if neither username nor avatar provided", async () => {
-    // Arrange
     const req = { params: { id: "1" }, body: {} };
     const res = mockRes();
 
-    // Act
     await updateUser(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: "At least username or avatar is required to update",
@@ -277,15 +222,12 @@ describe("updateUser", () => {
   });
 
   test("should return 404 if user not found", async () => {
-    // Arrange
     const req = { params: { id: "999" }, body: { username: "ghost" } };
     const res = mockRes();
     mockUpdateUser.mockResolvedValue(null);
 
-    // Act
     await updateUser(req, res, mockNext);
 
-    // Assert
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: "User not found" });
   });
