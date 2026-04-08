@@ -36,13 +36,14 @@ export const usePeer = ({
     }
     const ctx = silentCtxRef.current;
     const dest = ctx.createMediaStreamDestination();
-    // Oscillator at volume 0 — keeps the track "live" without audible output
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     gain.gain.value = 0;
     osc.connect(gain);
     gain.connect(dest);
     osc.start();
+    // ✅ Stop after 1s — the track stays alive but the oscillator doesn't leak
+    osc.stop(ctx.currentTime + 1);
     return dest.stream;
   }, []);
 
@@ -223,12 +224,14 @@ export const usePeer = ({
       });
 
       peer.on("call", (call) => {
-        // Answer with the real mic stream if available, otherwise a silent
-        // audio track. We must NEVER pass an empty MediaStream() — it produces
-        // an SDP answer with no media section which causes WebRTC negotiation
-        // to fail on the caller's side ("Negotiation failed" error), meaning
-        // the caller cannot receive our stream even though we can hear them.
-        const answerStream = micStreamRef.current ?? getSilentStream();
+        // ✅ Check if the mic stream's tracks are still live before using it
+        const micStream = micStreamRef.current;
+        const micIsLive =
+          micStream &&
+          micStream.getAudioTracks().length > 0 &&
+          micStream.getAudioTracks()[0].readyState === "live";
+
+        const answerStream = micIsLive ? micStream : getSilentStream();
         call.answer(answerStream);
 
         call.on("stream", (remoteStream) => {
@@ -243,7 +246,6 @@ export const usePeer = ({
         const incomingType = call.metadata?.type || "mic";
         call.on("close", () => removeStreamByType(call.peer, incomingType));
         call.on("error", (err) => console.error("Incoming call error:", err));
-        // Never store in callsRef — outgoing calls only.
       });
 
       peer.on("error", (err) => {
