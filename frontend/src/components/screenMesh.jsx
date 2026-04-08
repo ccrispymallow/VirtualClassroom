@@ -1,84 +1,7 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Html } from "@react-three/drei";
-import { VideoTexture, LinearFilter, SRGBColorSpace } from "three";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
-
-function VideoMaterial({ stream }) {
-  const matRef = useRef(null);
-
-  useEffect(() => {
-    if (!stream || !matRef.current) return;
-
-    const video = document.createElement("video");
-    video.muted = true;
-    video.playsInline = true;
-    video.autoplay = true;
-    video.srcObject = stream;
-
-    const tex = new VideoTexture(video);
-    tex.minFilter = LinearFilter;
-    tex.magFilter = LinearFilter;
-    tex.colorSpace = SRGBColorSpace;
-
-    matRef.current.map = tex;
-    matRef.current.needsUpdate = true;
-
-    // Play as soon as enough data is available so the texture gets real frames.
-    // Calling play() before 'canplay' fires is a common reason VideoTexture
-    // stays black — the video pipeline hasn't decoded any frames yet.
-    const tryPlay = () => {
-      video.play().catch(() => {
-        // Autoplay blocked — retry on the next user gesture
-        const retry = () => video.play().catch(() => {});
-        document.addEventListener("click", retry, {
-          once: true,
-          capture: true,
-        });
-        document.addEventListener("keydown", retry, {
-          once: true,
-          capture: true,
-        });
-      });
-    };
-
-    if (video.readyState >= 2) {
-      // Already have data (e.g. local sharer's own mesh)
-      tryPlay();
-    } else {
-      video.addEventListener("canplay", tryPlay, { once: true });
-    }
-
-    // Force texture refresh every animation frame until the video is playing.
-    // R3F's built-in VideoTexture update only fires after the first decoded
-    // frame is available — without this pump the mesh can stay black for
-    // several seconds on the receiving side.
-    let rafId;
-    const pumpTexture = () => {
-      if (!matRef.current) return;
-      tex.needsUpdate = true;
-      matRef.current.needsUpdate = true;
-      if (video.paused || video.readyState < 2) {
-        rafId = requestAnimationFrame(pumpTexture);
-      }
-    };
-    rafId = requestAnimationFrame(pumpTexture);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      video.removeEventListener("canplay", tryPlay);
-      video.pause();
-      video.srcObject = null;
-      tex.dispose();
-      if (matRef.current) {
-        matRef.current.map = null;
-        matRef.current.needsUpdate = true;
-      }
-    };
-  }, [stream]);
-
-  return <meshStandardMaterial ref={matRef} toneMapped={false} />;
-}
 
 // ─── Fullscreen overlay ───────────────────────────────────────────────────────
 function FullscreenOverlay({ stream, onClose }) {
@@ -145,18 +68,28 @@ function FullscreenOverlay({ stream, onClose }) {
 export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   const { screenStream } = useRoom();
   const [fullscreen, setFullscreen] = useState(false);
+  const videoRef = useRef(null);
   const isActive = !!screenStream;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (screenStream) {
+      video.srcObject = screenStream;
+      void video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.srcObject = null;
+    }
+  }, [screenStream]);
 
   // F key toggles fullscreen
   useEffect(() => {
     const onKey = (e) => {
       if (!screenStream) return;
       const activeTag = document.activeElement?.tagName;
-      if (
-        activeTag === "INPUT" ||
-        activeTag === "TEXTAREA" ||
-        activeTag === "SELECT"
-      ) {
+      if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
         return;
       }
       if (e.key.toLowerCase() === "f") {
@@ -190,11 +123,32 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   return (
     <mesh position={position} rotation={[0, Math.PI, 0]}>
       <planeGeometry args={[4.5, 2.2]} />
+      <meshStandardMaterial color="#000" toneMapped={false} />
 
-      {isActive ? (
-        <VideoMaterial stream={screenStream} />
-      ) : (
-        <meshStandardMaterial color="#0a0a0a" toneMapped={false} />
+      {isActive && (
+        <Html
+          transform
+          occlude
+          distanceFactor={8}
+          position={[0, 0, 0.01]}
+          center
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: "4.5em",
+              height: "2.2em",
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: "4px",
+              background: "black",
+            }}
+          />
+        </Html>
       )}
 
       {!fullscreen && !isActive && (
