@@ -4,9 +4,37 @@ export default function RemoteStream({ stream, type, username }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    if (ref.current && stream) {
-      ref.current.srcObject = stream;
-    }
+    const mediaEl = ref.current;
+    if (!mediaEl || !stream) return;
+
+    mediaEl.srcObject = stream;
+
+    const playMedia = async () => {
+      try {
+        await mediaEl.play();
+      } catch {
+        // If the incoming stream has audio, autoplay can be blocked.
+        // Retry muted so video frames still render instead of a black pane.
+        mediaEl.muted = true;
+        try {
+          await mediaEl.play();
+        } catch {
+          // noop: user interaction may still be required on some browsers
+        }
+      }
+    };
+
+    const onLoadedMetadata = () => {
+      void playMedia();
+    };
+
+    mediaEl.addEventListener("loadedmetadata", onLoadedMetadata);
+    void playMedia();
+
+    return () => {
+      mediaEl.removeEventListener("loadedmetadata", onLoadedMetadata);
+      mediaEl.srcObject = null;
+    };
   }, [stream]);
 
   if (type === "mic") {

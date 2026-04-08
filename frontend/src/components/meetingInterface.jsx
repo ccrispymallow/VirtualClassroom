@@ -3,7 +3,7 @@ import { useMedia } from "../helper/useMedia";
 import { socket } from "../helper/socket";
 import { usePeer } from "../helper/usePeer";
 import { useRoom } from "../components/roomContext";
-import RemoteStream from "./remoteSream";
+import RemoteStream from "./remoteStream";
 import { IoMdArrowDropright, IoMdArrowDropdown } from "react-icons/io";
 import { FaCheck } from "react-icons/fa6";
 import { IoClose, IoSettings, IoPeople } from "react-icons/io5";
@@ -429,7 +429,7 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
-          placeholder="Type a messageâ€¦"
+          placeholder="Type a message..."
           className="chat-input"
         />
         <button
