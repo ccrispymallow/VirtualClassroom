@@ -162,35 +162,36 @@ export const usePeer = ({
       !import.meta.env.VITE_PEER_HOST ||
       import.meta.env.VITE_PEER_HOST === "localhost";
 
-    const peer = new Peer(undefined, {
-      host: import.meta.env.VITE_PEER_HOST || "localhost",
-      port: isLocal ? 9000 : 443,
-      path: "/peerjs",
-      secure: !isLocal,
-    });
-
     // const peer = new Peer(undefined, {
     //   host: import.meta.env.VITE_PEER_HOST || "localhost",
     //   port: isLocal ? 9000 : 443,
     //   path: "/peerjs",
     //   secure: !isLocal,
-    //   config: {
-    //     iceServers: [
-    //       { urls: "stun:stun.l.google.com:19302" },
-    //       { urls: "stun:stun1.l.google.com:19302" },
-    //       {
-    //         urls: "turn:openrelay.metered.ca:80",
-    //         username: "openrelayproject",
-    //         credential: "openrelayproject",
-    //       },
-    //       {
-    //         urls: "turn:openrelay.metered.ca:443",
-    //         username: "openrelayproject",
-    //         credential: "openrelayproject",
-    //       },
-    //     ],
-    //   },
     // });
+
+    const peer = new Peer(undefined, {
+      host: import.meta.env.VITE_PEER_HOST || "localhost",
+      port: isLocal ? 9000 : 443,
+      path: "/peerjs",
+      secure: !isLocal,
+      config: {
+        iceTransportPolicy: "relay",
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+        ],
+      },
+    });
 
     peerRef.current = peer;
 
