@@ -47,6 +47,21 @@ export const usePeer = ({
     return dest.stream;
   }, []);
 
+  // Returns a MediaStream with one silent black video track.
+  // Used to answer incoming screen-share calls so the SDP video m-line is
+  // preserved — without this the receiver's WebRTC stack drops the video
+  // track and the remote stream arrives with no video (black mesh).
+  const getBlankVideoStream = useCallback(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 2;
+    canvas.height = 2;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, 2, 2);
+    const stream = canvas.captureStream(1);
+    return stream;
+  }, []);
+
   // ── Audio ──────────────────────────────────────────────────────────────────
 
   const playRemoteAudio = useCallback((peerId, stream) => {
@@ -224,14 +239,24 @@ export const usePeer = ({
       });
 
       peer.on("call", (call) => {
-        // ✅ Check if the mic stream's tracks are still live before using it
-        const micStream = micStreamRef.current;
-        const micIsLive =
-          micStream &&
-          micStream.getAudioTracks().length > 0 &&
-          micStream.getAudioTracks()[0].readyState === "live";
+        const callType = call.metadata?.type || "mic";
 
-        const answerStream = micIsLive ? micStream : getSilentStream();
+        // Screen calls carry a video track. We MUST answer with a stream that
+        // also has a video track — otherwise the SDP answer omits the video
+        // m-line and WebRTC drops the incoming video entirely (black mesh).
+        // Mic calls answer with the mic stream or a silent audio fallback.
+        let answerStream;
+        if (callType === "screen") {
+          answerStream = getBlankVideoStream();
+        } else {
+          const micStream = micStreamRef.current;
+          const micIsLive =
+            micStream &&
+            micStream.getAudioTracks().length > 0 &&
+            micStream.getAudioTracks()[0].readyState === "live";
+          answerStream = micIsLive ? micStream : getSilentStream();
+        }
+
         call.answer(answerStream);
 
         call.on("stream", (remoteStream) => {
@@ -337,6 +362,7 @@ export const usePeer = ({
     removeStreams,
     removeStreamByType,
     getSilentStream,
+    getBlankVideoStream,
   ]);
 
   // ── Public API ─────────────────────────────────────────────────────────────
