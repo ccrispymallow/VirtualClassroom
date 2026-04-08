@@ -73,11 +73,52 @@ export const usePeer = ({
     [debugLog],
   );
 
+  const closeOutgoingCallsByType = useCallback(
+    (type) => {
+      Object.keys(outgoingCallsRef.current)
+        .filter((key) => key.endsWith(`-${type}`))
+        .forEach((key) => {
+          debugLog("outgoing-call-force-close", { key, type });
+          outgoingCallsRef.current[key].close();
+          delete outgoingCallsRef.current[key];
+        });
+    },
+    [debugLog],
+  );
+
   const callPeer = useCallback(
     (peerId, stream, type, uname) => {
       if (!peerRef.current || !stream) return;
 
       const callKey = `${peerId}-${type}`;
+
+      if (type === "mic") {
+        const existingCall = outgoingCallsRef.current[callKey];
+        const pc = existingCall?.peerConnection;
+        const newAudioTrack = stream.getAudioTracks?.()[0];
+        const audioSender = pc?.getSenders?.().find((s) => s.track?.kind === "audio");
+        if (existingCall && audioSender && newAudioTrack) {
+          audioSender
+            .replaceTrack(newAudioTrack)
+            .then(() => {
+              debugLog("outgoing-call-replace-track", {
+                callKey,
+                peerId,
+                type,
+                newTrackId: newAudioTrack.id,
+              });
+            })
+            .catch((err) => {
+              debugLog("outgoing-call-replace-track-failed", {
+                callKey,
+                peerId,
+                type,
+                err: err?.message,
+              });
+            });
+          return;
+        }
+      }
 
       if (outgoingCallsRef.current[callKey]) {
         outgoingCallsRef.current[callKey].close();
@@ -296,19 +337,19 @@ export const usePeer = ({
   );
 
   const stopScreenCalls = useCallback(() => {
-    Object.keys(outgoingCallsRef.current)
-      .filter((key) => key.endsWith("-screen"))
-      .forEach((key) => {
-        outgoingCallsRef.current[key].close();
-        delete outgoingCallsRef.current[key];
-      });
+    closeOutgoingCallsByType("screen");
     setRemoteStreams((prev) => prev.filter((s) => s.type !== "screen"));
-  }, []);
+  }, [closeOutgoingCallsByType]);
+
+  const stopMicCalls = useCallback(() => {
+    closeOutgoingCallsByType("mic");
+  }, [closeOutgoingCallsByType]);
 
   return {
     remoteStreams,
     peerRef,
     broadcastMic,
+    stopMicCalls,
     broadcastScreen,
     stopScreenCalls,
   };
