@@ -19,7 +19,6 @@ const CHAIR_OCCUPIED_EPSILON_SQ = 0.01;
 const SPAWN_SLOTS = [
   [-3, 0, 4],
   [-2, 0, 4],
-  [-3, 0, 4],
   [-3, 0, 2],
   [-2, 0, 2],
   [-3, 0, 3],
@@ -135,6 +134,19 @@ export default function Avatar() {
   const lastEmitRef = useRef(0);
   const lastSentRef = useRef({ x: null, y: null, z: null, yaw: null });
   const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    const idStr = String(user.id ?? "");
+    let hash = 0;
+    for (let i = 0; i < idStr.length; i++)
+      hash = (hash * 31 + idStr.charCodeAt(i)) >>> 0;
+    const slot = SPAWN_SLOTS[hash % SPAWN_SLOTS.length];
+    posRef.current = [...slot];
+    setAvatarPosition([...slot]);
+    yawRef.current = Math.PI / 2;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const isMovingRef = useRef(false);
   const sittingChairRef = useRef(null);
   const [smoothedPeerPositions, setSmoothedPeerPositions] = useState({});
@@ -443,7 +455,10 @@ export default function Avatar() {
   return (
     <>
       {otherParticipants.map((p) => {
-        const displayedPos = smoothedPeerPositions[p.id] || peerPositions[p.id];
+        const displayedPos =
+          smoothedPeerPositions[p.id] ||
+          peerPositions[p.id] ||
+          (p.position && p.position[0] !== undefined ? p.position : null);
         if (!displayedPos) return null;
         const [px, py, pz] = displayedPos;
         return (

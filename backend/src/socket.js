@@ -37,7 +37,7 @@ export const initSocket = (io) => {
         ...user,
         socketId: socket.id,
         peerId,
-        position: [0, 0, 0],
+        position: null,
         yaw: 0,
         mic: false,
       });
@@ -84,14 +84,21 @@ export const initSocket = (io) => {
 
     // ── Receive position from one user, broadcast to everyone else ──
     socket.on("position-update", ({ roomCode, userId, position, yaw }) => {
+      let wasNull = false;
       if (rooms[roomCode]) {
         const p = rooms[roomCode].find((p) => p.id === userId);
         if (p) {
+          wasNull = p.position === null;
           p.position = position;
           if (yaw !== undefined) p.yaw = yaw;
         }
       }
       socket.to(roomCode).emit("peer-moved", { userId, position, yaw });
+      // On the very first position (spawn), push a full participants-update so
+      // existing peers who haven't seen a peer-moved yet can render this avatar.
+      if (wasNull && rooms[roomCode]) {
+        io.to(roomCode).emit("participants-update", rooms[roomCode]);
+      }
     });
 
     socket.on("mic-status", ({ roomCode, userId, mic }) => {
