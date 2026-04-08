@@ -9,8 +9,7 @@ export const usePeer = ({
   screenStreamRef,
 }) => {
   const peerRef = useRef(null);
-  const outgoingCallsRef = useRef({});
-  const incomingCallsRef = useRef({});
+  const callsRef = useRef({});
   const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
 
@@ -104,9 +103,9 @@ export const usePeer = ({
 
       const callKey = `${peerId}-${type}`;
 
-      if (outgoingCallsRef.current[callKey]) {
-        outgoingCallsRef.current[callKey].close();
-        delete outgoingCallsRef.current[callKey];
+      if (callsRef.current[callKey]) {
+        callsRef.current[callKey].close();
+        delete callsRef.current[callKey];
       }
 
       const call = peerRef.current.call(peerId, stream, {
@@ -118,15 +117,15 @@ export const usePeer = ({
       });
 
       call.on("close", () => {
-        // Outgoing call lifecycle should not tear down inbound media.
-        delete outgoingCallsRef.current[callKey];
+        removeStreamByType(peerId, type);
+        delete callsRef.current[callKey];
       });
 
       call.on("error", (err) => console.error("Call error:", err));
 
-      outgoingCallsRef.current[callKey] = call;
+      callsRef.current[callKey] = call;
     },
-    [addStream],
+    [removeStreamByType, addStream],
   );
 
   const getAllPeerIds = useCallback(() => {
@@ -178,15 +177,10 @@ export const usePeer = ({
       });
 
       const incomingType = call.metadata?.type || "mic";
-      const incomingCallKey = `${call.peer}-${incomingType}-${Date.now()}-${Math.random()}`;
-
-      call.on("close", () => {
-        removeStreamByType(call.peer, incomingType);
-        delete incomingCallsRef.current[incomingCallKey];
-      });
+      call.on("close", () => removeStreamByType(call.peer, incomingType));
       call.on("error", (err) => console.error("Call error:", err));
 
-      incomingCallsRef.current[incomingCallKey] = call;
+      callsRef.current[`${call.peer}-${call.metadata?.type}`] = call;
     });
 
     peer.on("error", (err) => console.error("PeerJS error:", err));
@@ -227,8 +221,7 @@ export const usePeer = ({
 
       peer.destroy();
       peerRef.current = null;
-      outgoingCallsRef.current = {};
-      incomingCallsRef.current = {};
+      callsRef.current = {};
       socket.off("user-joined");
       socket.off("existing-peers");
     };
@@ -264,11 +257,11 @@ export const usePeer = ({
   );
 
   const stopScreenCalls = useCallback(() => {
-    Object.keys(outgoingCallsRef.current)
+    Object.keys(callsRef.current)
       .filter((key) => key.endsWith("-screen"))
       .forEach((key) => {
-        outgoingCallsRef.current[key].close();
-        delete outgoingCallsRef.current[key];
+        callsRef.current[key].close();
+        delete callsRef.current[key];
       });
     setRemoteStreams((prev) => prev.filter((s) => s.type !== "screen"));
   }, []);
