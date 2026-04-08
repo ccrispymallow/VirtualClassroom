@@ -281,8 +281,8 @@ export const usePeer = ({
     socket.on("user-joined", ({ peerId }) => {
       if (!peerId) return;
       knownPeersRef.current.add(peerId);
-      if (micStreamRef.current)
-        callPeerRef.current(peerId, micStreamRef.current, "mic", username);
+      const micStream = micStreamRef.current || getSilentStream();
+      callPeerRef.current(peerId, micStream, "mic", username);
       if (screenStreamRef.current)
         callPeerRef.current(
           peerId,
@@ -296,8 +296,8 @@ export const usePeer = ({
       peers.forEach(({ peerId }) => {
         if (!peerId) return;
         knownPeersRef.current.add(peerId);
-        if (micStreamRef.current)
-          callPeerRef.current(peerId, micStreamRef.current, "mic", username);
+        const micStream = micStreamRef.current || getSilentStream();
+        callPeerRef.current(peerId, micStream, "mic", username);
         if (screenStreamRef.current)
           callPeerRef.current(
             peerId,
@@ -343,13 +343,26 @@ export const usePeer = ({
 
   const broadcastMic = useCallback(
     (stream) => {
-      getAllPeerIds().forEach((peerId) =>
-        callPeer(peerId, stream, "mic", username),
-      );
+      getAllPeerIds().forEach((peerId) => {
+        const callKey = `${peerId}-mic`;
+        const existingCall = callsRef.current[callKey];
+        if (existingCall?.peerConnection) {
+          // ✅ Replace the audio track in-place — no renegotiation needed
+          const [newTrack] = stream.getAudioTracks();
+          const sender = existingCall.peerConnection
+            .getSenders()
+            .find((s) => s.track?.kind === "audio");
+          if (sender && newTrack) {
+            sender.replaceTrack(newTrack);
+            return;
+          }
+        }
+        // Fallback: make a fresh call if no existing connection
+        callPeer(peerId, stream, "mic", username);
+      });
     },
     [callPeer, username, getAllPeerIds],
   );
-
   const broadcastScreen = useCallback(
     (stream) => {
       getAllPeerIds().forEach((peerId) =>
@@ -384,5 +397,6 @@ export const usePeer = ({
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
+    getSilentStream,
   };
 };
