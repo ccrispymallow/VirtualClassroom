@@ -13,9 +13,10 @@ const getRoomIdByCode = async (roomCode) => {
     return cached.id;
   }
 
-  const roomRes = await pool.query("SELECT id FROM classrooms WHERE room_code = $1", [
-    roomCode,
-  ]);
+  const roomRes = await pool.query(
+    "SELECT id FROM classrooms WHERE room_code = $1",
+    [roomCode],
+  );
   const roomId = roomRes.rows[0]?.id;
   if (roomId) {
     roomIdCache.set(roomCode, { id: roomId, cachedAt: Date.now() });
@@ -347,6 +348,13 @@ export const initSocket = (io) => {
         });
       },
     );
+
+    socket.on("stop-screen-share", () => {
+      // broadcast to everyone else in the room
+      socket
+        .to(roomCode)
+        .emit("peer-screen-stopped", { peerId: socket.peerId });
+    });
 
     // Emote sync
     socket.on("emote", ({ roomCode, userId, emote }) => {
