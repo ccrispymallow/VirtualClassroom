@@ -122,7 +122,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
         )}
         {roomName && (
           <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            {roomName}
+            · {roomName}
           </span>
         )}
       </div>
@@ -511,25 +511,18 @@ const MeetingInterface = () => {
     screenStreamRef,
     micOn,
     screenOn,
-    acquireMicSilently,
     startMic,
     stopMic,
-    unmuteMic,
     startScreen,
     stopScreen,
   } = useMedia();
-
   const {
     remoteStreams,
     broadcastMic,
     broadcastScreen,
+    stopMicCalls,
     stopScreenCalls,
-    callsRef,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
-
-  useEffect(() => {
-    acquireMicSilently(callsRef);
-  }, []);
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
@@ -731,9 +724,12 @@ const MeetingInterface = () => {
   const handleMicToggle = useCallback(async () => {
     const nextMic = !micOn;
     if (nextMic) {
-      const stream = await unmuteMic(callsRef);
+      const stream = await startMic();
       if (stream) broadcastMic(stream);
     } else {
+      // Close outgoing mic calls first so remote peers' incoming call close
+      // handlers fire and they immediately remove our stream from their UI.
+      stopMicCalls();
       stopMic();
     }
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
@@ -743,10 +739,9 @@ const MeetingInterface = () => {
   }, [
     micOn,
     startMic,
-    unmuteMic,
     broadcastMic,
+    stopMicCalls,
     stopMic,
-    callsRef,
     roomCode,
     user.id,
     setParticipants,
