@@ -16,11 +16,35 @@ export const usePeer = ({
   const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
   const audioElementsRef = useRef({});
+  // Keeps the silent AudioContext alive for the lifetime of the hook.
+  // We reuse one context instead of creating a new one per incoming call.
+  const silentCtxRef = useRef(null);
 
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
   const userAvatar = user?.avatar ?? "boy";
+
+  // ── Silent stream helper ───────────────────────────────────────────────────
+  // Returns a MediaStream with one silent audio track.
+  // WebRTC SDP negotiation requires at least one real track — an empty
+  // MediaStream() produces an SDP with no media section, causing
+  // "Negotiation failed" errors on Safari / Firefox / cross-OS pairs.
+  const getSilentStream = useCallback(() => {
+    if (!silentCtxRef.current || silentCtxRef.current.state === "closed") {
+      silentCtxRef.current = new AudioContext();
+    }
+    const ctx = silentCtxRef.current;
+    const dest = ctx.createMediaStreamDestination();
+    // Oscillator at volume 0 — keeps the track "live" without audible output
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start();
+    return dest.stream;
+  }, []);
 
   // ── Audio ──────────────────────────────────────────────────────────────────
 
@@ -199,10 +223,13 @@ export const usePeer = ({
       });
 
       peer.on("call", (call) => {
-        // Answer with an empty MediaStream.
-        // call.answer() with no args omits the SDP media section, causing
-        // negotiation failures on Safari/Firefox and cross-OS pairs.
-        call.answer(new MediaStream());
+        // Answer with the real mic stream if available, otherwise a silent
+        // audio track. We must NEVER pass an empty MediaStream() — it produces
+        // an SDP answer with no media section which causes WebRTC negotiation
+        // to fail on the caller's side ("Negotiation failed" error), meaning
+        // the caller cannot receive our stream even though we can hear them.
+        const answerStream = micStreamRef.current ?? getSilentStream();
+        call.answer(answerStream);
 
         call.on("stream", (remoteStream) => {
           addStream(
@@ -290,6 +317,11 @@ export const usePeer = ({
       peerRef.current?.destroy();
       peerRef.current = null;
       callsRef.current = {};
+      // Clean up the silent AudioContext if it was created
+      if (silentCtxRef.current && silentCtxRef.current.state !== "closed") {
+        silentCtxRef.current.close();
+        silentCtxRef.current = null;
+      }
       socket.off("user-joined");
       socket.off("existing-peers");
     };
@@ -302,6 +334,7 @@ export const usePeer = ({
     addStream,
     removeStreams,
     removeStreamByType,
+    getSilentStream,
   ]);
 
   // ── Public API ─────────────────────────────────────────────────────────────
