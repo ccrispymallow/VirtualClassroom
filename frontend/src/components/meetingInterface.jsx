@@ -529,6 +529,7 @@ const MeetingInterface = () => {
     broadcastScreen,
     stopScreenCalls,
     getSilentStream,
+    callsRef,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   useEffect(() => {
