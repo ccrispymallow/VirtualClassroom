@@ -122,7 +122,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
         )}
         {roomName && (
           <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            · {roomName}
+            Â· {roomName}
           </span>
         )}
       </div>
@@ -429,7 +429,7 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
-          placeholder="Type a message…"
+          placeholder="Type a messageâ€¦"
           className="chat-input"
         />
         <button
@@ -577,7 +577,11 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
-      if (active && sharingUserId !== user.id && screenOnRef.current) {
+      if (
+        active &&
+        String(sharingUserId) !== String(user.id) &&
+        screenOnRef.current
+      ) {
         stopScreen(handleNetworkScreenStop);
       }
     });
@@ -745,10 +749,10 @@ const MeetingInterface = () => {
       }
       const stream = await startScreen(handleNetworkScreenStop);
       if (!stream) return;
-      socket.emit("screen-share-start", { roomCode, userId: user.id });
       const approved = await new Promise((resolve) => {
         socket.once("screen-share-approved", () => resolve(true));
         socket.once("screen-share-rejected", () => resolve(false));
+        socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
         broadcastScreen(stream);
