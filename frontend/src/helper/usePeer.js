@@ -14,49 +14,36 @@ export const usePeer = ({
   const activeIncomingByPeerTypeRef = useRef({});
   const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
-
-  // KEY FIX: a map of peerId -> <audio> element so remote voices auto-play
-  // independently of whether YOUR mic is on or off.
-  const audioElementsRef = useRef({});
+  const debugSeqRef = useRef(0);
 
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
   const userAvatar = user?.avatar ?? "boy";
 
-  // ── Attach a remote mic stream to a real <audio> element and play it ──
-  const playRemoteAudio = useCallback((peerId, stream) => {
-    // Reuse the existing element for this peer, or create a new one
-    if (!audioElementsRef.current[peerId]) {
-      const audio = new Audio();
-      audio.autoplay = true;
-      audioElementsRef.current[peerId] = audio;
-    }
-
-    const audio = audioElementsRef.current[peerId];
-    audio.srcObject = stream;
-    audio.play().catch((err) => {
-      // Autoplay can be blocked by the browser on the very first interaction.
-      // This is rare once the user has already clicked something in your app.
-      console.warn("Remote audio autoplay blocked for peer:", peerId, err);
-    });
-  }, []);
-
-  // ── Stop and remove the audio element for a peer that left ──
-  const stopRemoteAudio = useCallback((peerId) => {
-    const audio = audioElementsRef.current[peerId];
-    if (audio) {
-      audio.pause();
-      audio.srcObject = null;
-      delete audioElementsRef.current[peerId];
-    }
+  const debugLog = useCallback((event, data = {}) => {
+    const seq = ++debugSeqRef.current;
+    console.debug(`[voice-debug #${seq}] ${event}`, data);
   }, []);
 
   const addStream = useCallback(
     (peerId, stream, type, uname) => {
-      // If this is a mic stream, also wire it up to an audio element right away
-      if (type === "mic") {
-        playRemoteAudio(peerId, stream);
+      debugLog("add-stream", {
+        peerId,
+        type,
+        username: uname,
+        streamId: stream?.id,
+        audioTracks: stream?.getAudioTracks?.().length ?? 0,
+      });
+
+      const audioTrack = stream?.getAudioTracks?.()[0];
+      if (audioTrack) {
+        audioTrack.onmute = () =>
+          debugLog("remote-track-muted", { peerId, type, streamId: stream.id });
+        audioTrack.onunmute = () =>
+          debugLog("remote-track-unmuted", { peerId, type, streamId: stream.id });
+        audioTrack.onended = () =>
+          debugLog("remote-track-ended", { peerId, type, streamId: stream.id });
       }
 
       setRemoteStreams((prev) => {
@@ -72,20 +59,18 @@ export const usePeer = ({
         return [...filtered, { peerId, stream, type, username: uname }];
       });
     },
-    [playRemoteAudio],
+    [debugLog],
   );
 
   const removeStreamByType = useCallback(
     (peerId, type) => {
-      if (type === "mic") {
-        stopRemoteAudio(peerId);
-      }
+      debugLog("remove-stream-by-type", { peerId, type });
       setRemoteStreams((prev) => {
         const next = prev.filter((s) => !(s.peerId === peerId && s.type === type));
         return next.length === prev.length ? prev : next;
       });
     },
-    [stopRemoteAudio],
+    [debugLog],
   );
 
   const callPeer = useCallback(
@@ -102,17 +87,33 @@ export const usePeer = ({
       const call = peerRef.current.call(peerId, stream, {
         metadata: { type, username: uname },
       });
+      debugLog("outgoing-call-created", {
+        callKey,
+        peerId,
+        type,
+        localStreamId: stream?.id,
+      });
 
       call.on("stream", (remoteStream) => {
+        debugLog("outgoing-call-stream", {
+          callKey,
+          peerId,
+          type,
+          remoteStreamId: remoteStream?.id,
+        });
         addStream(peerId, remoteStream, type, uname);
       });
 
       call.on("close", () => {
         // Outgoing call lifecycle should not tear down inbound media.
+        debugLog("outgoing-call-close", { callKey, peerId, type });
         delete outgoingCallsRef.current[callKey];
       });
 
-      call.on("error", (err) => console.error("Call error:", err));
+      call.on("error", (err) => {
+        debugLog("outgoing-call-error", { callKey, peerId, type, err: err?.message });
+        console.error("Call error:", err);
+      });
 
       outgoingCallsRef.current[callKey] = call;
     },
@@ -140,6 +141,7 @@ export const usePeer = ({
     peerRef.current = peer;
 
     peer.on("open", (peerId) => {
+      debugLog("peer-open", { peerId, roomCode, userId });
       socket.emit("join-room", {
         roomCode,
         user: { id: userId, username, role: userRole, avatar: userAvatar },
@@ -157,8 +159,19 @@ export const usePeer = ({
       // This is what was broken before: you were answering with micStreamRef
       // which could be null if mic was off, AND you weren't playing their audio.
       call.answer(localStream ?? undefined);
+      debugLog("incoming-call-answered", {
+        fromPeer: call.peer,
+        type: call.metadata?.type || "mic",
+        answeredWithLocalStream: Boolean(localStream),
+        localStreamId: localStream?.id || null,
+      });
 
       call.on("stream", (remoteStream) => {
+        debugLog("incoming-call-stream", {
+          fromPeer: call.peer,
+          type: call.metadata?.type || "mic",
+          remoteStreamId: remoteStream?.id,
+        });
         addStream(
           call.peer,
           remoteStream,
@@ -175,15 +188,39 @@ export const usePeer = ({
       call.on("close", () => {
         // Ignore stale close events from superseded incoming calls.
         if (activeIncomingByPeerTypeRef.current[peerTypeKey] === incomingCallKey) {
+          debugLog("incoming-call-close-active", {
+            fromPeer: call.peer,
+            type: incomingType,
+            incomingCallKey,
+          });
           removeStreamByType(call.peer, incomingType);
           delete activeIncomingByPeerTypeRef.current[peerTypeKey];
+        } else {
+          debugLog("incoming-call-close-stale", {
+            fromPeer: call.peer,
+            type: incomingType,
+            incomingCallKey,
+          });
         }
         delete incomingCallsRef.current[incomingCallKey];
       });
       call.on("error", (err) => {
         if (activeIncomingByPeerTypeRef.current[peerTypeKey] === incomingCallKey) {
+          debugLog("incoming-call-error-active", {
+            fromPeer: call.peer,
+            type: incomingType,
+            incomingCallKey,
+            err: err?.message,
+          });
           removeStreamByType(call.peer, incomingType);
           delete activeIncomingByPeerTypeRef.current[peerTypeKey];
+        } else {
+          debugLog("incoming-call-error-stale", {
+            fromPeer: call.peer,
+            type: incomingType,
+            incomingCallKey,
+            err: err?.message,
+          });
         }
         console.error("Call error:", err);
       });
@@ -220,13 +257,6 @@ export const usePeer = ({
     });
 
     return () => {
-      // Clean up all audio elements on unmount
-      Object.values(audioElementsRef.current).forEach((audio) => {
-        audio.pause();
-        audio.srcObject = null;
-      });
-      audioElementsRef.current = {};
-
       peer.destroy();
       peerRef.current = null;
       outgoingCallsRef.current = {};
