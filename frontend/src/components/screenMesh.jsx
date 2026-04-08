@@ -1,43 +1,35 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { VideoTexture, LinearFilter, SRGBColorSpace } from "three";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
 
-// ─── VideoMaterial ─────────────────────────────────────────────────────────────
-// Key insight: Three.js VideoTexture.needsUpdate must be set to true on EVERY
-// render frame — it does NOT auto-update inside React Three Fiber without
-// useFrame. Without this, the texture uploads one frame and then freezes,
-// showing black or a single frozen frame on the mesh.
 function VideoMaterial({ stream }) {
   const matRef = useRef(null);
-  const texRef = useRef(null);
-  const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!stream) return;
+    if (!stream || !matRef.current) return;
 
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
     video.srcObject = stream;
-    videoRef.current = video;
 
     const tex = new VideoTexture(video);
     tex.minFilter = LinearFilter;
     tex.magFilter = LinearFilter;
     tex.colorSpace = SRGBColorSpace;
-    texRef.current = tex;
 
-    if (matRef.current) {
-      matRef.current.map = tex;
-      matRef.current.needsUpdate = true;
-    }
+    matRef.current.map = tex;
+    matRef.current.needsUpdate = true;
 
+    // Play as soon as enough data is available so the texture gets real frames.
+    // Calling play() before 'canplay' fires is a common reason VideoTexture
+    // stays black — the video pipeline hasn't decoded any frames yet.
     const tryPlay = () => {
       video.play().catch(() => {
+        // Autoplay blocked — retry on the next user gesture
         const retry = () => video.play().catch(() => {});
         document.addEventListener("click", retry, {
           once: true,
@@ -51,34 +43,39 @@ function VideoMaterial({ stream }) {
     };
 
     if (video.readyState >= 2) {
+      // Already have data (e.g. local sharer's own mesh)
       tryPlay();
     } else {
       video.addEventListener("canplay", tryPlay, { once: true });
     }
 
+    // Force texture refresh every animation frame until the video is playing.
+    // R3F's built-in VideoTexture update only fires after the first decoded
+    // frame is available — without this pump the mesh can stay black for
+    // several seconds on the receiving side.
+    let rafId;
+    const pumpTexture = () => {
+      if (!matRef.current) return;
+      tex.needsUpdate = true;
+      matRef.current.needsUpdate = true;
+      if (video.paused || video.readyState < 2) {
+        rafId = requestAnimationFrame(pumpTexture);
+      }
+    };
+    rafId = requestAnimationFrame(pumpTexture);
+
     return () => {
+      cancelAnimationFrame(rafId);
       video.removeEventListener("canplay", tryPlay);
       video.pause();
       video.srcObject = null;
       tex.dispose();
-      texRef.current = null;
-      videoRef.current = null;
       if (matRef.current) {
         matRef.current.map = null;
         matRef.current.needsUpdate = true;
       }
     };
   }, [stream]);
-
-  // ✅ This is the critical fix: tell Three.js to re-upload the video texture
-  // to the GPU on every single render frame. Without this, VideoTexture only
-  // uploads once and the mesh stays black or frozen.
-  useFrame(() => {
-    const tex = texRef.current;
-    const video = videoRef.current;
-    if (!tex || !video || video.readyState < 2) return;
-    tex.needsUpdate = true;
-  });
 
   return <meshStandardMaterial ref={matRef} toneMapped={false} />;
 }
@@ -172,7 +169,7 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [screenStream]);
 
-  // Fullscreen overlay — rendered outside the Canvas via a portal
+  // Fullscreen overlay
   useEffect(() => {
     if (!fullscreen || !screenStream) return;
     const container = document.createElement("div");
