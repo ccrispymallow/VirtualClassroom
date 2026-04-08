@@ -317,6 +317,7 @@ export const usePeer = ({
       peerRef.current?.destroy();
       peerRef.current = null;
       callsRef.current = {};
+      knownPeersRef.current = new Set();
       // Clean up the silent AudioContext if it was created
       if (silentCtxRef.current && silentCtxRef.current.state !== "closed") {
         silentCtxRef.current.close();
