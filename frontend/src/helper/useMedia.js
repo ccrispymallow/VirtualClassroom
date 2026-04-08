@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 
 export const useMedia = () => {
   const micStreamRef = useRef(null);
@@ -9,10 +9,13 @@ export const useMedia = () => {
   const startMic = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
       micStreamRef.current = stream;
       setMicOn(true);
       return stream;
-    } catch (err) {
+    } catch {
       alert("Microphone access denied.");
       return null;
     }
@@ -24,7 +27,6 @@ export const useMedia = () => {
     setMicOn(false);
   }, []);
 
-  // Add 'onStopCallback' as a parameter
   const startScreen = useCallback(async (onStopCallback) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -48,24 +50,38 @@ export const useMedia = () => {
       screenStreamRef.current = stream;
 
       videoTrack.onended = () => {
+        if (screenStreamRef.current !== stream) return;
         screenStreamRef.current = null;
         setScreenOn(false);
-        if (onStopCallback) onStopCallback();
+        onStopCallback?.();
       };
 
       setScreenOn(true);
       return stream;
-    } catch (err) {
+    } catch {
       return null; // User clicked Cancel
     }
   }, []);
 
-  // Also add it to the manual stop function just in case
-  const stopScreen = useCallback((onStopCallback) => {
-    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+  const stopScreen = useCallback(() => {
+    screenStreamRef.current?.getTracks().forEach((track) => {
+      track.onended = null;
+      track.stop();
+    });
     screenStreamRef.current = null;
     setScreenOn(false);
-    if (onStopCallback) onStopCallback();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      micStreamRef.current?.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current?.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
+      micStreamRef.current = null;
+      screenStreamRef.current = null;
+    };
   }, []);
 
   return {

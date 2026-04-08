@@ -25,6 +25,23 @@ const getRoomIdByCode = async (roomCode) => {
 
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
+    const notifyPeerLeft = (roomCode, participant) => {
+      if (!participant) return;
+
+      io.to(roomCode).emit("peer-left", {
+        userId: participant.id,
+        peerId: participant.peerId,
+      });
+
+      if (String(roomScreenShare[roomCode]) === String(participant.id)) {
+        delete roomScreenShare[roomCode];
+        io.to(roomCode).emit("screen-share-update", {
+          userId: String(participant.id),
+          active: false,
+        });
+      }
+    };
+
     socket.on("join-room", ({ roomCode, user, peerId }) => {
       socket.join(roomCode);
       if (!rooms[roomCode]) rooms[roomCode] = [];
@@ -232,11 +249,11 @@ export const initSocket = (io) => {
 
     socket.on("leave-room", ({ roomCode, userId }) => {
       if (rooms[roomCode]) {
+        const departingParticipant = rooms[roomCode].find((p) => p.id === userId);
+        notifyPeerLeft(roomCode, departingParticipant);
         rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
         io.to(roomCode).emit("participants-update", rooms[roomCode]);
       }
-      if (String(roomScreenShare[roomCode]) === String(userId))
-        delete roomScreenShare[roomCode];
       socket.leave(roomCode);
     });
 
@@ -312,6 +329,7 @@ export const initSocket = (io) => {
         const target = rooms[roomCode].find((p) => p.id === userId);
         if (target) {
           io.to(target.socketId).emit("you-were-removed");
+          notifyPeerLeft(roomCode, target);
           rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
           io.to(roomCode).emit("participants-update", rooms[roomCode]);
         }
@@ -367,8 +385,7 @@ export const initSocket = (io) => {
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
         const p = rooms[roomCode].find((p) => p.socketId === socket.id);
-        if (p && String(roomScreenShare[roomCode]) === String(p.id))
-          delete roomScreenShare[roomCode];
+        notifyPeerLeft(roomCode, p);
         const before = rooms[roomCode].length;
         rooms[roomCode] = rooms[roomCode].filter(
           (p) => p.socketId !== socket.id,
