@@ -13,8 +13,19 @@ export default function RemoteStream({ stream, type, username }) {
       try {
         await mediaEl.play();
       } catch {
-        // If the incoming stream has audio, autoplay can be blocked.
-        // Retry muted so video frames still render instead of a black pane.
+        if (type === "mic") {
+          const retry = () => {
+            mediaEl.play().catch(() => {});
+          };
+          document.addEventListener("click", retry, { capture: true, once: true });
+          document.addEventListener("keydown", retry, {
+            capture: true,
+            once: true,
+          });
+          return;
+        }
+
+        // Retry video muted so frames still render even if autoplay is restricted.
         mediaEl.muted = true;
         try {
           await mediaEl.play();
@@ -35,7 +46,7 @@ export default function RemoteStream({ stream, type, username }) {
       mediaEl.removeEventListener("loadedmetadata", onLoadedMetadata);
       mediaEl.srcObject = null;
     };
-  }, [stream]);
+  }, [stream, type]);
 
   if (type === "mic") {
     // Audio only — invisible element

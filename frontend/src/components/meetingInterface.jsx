@@ -39,17 +39,6 @@ const EMOTES = [
   { label: "Raise Hand", key: "raise", icon: <HandIcon size={14} /> },
 ];
 
-const RemoteMicStreams = memo(function RemoteMicStreams({ streams }) {
-  return streams.map((s) => (
-    <RemoteStream
-      key={`${s.peerId}-mic`}
-      stream={s.stream}
-      type={s.type}
-      username={s.username}
-    />
-  ));
-});
-
 const MeetingTopBar = memo(function MeetingTopBar({
   roomCode,
   roomName,
@@ -522,6 +511,7 @@ const MeetingInterface = () => {
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
+    resetPeerSession,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   const handleNetworkScreenStop = useCallback(() => {
@@ -530,19 +520,59 @@ const MeetingInterface = () => {
   }, [stopScreenCalls, roomCode, user.id]);
 
   const screenOnRef = useRef(screenOn);
+  const teardownInProgressRef = useRef(false);
   useEffect(() => {
     screenOnRef.current = screenOn;
   }, [screenOn]);
+
+  const cleanupMeetingState = useCallback(() => {
+    if (teardownInProgressRef.current) return;
+    teardownInProgressRef.current = true;
+
+    const hadScreen = !!screenStreamRef.current || screenOnRef.current;
+    const hadMic = !!micStreamRef.current || micOn;
+
+    if (hadScreen) {
+      stopScreen();
+      handleNetworkScreenStop();
+    }
+
+    if (hadMic) {
+      stopMicCalls();
+      stopMic();
+      socket.emit("mic-status", { roomCode, userId: user.id, mic: false });
+      setParticipants((prev) =>
+        prev.map((p) => (p.id === user.id ? { ...p, mic: false } : p)),
+      );
+    }
+
+    setScreenStream(null);
+    resetPeerSession();
+  }, [
+    handleNetworkScreenStop,
+    micOn,
+    micStreamRef,
+    resetPeerSession,
+    roomCode,
+    screenStreamRef,
+    setParticipants,
+    setScreenStream,
+    stopMic,
+    stopMicCalls,
+    stopScreen,
+    user.id,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      cleanupMeetingState();
+    };
+  }, [cleanupMeetingState]);
 
   const remoteScreen = useMemo(
     () => remoteStreams.find((s) => s.type === "screen"),
     [remoteStreams],
   );
-  const micRemoteStreams = useMemo(
-    () => remoteStreams.filter((s) => s.type === "mic"),
-    [remoteStreams],
-  );
-
   const raisedHandCount = useMemo(() => {
     return participants.filter((p) => {
       if (p.id === user.id) return myEmote === "raise";
@@ -573,12 +603,13 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     socket.on("you-were-removed", () => {
+      cleanupMeetingState();
       alert("You have been removed from the room by the instructor.");
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     });
     return () => socket.off("you-were-removed");
-  }, [navigate]);
+  }, [cleanupMeetingState, navigate]);
 
   useEffect(() => {
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
@@ -587,7 +618,8 @@ const MeetingInterface = () => {
         String(sharingUserId) !== String(user.id) &&
         screenOnRef.current
       ) {
-        stopScreen(handleNetworkScreenStop);
+        stopScreen();
+        handleNetworkScreenStop();
       }
     });
     return () => {
@@ -597,11 +629,13 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     const handleRoomEnded = ({ message }) => {
+      cleanupMeetingState();
       alert(message);
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     };
     const handleRoomEndedByYou = ({ message }) => {
+      cleanupMeetingState();
       setChatMessages([]);
       alert(message);
       localStorage.removeItem("currentRoom");
@@ -618,7 +652,7 @@ const MeetingInterface = () => {
       socket.off("room-ended-by-you", handleRoomEndedByYou);
       socket.off("room-end-error", handleRoomEndError);
     };
-  }, [navigate, setChatMessages]);
+  }, [cleanupMeetingState, navigate, setChatMessages]);
 
   useEffect(() => {
     if (!room.id) return;
@@ -722,19 +756,25 @@ const MeetingInterface = () => {
   }, [deviceSections]);
 
   const handleMicToggle = useCallback(async () => {
-    const nextMic = !micOn;
-    if (nextMic) {
-      const stream = await startMic();
-      if (stream) broadcastMic(stream);
-    } else {
+    if (micOn) {
       // Close outgoing mic calls first so remote peers' incoming call close
       // handlers fire and they immediately remove our stream from their UI.
       stopMicCalls();
       stopMic();
+      socket.emit("mic-status", { roomCode, userId: user.id, mic: false });
+      setParticipants((prev) =>
+        prev.map((p) => (p.id === user.id ? { ...p, mic: false } : p)),
+      );
+      return;
     }
-    socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
+
+    const stream = await startMic();
+    if (!stream) return;
+
+    broadcastMic(stream);
+    socket.emit("mic-status", { roomCode, userId: user.id, mic: true });
     setParticipants((prev) =>
-      prev.map((p) => (p.id === user.id ? { ...p, mic: nextMic } : p)),
+      prev.map((p) => (p.id === user.id ? { ...p, mic: true } : p)),
     );
   }, [
     micOn,
@@ -749,8 +789,8 @@ const MeetingInterface = () => {
 
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
-      stopScreen(handleNetworkScreenStop);
-      socket.emit("screen-share-stop", { roomCode, userId: user.id });
+      stopScreen();
+      handleNetworkScreenStop();
     } else {
       if (remoteScreen) {
         alert("Someone is already sharing their screen.");
@@ -759,14 +799,22 @@ const MeetingInterface = () => {
       const stream = await startScreen(handleNetworkScreenStop);
       if (!stream) return;
       const approved = await new Promise((resolve) => {
-        socket.once("screen-share-approved", () => resolve(true));
-        socket.once("screen-share-rejected", () => resolve(false));
+        const handleApproved = () => {
+          socket.off("screen-share-rejected", handleRejected);
+          resolve(true);
+        };
+        const handleRejected = () => {
+          socket.off("screen-share-approved", handleApproved);
+          resolve(false);
+        };
+        socket.once("screen-share-approved", handleApproved);
+        socket.once("screen-share-rejected", handleRejected);
         socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
         broadcastScreen(stream);
       } else {
-        stream.getTracks().forEach((t) => t.stop());
+        stopScreen();
         alert("Someone is already sharing their screen.");
       }
     }
@@ -786,11 +834,12 @@ const MeetingInterface = () => {
       "Are you sure you want to leave the meeting?",
     );
     if (confirmed) {
+      cleanupMeetingState();
       socket.emit("leave-room", { roomCode, userId: user.id });
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     }
-  }, [roomCode, user.id, navigate]);
+  }, [cleanupMeetingState, roomCode, user.id, navigate]);
 
   const handleEndForAll = useCallback(async () => {
     const confirmed = window.confirm(
@@ -1092,7 +1141,14 @@ const MeetingInterface = () => {
         </div>
       )}
 
-      <RemoteMicStreams streams={micRemoteStreams} />
+      {remoteScreen && (
+        <RemoteStream
+          key={`${remoteScreen.peerId}-screen`}
+          stream={remoteScreen.stream}
+          type="screen"
+          username={remoteScreen.username}
+        />
+      )}
       <MeetingTopBar
         roomCode={roomCode}
         roomName={room.room_name}
