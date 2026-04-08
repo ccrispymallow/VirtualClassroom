@@ -481,7 +481,6 @@ const MeetingInterface = () => {
   const [chatInput, setChatInput] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const chatEndRef = useRef(null);
-  const callsRef = useRef({});
   const showChatRef = useRef(showChat);
   const [copyMessage, setCopyMessage] = useState("");
   const copyTimerRef = useRef(null);
@@ -519,8 +518,13 @@ const MeetingInterface = () => {
     stopScreen,
   } = useMedia();
 
-  const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
-    usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
+  const {
+    remoteStreams,
+    broadcastMic,
+    broadcastScreen,
+    stopScreenCalls,
+    callsRef,
+  } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   useEffect(() => {
     acquireMicSilently(callsRef);
