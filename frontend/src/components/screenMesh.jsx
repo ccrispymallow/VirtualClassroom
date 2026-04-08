@@ -1,11 +1,48 @@
-import { Suspense, useEffect, useState, useCallback } from "react";
-import { useVideoTexture, Html } from "@react-three/drei";
+import { useEffect, useMemo, useCallback, useState } from "react";
+import { Html } from "@react-three/drei";
+import { VideoTexture, LinearFilter, SRGBColorSpace } from "three";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
 
-// ─── Video material using useVideoTexture (auto-updates reactively) ───────────
+let sharedScreenVideoElement = null;
+function getSharedScreenVideoElement() {
+  if (!sharedScreenVideoElement) {
+    const element = document.createElement("video");
+    element.muted = true;
+    element.playsInline = true;
+    element.style.display = "none";
+    sharedScreenVideoElement = element;
+  }
+  return sharedScreenVideoElement;
+}
+
 function VideoMaterial({ stream }) {
-  const texture = useVideoTexture(stream, { muted: true });
+  const texture = useMemo(() => {
+    if (!stream) return null;
+    const video = getSharedScreenVideoElement();
+    video.srcObject = stream;
+    void video.play().catch(() => {});
+
+    const tex = new VideoTexture(video);
+    tex.minFilter = LinearFilter;
+    tex.magFilter = LinearFilter;
+    tex.colorSpace = SRGBColorSpace;
+    return tex;
+  }, [stream]);
+
+  useEffect(() => {
+    return () => {
+      if (!texture) return;
+      const media = texture.image;
+      if (media instanceof HTMLVideoElement) {
+        media.pause();
+        media.srcObject = null;
+      }
+      texture.dispose();
+    };
+  }, [texture]);
+
+  if (!texture) return <meshStandardMaterial color="#0a0a0a" toneMapped={false} />;
   return <meshStandardMaterial map={texture} toneMapped={false} />;
 }
 
@@ -117,9 +154,7 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
       <planeGeometry args={[4.5, 2.2]} />
 
       {isActive ? (
-        <Suspense fallback={<meshStandardMaterial color="#0a0a0a" />}>
-          <VideoMaterial stream={screenStream} />
-        </Suspense>
+        <VideoMaterial stream={screenStream} />
       ) : (
         <meshStandardMaterial color="#0a0a0a" toneMapped={false} />
       )}
