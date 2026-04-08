@@ -526,8 +526,9 @@ const MeetingInterface = () => {
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
+    setScreenStream(null);
     socket.emit("screen-share-stop", { roomCode, userId: user.id });
-  }, [stopScreenCalls, roomCode, user.id]);
+  }, [stopScreenCalls, setScreenStream, roomCode, user.id]);
 
   const screenOnRef = useRef(screenOn);
   useEffect(() => {
@@ -565,11 +566,19 @@ const MeetingInterface = () => {
     showChatRef.current = showChat;
   }, [showChat]);
 
+  // Sync remote screen to the 3D screen mesh.
+  // Local screen is set/cleared directly in handleScreenToggle so we don't
+  // depend on the async screenOn state update racing with broadcastScreen().
   useEffect(() => {
-    const activeStream =
-      remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
-    setScreenStream((prev) => (prev === activeStream ? prev : activeStream));
-  }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
+    if (remoteScreen?.stream) {
+      setScreenStream((prev) =>
+        prev === remoteScreen.stream ? prev : remoteScreen.stream,
+      );
+    } else if (!screenOn) {
+      // Only clear when there's no remote share AND we're not sharing locally.
+      setScreenStream((prev) => (prev === null ? prev : null));
+    }
+  }, [remoteScreen, screenOn, setScreenStream]);
 
   useEffect(() => {
     socket.on("you-were-removed", () => {
@@ -750,6 +759,7 @@ const MeetingInterface = () => {
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
       stopScreen(handleNetworkScreenStop);
+      setScreenStream(null);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
       if (remoteScreen) {
@@ -764,6 +774,10 @@ const MeetingInterface = () => {
         socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
+        // ✅ Set the stream on the 3D mesh immediately — don't wait for the
+        // screenOn state to propagate through the useEffect, which would miss
+        // the first few frames and leave the mesh blank for other peers.
+        setScreenStream(stream);
         broadcastScreen(stream);
       } else {
         stream.getTracks().forEach((t) => t.stop());
@@ -776,6 +790,7 @@ const MeetingInterface = () => {
     stopScreen,
     startScreen,
     broadcastScreen,
+    setScreenStream,
     handleNetworkScreenStop,
     roomCode,
     user.id,
