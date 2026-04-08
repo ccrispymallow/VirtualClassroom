@@ -9,15 +9,10 @@ export const usePeer = ({
   screenStreamRef,
 }) => {
   const peerRef = useRef(null);
-  // callsRef stores ONLY outgoing calls (calls WE initiated to remote peers).
-  // Incoming calls are NEVER stored here — mixing them caused key collisions
-  // that destroyed remote audio/video whenever a second peer turned on their mic.
   const callsRef = useRef({});
   const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
 
-  // peerId -> <audio> element map so remote voices play independently of
-  // whether our own mic is on or off.
   const audioElementsRef = useRef({});
 
   const userId = user?.id ?? "";
@@ -32,9 +27,20 @@ export const usePeer = ({
       audioElementsRef.current[peerId] = audio;
     }
     const audio = audioElementsRef.current[peerId];
+    // Don't reassign the same stream — avoids a redundant interrupted play()
+    if (audio.srcObject === stream) return;
     audio.srcObject = stream;
-    audio.play().catch((err) => {
-      console.warn("Remote audio autoplay blocked for peer:", peerId, err);
+    audio.play().catch(() => {
+      // Browser blocked autoplay (no prior user gesture yet).
+      // Retry silently on the next click or keypress anywhere on the page.
+      const retry = () => {
+        audio.play().catch(() => {});
+      };
+      document.addEventListener("click", retry, { capture: true, once: true });
+      document.addEventListener("keydown", retry, {
+        capture: true,
+        once: true,
+      });
     });
   }, []);
 
@@ -100,9 +106,6 @@ export const usePeer = ({
 
       const callKey = `${peerId}-${type}`;
 
-      // Close the previous OUTGOING call for this peer+type if one exists.
-      // Because callsRef only contains outgoing calls, we will never
-      // accidentally close an incoming call from this peer.
       if (callsRef.current[callKey]) {
         callsRef.current[callKey].close();
         delete callsRef.current[callKey];
@@ -112,15 +115,10 @@ export const usePeer = ({
         metadata: { type, username: uname },
       });
 
-      // The remote peer always answers with call.answer() — no stream back.
-      // This event is kept as a safety net but should not fire in normal use.
       call.on("stream", (remoteStream) => {
         addStream(peerId, remoteStream, type, uname);
       });
 
-      // Outgoing call closing: just clean up the tracking entry.
-      // We do NOT remove remote streams here — that is handled exclusively
-      // by the INCOMING call's close event on our side.
       call.on("close", () => {
         delete callsRef.current[callKey];
       });
@@ -161,21 +159,7 @@ export const usePeer = ({
     });
 
     peer.on("call", (call) => {
-      // Always answer with NO stream.
-      //
-      // The previous code answered with localStream which caused two problems:
-      //   1. Key collision: callsRef stored incoming calls under the same key as
-      //      outgoing ones. When B later called A, callPeer found A's key already
-      //      occupied by the *incoming* call from A and closed it, destroying A's
-      //      stream on B's side — exactly the "can't hear after someone turns on
-      //      mic" bug.
-      //   2. Bidirectional confusion: answering with your own stream created a
-      //      reverse flow that doubled connections and broke cross-platform (Mac ↔
-      //      Windows) scenarios due to SDP negotiation differences.
-      //
-      // The reference implementation (fampiyush/virtual-meet) uses call.answer()
-      // with no stream for the same reason.
-      call.answer();
+      call.answer(new MediaStream());
 
       call.on("stream", (remoteStream) => {
         addStream(
@@ -188,8 +172,6 @@ export const usePeer = ({
 
       const incomingType = call.metadata?.type || "mic";
 
-      // When the remote peer closes their outgoing call (they turn off their
-      // mic/screen, or they disconnect), remove their stream from our state.
       call.on("close", () => removeStreamByType(call.peer, incomingType));
       call.on("error", (err) => console.error("Incoming call error:", err));
 
@@ -267,9 +249,6 @@ export const usePeer = ({
     [callPeer, username, getAllPeerIds],
   );
 
-  // Close all OUTGOING mic calls. Call this when turning off the microphone
-  // so remote peers' incoming call close handlers fire and they remove our
-  // stream from their UI. Without this, ghost connections linger.
   const stopMicCalls = useCallback(() => {
     Object.keys(callsRef.current)
       .filter((key) => key.endsWith("-mic"))
@@ -279,11 +258,6 @@ export const usePeer = ({
       });
   }, []);
 
-  // Close all OUTGOING screen calls. Remote peers' incoming call close
-  // handlers will remove our screen stream from their UI automatically.
-  // We do NOT manually wipe remote screen streams here — if somehow a remote
-  // sharer's stream is in our state, it must only be removed by its own
-  // incoming call's close event.
   const stopScreenCalls = useCallback(() => {
     Object.keys(callsRef.current)
       .filter((key) => key.endsWith("-screen"))
