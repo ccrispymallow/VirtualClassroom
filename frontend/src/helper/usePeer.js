@@ -21,6 +21,19 @@ export const usePeer = ({
   const userRole = user?.role ?? "";
   const userAvatar = user?.avatar ?? "boy";
 
+  // const playRemoteAudio = useCallback((peerId, stream) => {
+  //   if (!audioElementsRef.current[peerId]) {
+  //     const audio = new Audio();
+  //     audio.autoplay = true;
+  //     audioElementsRef.current[peerId] = audio;
+  //   }
+  //   const audio = audioElementsRef.current[peerId];
+  //   audio.srcObject = stream;
+  //   audio.play().catch((err) => {
+  //     console.warn("Remote audio autoplay blocked for peer:", peerId, err);
+  //   });
+  // }, []);
+
   const playRemoteAudio = useCallback((peerId, stream) => {
     if (!audioElementsRef.current[peerId]) {
       const audio = new Audio();
@@ -28,9 +41,14 @@ export const usePeer = ({
       audioElementsRef.current[peerId] = audio;
     }
     const audio = audioElementsRef.current[peerId];
+    if (audio.srcObject === stream) return;
     audio.srcObject = stream;
-    audio.play().catch((err) => {
-      console.warn("Remote audio autoplay blocked for peer:", peerId, err);
+    audio.play().catch(() => {
+      const retry = () => {
+        audio.play().catch(() => {});
+        document.removeEventListener("click", retry);
+      };
+      document.addEventListener("click", retry);
     });
   }, []);
 
@@ -144,11 +162,34 @@ export const usePeer = ({
       !import.meta.env.VITE_PEER_HOST ||
       import.meta.env.VITE_PEER_HOST === "localhost";
 
+    // const peer = new Peer(undefined, {
+    //   host: import.meta.env.VITE_PEER_HOST || "localhost",
+    //   port: isLocal ? 9000 : 443,
+    //   path: "/peerjs",
+    //   secure: !isLocal,
+    // });
+
     const peer = new Peer(undefined, {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
       port: isLocal ? 9000 : 443,
       path: "/peerjs",
       secure: !isLocal,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+          {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject",
+          },
+        ],
+      },
     });
 
     peerRef.current = peer;
