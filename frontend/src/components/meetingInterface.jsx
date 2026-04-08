@@ -39,17 +39,13 @@ const EMOTES = [
   { label: "Raise Hand", key: "raise", icon: <HandIcon size={14} /> },
 ];
 
-const RemoteMicStreams = memo(function RemoteMicStreams({
-  streams,
-  enabledByPeerId,
-}) {
+const RemoteMicStreams = memo(function RemoteMicStreams({ streams }) {
   return streams.map((s) => (
     <RemoteStream
       key={`${s.peerId}-mic`}
       stream={s.stream}
       type={s.type}
       username={s.username}
-      enabled={enabledByPeerId?.[s.peerId] ?? true}
     />
   ));
 });
@@ -126,7 +122,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
         )}
         {roomName && (
           <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            {roomName}
+            · {roomName}
           </span>
         )}
       </div>
@@ -520,19 +516,19 @@ const MeetingInterface = () => {
     startScreen,
     stopScreen,
   } = useMedia();
-
   const {
     remoteStreams,
     broadcastMic,
     broadcastScreen,
+    stopMicCalls,
     stopScreenCalls,
-    getSilentStream,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
+    setScreenStream(null);
     socket.emit("screen-share-stop", { roomCode, userId: user.id });
-  }, [stopScreenCalls, roomCode, user.id]);
+  }, [stopScreenCalls, setScreenStream, roomCode, user.id]);
 
   const screenOnRef = useRef(screenOn);
   useEffect(() => {
@@ -543,15 +539,6 @@ const MeetingInterface = () => {
     () => remoteStreams.find((s) => s.type === "screen"),
     [remoteStreams],
   );
-  const micRemoteEnabledByPeerId = useMemo(() => {
-    return participants.reduce((map, participant) => {
-      if (participant.peerId) {
-        map[participant.peerId] = Boolean(participant.mic);
-      }
-      return map;
-    }, {});
-  }, [participants]);
-
   const micRemoteStreams = useMemo(
     () => remoteStreams.filter((s) => s.type === "mic"),
     [remoteStreams],
@@ -579,11 +566,19 @@ const MeetingInterface = () => {
     showChatRef.current = showChat;
   }, [showChat]);
 
+  // Sync remote screen to the 3D screen mesh.
+  // Local screen is set/cleared directly in handleScreenToggle so we don't
+  // depend on the async screenOn state update racing with broadcastScreen().
   useEffect(() => {
-    const activeStream =
-      remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
-    setScreenStream((prev) => (prev === activeStream ? prev : activeStream));
-  }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
+    if (remoteScreen?.stream) {
+      setScreenStream((prev) =>
+        prev === remoteScreen.stream ? prev : remoteScreen.stream,
+      );
+    } else if (!screenOn) {
+      // Only clear when there's no remote share AND we're not sharing locally.
+      setScreenStream((prev) => (prev === null ? prev : null));
+    }
+  }, [remoteScreen, screenOn, setScreenStream]);
 
   useEffect(() => {
     socket.on("you-were-removed", () => {
@@ -739,11 +734,11 @@ const MeetingInterface = () => {
     const nextMic = !micOn;
     if (nextMic) {
       const stream = await startMic();
-      if (stream) broadcastMic(stream); // replaces silent tracks in existing calls
+      if (stream) broadcastMic(stream);
     } else {
-      // ✅ Don't close calls — just swap to silent so you can still hear others
-      const silent = getSilentStream(); // need to expose this from usePeer
-      broadcastMic(silent);
+      // Close outgoing mic calls first so remote peers' incoming call close
+      // handlers fire and they immediately remove our stream from their UI.
+      stopMicCalls();
       stopMic();
     }
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
@@ -754,7 +749,7 @@ const MeetingInterface = () => {
     micOn,
     startMic,
     broadcastMic,
-    getSilentStream,
+    stopMicCalls,
     stopMic,
     roomCode,
     user.id,
@@ -764,6 +759,7 @@ const MeetingInterface = () => {
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
       stopScreen(handleNetworkScreenStop);
+      setScreenStream(null);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
       if (remoteScreen) {
@@ -778,6 +774,10 @@ const MeetingInterface = () => {
         socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
+        // ✅ Set the stream on the 3D mesh immediately — don't wait for the
+        // screenOn state to propagate through the useEffect, which would miss
+        // the first few frames and leave the mesh blank for other peers.
+        setScreenStream(stream);
         broadcastScreen(stream);
       } else {
         stream.getTracks().forEach((t) => t.stop());
@@ -790,6 +790,7 @@ const MeetingInterface = () => {
     stopScreen,
     startScreen,
     broadcastScreen,
+    setScreenStream,
     handleNetworkScreenStop,
     roomCode,
     user.id,
@@ -1106,10 +1107,7 @@ const MeetingInterface = () => {
         </div>
       )}
 
-      <RemoteMicStreams
-        streams={micRemoteStreams}
-        enabledByPeerId={micRemoteEnabledByPeerId}
-      />
+      <RemoteMicStreams streams={micRemoteStreams} />
       <MeetingTopBar
         roomCode={roomCode}
         roomName={room.room_name}
