@@ -505,23 +505,25 @@ const MeetingInterface = () => {
     remaining: 0,
     summary: "",
   });
-  const { acquireMicSilently, ...rest } = useMedia();
-  useEffect(() => {
-    acquireMicSilently(callsRef);
-  }, []);
 
   const {
     micStreamRef,
     screenStreamRef,
     micOn,
     screenOn,
+    acquireMicSilently,
     startMic,
     stopMic,
     startScreen,
     stopScreen,
   } = useMedia();
+
   const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
     usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
+
+  useEffect(() => {
+    acquireMicSilently(callsRef);
+  }, []);
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
