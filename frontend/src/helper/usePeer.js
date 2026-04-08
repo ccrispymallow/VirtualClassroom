@@ -14,6 +14,8 @@ export const usePeer = ({
   const [remoteStreams, setRemoteStreams] = useState([]);
   const audioElementsRef = useRef({});
 
+  const callPeerRef = useRef(null);
+
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
@@ -125,6 +127,11 @@ export const usePeer = ({
     [removeStreamByType, addStream],
   );
 
+  // Keep callPeerRef always up to date so socket listeners use latest version
+  useEffect(() => {
+    callPeerRef.current = callPeer;
+  }, [callPeer]);
+
   const getAllPeerIds = useCallback(() => {
     return Array.from(knownPeersRef.current);
   }, []);
@@ -154,8 +161,14 @@ export const usePeer = ({
     });
 
     peer.on("call", (call) => {
-      const localStream = micStreamRef.current || new MediaStream();
-      call.answer(localStream);
+      const incomingType = call.metadata?.type === "screen" ? "screen" : "mic";
+
+      const answerStream =
+        incomingType === "screen"
+          ? new MediaStream()
+          : micStreamRef.current || new MediaStream();
+
+      call.answer(answerStream);
 
       const getIncomingType = (remoteStream) => {
         const metadataType = call.metadata?.type;
@@ -165,23 +178,23 @@ export const usePeer = ({
         return hasVideo ? "screen" : "mic";
       };
 
-      let incomingType = call.metadata?.type === "screen" ? "screen" : "mic";
+      let resolvedType = incomingType;
 
       call.on("stream", (remoteStream) => {
-        incomingType = getIncomingType(remoteStream);
+        resolvedType = getIncomingType(remoteStream);
         addStream(
           call.peer,
           remoteStream,
-          incomingType,
+          resolvedType,
           call.metadata?.username,
         );
 
-        if (incomingType === "mic") {
+        if (resolvedType === "mic") {
           playRemoteAudio(call.peer, remoteStream);
         }
       });
 
-      call.on("close", () => removeStreamByType(call.peer, incomingType));
+      call.on("close", () => removeStreamByType(call.peer, resolvedType));
       call.on("error", (err) => console.error("Call error:", err));
 
       const inCallKey = `in-${call.peer}-${incomingType}`;
@@ -198,10 +211,15 @@ export const usePeer = ({
       knownPeersRef.current.add(peerId);
 
       if (micStreamRef.current) {
-        callPeer(peerId, micStreamRef.current, "mic", username);
+        callPeerRef.current?.(peerId, micStreamRef.current, "mic", username);
       }
       if (screenStreamRef.current) {
-        callPeer(peerId, screenStreamRef.current, "screen", username);
+        callPeerRef.current?.(
+          peerId,
+          screenStreamRef.current,
+          "screen",
+          username,
+        );
       }
     });
 
@@ -211,10 +229,15 @@ export const usePeer = ({
         knownPeersRef.current.add(peerId);
 
         if (micStreamRef.current) {
-          callPeer(peerId, micStreamRef.current, "mic", username);
+          callPeerRef.current?.(peerId, micStreamRef.current, "mic", username);
         }
         if (screenStreamRef.current) {
-          callPeer(peerId, screenStreamRef.current, "screen", username);
+          callPeerRef.current?.(
+            peerId,
+            screenStreamRef.current,
+            "screen",
+            username,
+          );
         }
       });
     });
@@ -243,7 +266,6 @@ export const usePeer = ({
     username,
     userRole,
     userAvatar,
-    callPeer,
     addStream,
     playRemoteAudio,
     removeStreams,
@@ -277,13 +299,13 @@ export const usePeer = ({
       });
     setRemoteStreams((prev) => prev.filter((s) => s.type !== "screen"));
 
-    // Tell all peers via socket to remove your screen immediately
     socket.emit("stop-screen-share");
   }, [socket]);
 
   return {
     remoteStreams,
     peerRef,
+    callsRef,
     broadcastMic,
     broadcastScreen,
     stopScreenCalls,

@@ -10,7 +10,7 @@ export const useMedia = () => {
     async (activeCallsRef = null, deviceId = undefined) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: deviceId ? { deviceId } : true,
+          audio: deviceId ? { deviceId: { exact: deviceId } } : true,
           video: false,
         });
 
@@ -27,10 +27,8 @@ export const useMedia = () => {
               .find((s) => s.track?.kind === "audio");
 
             if (sender) {
-              // replaceTrack = no renegotiation, no reconnect needed
               sender.replaceTrack(newTrack);
             } else {
-              // Was answered with empty stream — add the track now
               pc.addTrack(newTrack, stream);
             }
           });
@@ -56,6 +54,50 @@ export const useMedia = () => {
     [],
   );
 
+  const acquireMicSilently = useCallback(
+    async (activeCallsRef = null, deviceId = undefined) => {
+      if (micStreamRef.current) return micStreamRef.current; // already acquired
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+          video: false,
+        });
+
+        // Immediately disable the track — user hasn't turned on mic yet
+        stream.getAudioTracks().forEach((t) => {
+          t.enabled = false;
+        });
+
+        micStreamRef.current = stream;
+        const newTrack = stream.getAudioTracks()[0];
+
+        // Inject into any already-open peer connections
+        if (activeCallsRef?.current) {
+          Object.values(activeCallsRef.current).forEach((call) => {
+            const pc = call.peerConnection;
+            if (!pc) return;
+            const sender = pc
+              .getSenders()
+              .find((s) => s.track?.kind === "audio");
+            if (sender) {
+              sender.replaceTrack(newTrack);
+            } else {
+              pc.addTrack(newTrack, stream);
+            }
+          });
+        }
+
+        // micOn stays false — track is present but disabled
+        return stream;
+      } catch (err) {
+        // Silent fail — user hasn't explicitly asked for mic yet
+        console.warn("Silent mic acquire failed:", err);
+        return null;
+      }
+    },
+    [],
+  );
+
   const stopMic = useCallback(() => {
     if (micStreamRef.current) {
       micStreamRef.current.getAudioTracks().forEach((t) => {
@@ -73,7 +115,6 @@ export const useMedia = () => {
         });
         setMicOn(true);
 
-        // Also ensure all peer connections have the track via replaceTrack
         if (activeCallsRef?.current) {
           const currentTrack = micStreamRef.current.getAudioTracks()[0];
           if (currentTrack) {
@@ -144,9 +185,6 @@ export const useMedia = () => {
     }
   }, []);
 
-  // ─────────────────────────────────────────────
-  // SCREEN SHARE — stop
-  // ─────────────────────────────────────────────
   const stopScreen = useCallback((onStopCallback) => {
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
@@ -160,6 +198,7 @@ export const useMedia = () => {
     micOn,
     screenOn,
     startMic,
+    acquireMicSilently, // NEW — call this when user joins room
     stopMic, // mute — track stays alive, you still hear others
     unmuteMic, // unmute — re-enables same track, no reconnect needed
     stopMicFully, // full stop — use when leaving room only

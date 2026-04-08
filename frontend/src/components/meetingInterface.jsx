@@ -505,6 +505,10 @@ const MeetingInterface = () => {
     remaining: 0,
     summary: "",
   });
+  const { acquireMicSilently, ...rest } = useMedia();
+  useEffect(() => {
+    acquireMicSilently(callsRef);
+  }, []);
 
   const {
     micStreamRef,
