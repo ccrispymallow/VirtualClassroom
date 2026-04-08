@@ -521,7 +521,6 @@ const MeetingInterface = () => {
     broadcastMic,
     broadcastScreen,
     stopMicCalls,
-    stopMicBroadcast,
     stopScreenCalls,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
@@ -730,7 +729,7 @@ const MeetingInterface = () => {
     } else {
       // Close outgoing mic calls first so remote peers' incoming call close
       // handlers fire and they immediately remove our stream from their UI.
-      stopMicBroadcast();
+      stopMicCalls();
       stopMic();
     }
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
