@@ -10,16 +10,10 @@ function VideoMaterial({ stream }) {
   useEffect(() => {
     if (!stream || !matRef.current) return;
 
-    const material = matRef.current;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
-    video.autoplay = true;
     video.srcObject = stream;
-    const handleLoadedMetadata = () => {
-      video.play().catch(() => {});
-    };
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.play().catch(() => {});
 
     const tex = new VideoTexture(video);
@@ -27,16 +21,17 @@ function VideoMaterial({ stream }) {
     tex.magFilter = LinearFilter;
     tex.colorSpace = SRGBColorSpace;
 
-    material.map = tex;
-    material.needsUpdate = true;
+    matRef.current.map = tex;
+    matRef.current.needsUpdate = true;
 
     return () => {
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.pause();
       video.srcObject = null;
       tex.dispose();
-      material.map = null;
-      material.needsUpdate = true;
+      if (matRef.current) {
+        matRef.current.map = null;
+        matRef.current.needsUpdate = true;
+      }
     };
   }, [stream]);
 

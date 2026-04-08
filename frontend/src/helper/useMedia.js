@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 
 export const useMedia = () => {
   const micStreamRef = useRef(null);
@@ -9,13 +9,10 @@ export const useMedia = () => {
   const startMic = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getAudioTracks().forEach((track) => {
-        track.enabled = true;
-      });
       micStreamRef.current = stream;
       setMicOn(true);
       return stream;
-    } catch {
+    } catch (err) {
       alert("Microphone access denied.");
       return null;
     }
@@ -27,6 +24,7 @@ export const useMedia = () => {
     setMicOn(false);
   }, []);
 
+  // Add 'onStopCallback' as a parameter
   const startScreen = useCallback(async (onStopCallback) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -50,38 +48,24 @@ export const useMedia = () => {
       screenStreamRef.current = stream;
 
       videoTrack.onended = () => {
-        if (screenStreamRef.current !== stream) return;
         screenStreamRef.current = null;
         setScreenOn(false);
-        onStopCallback?.();
+        if (onStopCallback) onStopCallback();
       };
 
       setScreenOn(true);
       return stream;
-    } catch {
+    } catch (err) {
       return null; // User clicked Cancel
     }
   }, []);
 
-  const stopScreen = useCallback(() => {
-    screenStreamRef.current?.getTracks().forEach((track) => {
-      track.onended = null;
-      track.stop();
-    });
+  // Also add it to the manual stop function just in case
+  const stopScreen = useCallback((onStopCallback) => {
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     setScreenOn(false);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      micStreamRef.current?.getTracks().forEach((track) => track.stop());
-      screenStreamRef.current?.getTracks().forEach((track) => {
-        track.onended = null;
-        track.stop();
-      });
-      micStreamRef.current = null;
-      screenStreamRef.current = null;
-    };
+    if (onStopCallback) onStopCallback();
   }, []);
 
   return {
