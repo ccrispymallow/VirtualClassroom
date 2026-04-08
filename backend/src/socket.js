@@ -13,9 +13,10 @@ const getRoomIdByCode = async (roomCode) => {
     return cached.id;
   }
 
-  const roomRes = await pool.query("SELECT id FROM classrooms WHERE room_code = $1", [
-    roomCode,
-  ]);
+  const roomRes = await pool.query(
+    "SELECT id FROM classrooms WHERE room_code = $1",
+    [roomCode],
+  );
   const roomId = roomRes.rows[0]?.id;
   if (roomId) {
     roomIdCache.set(roomCode, { id: roomId, cachedAt: Date.now() });
@@ -235,8 +236,14 @@ export const initSocket = (io) => {
         rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== userId);
         io.to(roomCode).emit("participants-update", rooms[roomCode]);
       }
-      if (String(roomScreenShare[roomCode]) === String(userId))
+      if (String(roomScreenShare[roomCode]) === String(userId)) {
         delete roomScreenShare[roomCode];
+        // Tell everyone in the room the share is gone
+        io.to(roomCode).emit("screen-share-update", {
+          userId: String(userId),
+          active: false,
+        });
+      }
       socket.leave(roomCode);
     });
 
@@ -317,6 +324,7 @@ export const initSocket = (io) => {
         }
       }
     });
+
     // board-announce: instructor posts and notifies students
     socket.on("board-announce", ({ roomCode, text, author }) => {
       socket.to(roomCode).emit("board-announcement-notify", { text, author });
@@ -359,7 +367,7 @@ export const initSocket = (io) => {
     socket.on("emote", ({ roomCode, userId, emote }) => {
       if (rooms[roomCode]) {
         const p = rooms[roomCode].find((p) => p.id === userId);
-        if (p) p.emote = emote; // store it
+        if (p) p.emote = emote;
       }
       socket.to(roomCode).emit("peer-emote", { userId, emote });
     });
@@ -367,8 +375,18 @@ export const initSocket = (io) => {
     socket.on("disconnect", () => {
       for (const roomCode in rooms) {
         const p = rooms[roomCode].find((p) => p.socketId === socket.id);
-        if (p && String(roomScreenShare[roomCode]) === String(p.id))
+        if (!p) continue;
+
+        // If this user was sharing their screen, broadcast the stop to the room
+        // BEFORE removing them so the room still exists to receive the event.
+        if (String(roomScreenShare[roomCode]) === String(p.id)) {
           delete roomScreenShare[roomCode];
+          io.to(roomCode).emit("screen-share-update", {
+            userId: String(p.id),
+            active: false,
+          });
+        }
+
         const before = rooms[roomCode].length;
         rooms[roomCode] = rooms[roomCode].filter(
           (p) => p.socketId !== socket.id,
