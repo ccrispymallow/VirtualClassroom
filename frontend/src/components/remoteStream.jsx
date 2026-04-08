@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export default function RemoteStream({ stream, type, username, enabled = true }) {
+export default function RemoteStream({ stream, type, username }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -11,14 +11,10 @@ export default function RemoteStream({ stream, type, username, enabled = true })
 
     const playMedia = async () => {
       try {
-        if (!enabled) {
-          mediaEl.pause();
-          return;
-        }
-        mediaEl.muted = false;
         await mediaEl.play();
       } catch {
-        // Autoplay may be blocked for audio/video.
+        // If the incoming stream has audio, autoplay can be blocked.
+        // Retry muted so video frames still render instead of a black pane.
         mediaEl.muted = true;
         try {
           await mediaEl.play();
@@ -39,11 +35,11 @@ export default function RemoteStream({ stream, type, username, enabled = true })
       mediaEl.removeEventListener("loadedmetadata", onLoadedMetadata);
       mediaEl.srcObject = null;
     };
-  }, [stream, enabled]);
+  }, [stream]);
 
   if (type === "mic") {
     // Audio only — invisible element
-    return <audio ref={ref} autoPlay playsInline muted={!enabled} />;
+    return <audio ref={ref} autoPlay playsInline />;
   }
 
   // Screen share — visible video
