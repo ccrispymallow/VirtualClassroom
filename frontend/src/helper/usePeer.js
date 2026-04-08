@@ -23,7 +23,7 @@ export const usePeer = ({
 
   const debugLog = useCallback((event, data = {}) => {
     const seq = ++debugSeqRef.current;
-    console.debug(`[voice-debug #${seq}] ${event}`, data);
+    console.log(`[voice-debug #${seq}] ${event}`, data);
   }, []);
 
   const addStream = useCallback(
