@@ -11,7 +11,6 @@ export const usePeer = ({
   const peerRef = useRef(null);
   const outgoingCallsRef = useRef({});
   const incomingCallsRef = useRef({});
-  const activeIncomingByPeerTypeRef = useRef({});
   const knownPeersRef = useRef(new Set());
   const [remoteStreams, setRemoteStreams] = useState([]);
 
@@ -82,6 +81,17 @@ export const usePeer = ({
       }
       setRemoteStreams((prev) => {
         const next = prev.filter((s) => !(s.peerId === peerId && s.type === type));
+        return next.length === prev.length ? prev : next;
+      });
+    },
+    [stopRemoteAudio],
+  );
+
+  const removeStreams = useCallback(
+    (peerId) => {
+      stopRemoteAudio(peerId);
+      setRemoteStreams((prev) => {
+        const next = prev.filter((s) => s.peerId !== peerId);
         return next.length === prev.length ? prev : next;
       });
     },
@@ -169,24 +179,12 @@ export const usePeer = ({
 
       const incomingType = call.metadata?.type || "mic";
       const incomingCallKey = `${call.peer}-${incomingType}-${Date.now()}-${Math.random()}`;
-      const peerTypeKey = `${call.peer}-${incomingType}`;
-      activeIncomingByPeerTypeRef.current[peerTypeKey] = incomingCallKey;
 
       call.on("close", () => {
-        // Ignore stale close events from superseded incoming calls.
-        if (activeIncomingByPeerTypeRef.current[peerTypeKey] === incomingCallKey) {
-          removeStreamByType(call.peer, incomingType);
-          delete activeIncomingByPeerTypeRef.current[peerTypeKey];
-        }
+        removeStreamByType(call.peer, incomingType);
         delete incomingCallsRef.current[incomingCallKey];
       });
-      call.on("error", (err) => {
-        if (activeIncomingByPeerTypeRef.current[peerTypeKey] === incomingCallKey) {
-          removeStreamByType(call.peer, incomingType);
-          delete activeIncomingByPeerTypeRef.current[peerTypeKey];
-        }
-        console.error("Call error:", err);
-      });
+      call.on("error", (err) => console.error("Call error:", err));
 
       incomingCallsRef.current[incomingCallKey] = call;
     });
@@ -231,7 +229,6 @@ export const usePeer = ({
       peerRef.current = null;
       outgoingCallsRef.current = {};
       incomingCallsRef.current = {};
-      activeIncomingByPeerTypeRef.current = {};
       socket.off("user-joined");
       socket.off("existing-peers");
     };
@@ -243,6 +240,7 @@ export const usePeer = ({
     userAvatar,
     callPeer,
     addStream,
+    removeStreams,
     removeStreamByType,
   ]);
 
