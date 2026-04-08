@@ -102,6 +102,7 @@ export const usePeer = ({
         ) {
           return;
         }
+        existingCall.off("close");
         existingCall.close();
         delete callsRef.current[callKey];
       }
@@ -189,9 +190,9 @@ export const usePeer = ({
           call.metadata?.username,
         );
 
-        if (resolvedType === "mic") {
-          playRemoteAudio(call.peer, remoteStream);
-        }
+        // if (resolvedType === "mic") {
+        //   playRemoteAudio(call.peer, remoteStream);
+        // }
       });
 
       call.on("close", () => removeStreamByType(call.peer, resolvedType));

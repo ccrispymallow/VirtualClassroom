@@ -514,6 +514,7 @@ const MeetingInterface = () => {
     acquireMicSilently,
     startMic,
     stopMic,
+    unmuteMic,
     startScreen,
     stopScreen,
   } = useMedia();
@@ -730,7 +731,7 @@ const MeetingInterface = () => {
   const handleMicToggle = useCallback(async () => {
     const nextMic = !micOn;
     if (nextMic) {
-      const stream = await startMic();
+      const stream = await unmuteMic(callsRef);
       if (stream) broadcastMic(stream);
     } else {
       stopMic();
