@@ -526,9 +526,8 @@ const MeetingInterface = () => {
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();
-    setScreenStream(null);
     socket.emit("screen-share-stop", { roomCode, userId: user.id });
-  }, [stopScreenCalls, setScreenStream, roomCode, user.id]);
+  }, [stopScreenCalls, roomCode, user.id]);
 
   const screenOnRef = useRef(screenOn);
   useEffect(() => {
@@ -566,15 +565,11 @@ const MeetingInterface = () => {
     showChatRef.current = showChat;
   }, [showChat]);
 
-  // Keep screenStream in sync with whoever is sharing remotely.
-  // Our own local share is set directly in handleScreenToggle below.
   useEffect(() => {
-    if (remoteScreen?.stream) {
-      setScreenStream(remoteScreen.stream);
-    } else if (!screenOn) {
-      setScreenStream(null);
-    }
-  }, [remoteScreen, screenOn, setScreenStream]);
+    const activeStream =
+      remoteScreen?.stream || (screenOn ? screenStreamRef.current : null);
+    setScreenStream((prev) => (prev === activeStream ? prev : activeStream));
+  }, [remoteScreen, screenOn, screenStreamRef, setScreenStream]);
 
   useEffect(() => {
     socket.on("you-were-removed", () => {
@@ -755,7 +750,6 @@ const MeetingInterface = () => {
   const handleScreenToggle = useCallback(async () => {
     if (screenOn) {
       stopScreen(handleNetworkScreenStop);
-      setScreenStream(null);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
       if (remoteScreen) {
@@ -770,7 +764,6 @@ const MeetingInterface = () => {
         socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
-        setScreenStream(stream);
         broadcastScreen(stream);
       } else {
         stream.getTracks().forEach((t) => t.stop());
@@ -783,7 +776,6 @@ const MeetingInterface = () => {
     stopScreen,
     startScreen,
     broadcastScreen,
-    setScreenStream,
     handleNetworkScreenStop,
     roomCode,
     user.id,
