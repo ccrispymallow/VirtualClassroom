@@ -1,12 +1,41 @@
-import { Suspense, useEffect, useState, useCallback } from "react";
-import { useVideoTexture, Html } from "@react-three/drei";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Html } from "@react-three/drei";
+import { VideoTexture, LinearFilter, SRGBColorSpace } from "three";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
 
-// ─── Video material using useVideoTexture (auto-updates reactively) ───────────
 function VideoMaterial({ stream }) {
-  const texture = useVideoTexture(stream, { muted: true });
-  return <meshStandardMaterial map={texture} toneMapped={false} />;
+  const matRef = useRef(null);
+
+  useEffect(() => {
+    if (!stream || !matRef.current) return;
+
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+
+    const tex = new VideoTexture(video);
+    tex.minFilter = LinearFilter;
+    tex.magFilter = LinearFilter;
+    tex.colorSpace = SRGBColorSpace;
+
+    matRef.current.map = tex;
+    matRef.current.needsUpdate = true;
+
+    return () => {
+      video.pause();
+      video.srcObject = null;
+      tex.dispose();
+      if (matRef.current) {
+        matRef.current.map = null;
+        matRef.current.needsUpdate = true;
+      }
+    };
+  }, [stream]);
+
+  return <meshStandardMaterial ref={matRef} toneMapped={false} />;
 }
 
 // ─── Fullscreen overlay ───────────────────────────────────────────────────────
@@ -117,9 +146,7 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
       <planeGeometry args={[4.5, 2.2]} />
 
       {isActive ? (
-        <Suspense fallback={<meshStandardMaterial color="#0a0a0a" />}>
-          <VideoMaterial stream={screenStream} />
-        </Suspense>
+        <VideoMaterial stream={screenStream} />
       ) : (
         <meshStandardMaterial color="#0a0a0a" toneMapped={false} />
       )}
