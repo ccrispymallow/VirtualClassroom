@@ -68,11 +68,30 @@ export const useMedia = () => {
   const unmuteMic = useCallback(
     async (activeCallsRef = null, deviceId = undefined) => {
       if (micStreamRef.current) {
-        // Track still alive — just re-enable it
         micStreamRef.current.getAudioTracks().forEach((t) => {
           t.enabled = true;
         });
         setMicOn(true);
+
+        // Also ensure all peer connections have the track via replaceTrack
+        if (activeCallsRef?.current) {
+          const currentTrack = micStreamRef.current.getAudioTracks()[0];
+          if (currentTrack) {
+            Object.values(activeCallsRef.current).forEach((call) => {
+              const pc = call.peerConnection;
+              if (!pc) return;
+              const sender = pc
+                .getSenders()
+                .find((s) => s.track?.kind === "audio");
+              if (sender) {
+                sender.replaceTrack(currentTrack);
+              } else {
+                pc.addTrack(currentTrack, micStreamRef.current);
+              }
+            });
+          }
+        }
+
         return micStreamRef.current;
       }
 

@@ -175,10 +175,20 @@ export const usePeer = ({
           incomingType,
           call.metadata?.username,
         );
+
+        if (incomingType === "mic") {
+          playRemoteAudio(call.peer, remoteStream);
+        }
       });
 
       call.on("close", () => removeStreamByType(call.peer, incomingType));
       call.on("error", (err) => console.error("Call error:", err));
+
+      const inCallKey = `in-${call.peer}-${incomingType}`;
+      callsRef.current[inCallKey] = call;
+      call.on("close", () => {
+        delete callsRef.current[inCallKey];
+      });
     });
 
     peer.on("error", (err) => console.error("PeerJS error:", err));
@@ -235,6 +245,7 @@ export const usePeer = ({
     userAvatar,
     callPeer,
     addStream,
+    playRemoteAudio,
     removeStreams,
     removeStreamByType,
   ]);

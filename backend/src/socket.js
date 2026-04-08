@@ -2,7 +2,7 @@ import { pool } from "./config/database.js";
 import { endClassroom } from "./services/classroom.service.js";
 
 const rooms = {};
-const roomPolls = {}; // key: roomCode, value: {pollId, totalExpected, responses:{yes,no}, answered:Set, timeout}
+const roomPolls = {};
 const roomScreenShare = {};
 const roomIdCache = new Map();
 const ROOM_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -27,6 +27,9 @@ const getRoomIdByCode = async (roomCode) => {
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
     socket.on("join-room", ({ roomCode, user, peerId }) => {
+      socket.currentRoomCode = roomCode;
+      socket.currentPeerId = peerId;
+
       socket.join(roomCode);
       if (!rooms[roomCode]) rooms[roomCode] = [];
       rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== user.id);
@@ -350,10 +353,11 @@ export const initSocket = (io) => {
     );
 
     socket.on("stop-screen-share", () => {
-      // broadcast to everyone else in the room
-      socket
-        .to(roomCode)
-        .emit("peer-screen-stopped", { peerId: socket.peerId });
+      const roomCode = socket.currentRoomCode;
+      const peerId = socket.currentPeerId;
+      if (!roomCode || !peerId) return;
+
+      socket.to(roomCode).emit("peer-screen-stopped", { peerId });
     });
 
     // Emote sync
