@@ -122,7 +122,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
         )}
         {roomName && (
           <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            Â· {roomName}
+            {roomName}
           </span>
         )}
       </div>

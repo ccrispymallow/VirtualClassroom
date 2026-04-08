@@ -19,10 +19,12 @@ const CHAIR_OCCUPIED_EPSILON_SQ = 0.01;
 const SPAWN_SLOTS = [
   [-3, 0, 4],
   [-2, 0, 4],
-  [-3, 0, 6],
-  [-2, 0, 6],
-  [-1, 0, 6],
-  [-1, 0, 8],
+  [-3, 0, 4],
+  [-3, 0, 2],
+  [-2, 0, 2],
+  [-3, 0, 3],
+  [-1, 0, 3],
+  [-1, 0, 2],
 ];
 
 const AvatarModel = memo(function AvatarModel({
