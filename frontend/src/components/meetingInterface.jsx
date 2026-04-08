@@ -743,8 +743,10 @@ const MeetingInterface = () => {
   }, [
     micOn,
     startMic,
+    unmuteMic,
     broadcastMic,
     stopMic,
+    callsRef,
     roomCode,
     user.id,
     setParticipants,
