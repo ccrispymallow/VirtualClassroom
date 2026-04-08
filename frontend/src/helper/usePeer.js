@@ -102,9 +102,14 @@ export const usePeer = ({
       if (!peerRef.current || !stream) return;
 
       const callKey = `${peerId}-${type}`;
+      const existingCall = callsRef.current[callKey];
 
-      if (callsRef.current[callKey]) {
-        callsRef.current[callKey].close();
+      if (existingCall) {
+        // Avoid needless renegotiation churn if we are already sending this exact stream.
+        if (existingCall.__localStreamId && existingCall.__localStreamId === stream.id) {
+          return;
+        }
+        existingCall.close();
         delete callsRef.current[callKey];
       }
 
@@ -123,6 +128,7 @@ export const usePeer = ({
 
       call.on("error", (err) => console.error("Call error:", err));
 
+      call.__localStreamId = stream.id;
       callsRef.current[callKey] = call;
     },
     [removeStreamByType, addStream],
@@ -157,30 +163,32 @@ export const usePeer = ({
     });
 
     peer.on("call", (call) => {
-      const localStream =
-        call.metadata?.type === "screen"
-          ? screenStreamRef.current
-          : micStreamRef.current;
+      // One-way media calls are initiated by the sender in this app.
+      // Answer without attaching local tracks to avoid stream churn between peers.
+      call.answer();
 
-      // Answer with your stream if available, or an empty answer if not.
-      // This is what was broken before: you were answering with micStreamRef
-      // which could be null if mic was off, AND you weren't playing their audio.
-      call.answer(localStream ?? undefined);
+      const getIncomingType = (remoteStream) => {
+        const metadataType = call.metadata?.type;
+        if (metadataType === "screen" || metadataType === "mic") return metadataType;
+
+        const hasVideo = remoteStream?.getVideoTracks?.().length > 0;
+        return hasVideo ? "screen" : "mic";
+      };
+
+      let incomingType = call.metadata?.type === "screen" ? "screen" : "mic";
 
       call.on("stream", (remoteStream) => {
+        incomingType = getIncomingType(remoteStream);
         addStream(
           call.peer,
           remoteStream,
-          call.metadata?.type || "mic",
+          incomingType,
           call.metadata?.username,
         );
       });
 
-      const incomingType = call.metadata?.type || "mic";
       call.on("close", () => removeStreamByType(call.peer, incomingType));
       call.on("error", (err) => console.error("Call error:", err));
-
-      callsRef.current[`${call.peer}-${call.metadata?.type}`] = call;
     });
 
     peer.on("error", (err) => console.error("PeerJS error:", err));
