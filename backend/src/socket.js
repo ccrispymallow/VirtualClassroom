@@ -38,33 +38,6 @@ export const initSocket = (io) => {
         mic: false,
       });
 
-      socket.on("screen-share-start", ({ roomCode, userId }) => {
-        const normalizedUserId = String(userId);
-        if (
-          roomScreenShare[roomCode] &&
-          String(roomScreenShare[roomCode]) !== normalizedUserId
-        ) {
-          socket.emit("screen-share-rejected");
-          return;
-        }
-        roomScreenShare[roomCode] = normalizedUserId;
-        socket.emit("screen-share-approved");
-        socket
-          .to(roomCode)
-          .emit("screen-share-update", { userId: normalizedUserId, active: true });
-      });
-
-      socket.on("screen-share-stop", ({ roomCode, userId }) => {
-        const normalizedUserId = String(userId);
-        if (String(roomScreenShare[roomCode]) === normalizedUserId) {
-          delete roomScreenShare[roomCode];
-        }
-        io.to(roomCode).emit("screen-share-update", {
-          userId: normalizedUserId,
-          active: false,
-        });
-      });
-
       const others = rooms[roomCode].filter((p) => p.id !== user.id);
       socket.emit("existing-peers", others);
 
@@ -75,6 +48,34 @@ export const initSocket = (io) => {
       });
 
       io.to(roomCode).emit("participants-update", rooms[roomCode]);
+    });
+
+    socket.on("screen-share-start", ({ roomCode, userId }) => {
+      const normalizedUserId = String(userId);
+      if (
+        roomScreenShare[roomCode] &&
+        String(roomScreenShare[roomCode]) !== normalizedUserId
+      ) {
+        socket.emit("screen-share-rejected");
+        return;
+      }
+      roomScreenShare[roomCode] = normalizedUserId;
+      socket.emit("screen-share-approved");
+      socket.to(roomCode).emit("screen-share-update", {
+        userId: normalizedUserId,
+        active: true,
+      });
+    });
+
+    socket.on("screen-share-stop", ({ roomCode, userId }) => {
+      const normalizedUserId = String(userId);
+      if (String(roomScreenShare[roomCode]) === normalizedUserId) {
+        delete roomScreenShare[roomCode];
+      }
+      io.to(roomCode).emit("screen-share-update", {
+        userId: normalizedUserId,
+        active: false,
+      });
     });
 
     // ── Receive position from one user, broadcast to everyone else ──

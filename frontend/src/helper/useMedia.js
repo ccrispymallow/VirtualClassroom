@@ -28,12 +28,26 @@ export const useMedia = () => {
   const startScreen = useCallback(async (onStopCallback) => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
+        video: {
+          frameRate: { ideal: 30, max: 60 },
+          cursor: "always",
+        },
+        // Audio on display streams often triggers autoplay/policy issues
+        // on receivers and is not required for this classroom use case.
+        audio: false,
       });
+      const [videoTrack] = stream.getVideoTracks();
+      if (!videoTrack) {
+        stream.getTracks().forEach((t) => t.stop());
+        alert("No screen video track was captured. Please try sharing again.");
+        return null;
+      }
+
+      videoTrack.enabled = true;
+      videoTrack.contentHint = "detail";
       screenStreamRef.current = stream;
 
-      stream.getVideoTracks()[0].onended = () => {
+      videoTrack.onended = () => {
         screenStreamRef.current = null;
         setScreenOn(false);
         if (onStopCallback) onStopCallback();
