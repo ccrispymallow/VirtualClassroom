@@ -1,13 +1,7 @@
-import { Suspense, useEffect, useState, useCallback } from "react";
-import { useVideoTexture, Html } from "@react-three/drei";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Html } from "@react-three/drei";
 import { useRoom } from "../components/roomContext";
 import { createRoot } from "react-dom/client";
-
-// ─── Video material using useVideoTexture (auto-updates reactively) ───────────
-function VideoMaterial({ stream }) {
-  const texture = useVideoTexture(stream, { muted: true });
-  return <meshStandardMaterial map={texture} toneMapped={false} />;
-}
 
 // ─── Fullscreen overlay ───────────────────────────────────────────────────────
 function FullscreenOverlay({ stream, onClose }) {
@@ -74,7 +68,21 @@ function FullscreenOverlay({ stream, onClose }) {
 export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   const { screenStream } = useRoom();
   const [fullscreen, setFullscreen] = useState(false);
+  const videoRef = useRef(null);
   const isActive = !!screenStream;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (screenStream) {
+      video.srcObject = screenStream;
+      void video.play().catch(() => {});
+    } else {
+      video.pause();
+      video.srcObject = null;
+    }
+  }, [screenStream]);
 
   // F key toggles fullscreen
   useEffect(() => {
@@ -115,13 +123,32 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   return (
     <mesh position={position} rotation={[0, Math.PI, 0]}>
       <planeGeometry args={[4.5, 2.2]} />
+      <meshStandardMaterial color="#000" toneMapped={false} />
 
-      {isActive ? (
-        <Suspense fallback={<meshStandardMaterial color="#0a0a0a" />}>
-          <VideoMaterial stream={screenStream} />
-        </Suspense>
-      ) : (
-        <meshStandardMaterial color="#0a0a0a" toneMapped={false} />
+      {isActive && (
+        <Html
+          transform
+          occlude
+          distanceFactor={8}
+          position={[0, 0, 0.01]}
+          center
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: "4.5em",
+              height: "2.2em",
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: "4px",
+              background: "black",
+            }}
+          />
+        </Html>
       )}
 
       {!fullscreen && !isActive && (
