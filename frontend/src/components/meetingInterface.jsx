@@ -522,6 +522,7 @@ const MeetingInterface = () => {
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
+    getSilentStream,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   const handleNetworkScreenStop = useCallback(() => {
@@ -734,11 +735,11 @@ const MeetingInterface = () => {
     const nextMic = !micOn;
     if (nextMic) {
       const stream = await startMic();
-      if (stream) broadcastMic(stream);
+      if (stream) broadcastMic(stream); // replaces silent tracks in existing calls
     } else {
-      // Close outgoing mic calls first so remote peers' incoming call close
-      // handlers fire and they immediately remove our stream from their UI.
-      stopMicCalls();
+      // ✅ Don't close calls — just swap to silent so you can still hear others
+      const silent = getSilentStream(); // need to expose this from usePeer
+      broadcastMic(silent);
       stopMic();
     }
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
@@ -749,7 +750,7 @@ const MeetingInterface = () => {
     micOn,
     startMic,
     broadcastMic,
-    stopMicCalls,
+    getSilentStream,
     stopMic,
     roomCode,
     user.id,
