@@ -10,6 +10,7 @@ function VideoMaterial({ stream }) {
   useEffect(() => {
     if (!stream || !matRef.current) return;
 
+    const material = matRef.current;
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -21,16 +22,16 @@ function VideoMaterial({ stream }) {
     tex.magFilter = LinearFilter;
     tex.colorSpace = SRGBColorSpace;
 
-    matRef.current.map = tex;
-    matRef.current.needsUpdate = true;
+    material.map = tex;
+    material.needsUpdate = true;
 
     return () => {
       video.pause();
       video.srcObject = null;
       tex.dispose();
-      if (matRef.current) {
-        matRef.current.map = null;
-        matRef.current.needsUpdate = true;
+      if (material) {
+        material.map = null;
+        material.needsUpdate = true;
       }
     };
   }, [stream]);
@@ -110,7 +111,11 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
     const onKey = (e) => {
       if (!screenStream) return;
       const activeTag = document.activeElement?.tagName;
-      if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+      if (
+        activeTag === "INPUT" ||
+        activeTag === "TEXTAREA" ||
+        activeTag === "SELECT"
+      ) {
         return;
       }
       if (e.key.toLowerCase() === "f") {
