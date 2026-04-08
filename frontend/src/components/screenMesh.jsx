@@ -13,8 +13,8 @@ function VideoMaterial({ stream }) {
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    video.autoplay = true;
     video.srcObject = stream;
-    video.play().catch(() => {});
 
     const tex = new VideoTexture(video);
     tex.minFilter = LinearFilter;
@@ -24,7 +24,49 @@ function VideoMaterial({ stream }) {
     matRef.current.map = tex;
     matRef.current.needsUpdate = true;
 
+    // Play as soon as enough data is available so the texture gets real frames.
+    // Calling play() before 'canplay' fires is a common reason VideoTexture
+    // stays black — the video pipeline hasn't decoded any frames yet.
+    const tryPlay = () => {
+      video.play().catch(() => {
+        // Autoplay blocked — retry on the next user gesture
+        const retry = () => video.play().catch(() => {});
+        document.addEventListener("click", retry, {
+          once: true,
+          capture: true,
+        });
+        document.addEventListener("keydown", retry, {
+          once: true,
+          capture: true,
+        });
+      });
+    };
+
+    if (video.readyState >= 2) {
+      // Already have data (e.g. local sharer's own mesh)
+      tryPlay();
+    } else {
+      video.addEventListener("canplay", tryPlay, { once: true });
+    }
+
+    // Force texture refresh every animation frame until the video is playing.
+    // R3F's built-in VideoTexture update only fires after the first decoded
+    // frame is available — without this pump the mesh can stay black for
+    // several seconds on the receiving side.
+    let rafId;
+    const pumpTexture = () => {
+      if (!matRef.current) return;
+      tex.needsUpdate = true;
+      matRef.current.needsUpdate = true;
+      if (video.paused || video.readyState < 2) {
+        rafId = requestAnimationFrame(pumpTexture);
+      }
+    };
+    rafId = requestAnimationFrame(pumpTexture);
+
     return () => {
+      cancelAnimationFrame(rafId);
+      video.removeEventListener("canplay", tryPlay);
       video.pause();
       video.srcObject = null;
       tex.dispose();
@@ -110,7 +152,11 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
     const onKey = (e) => {
       if (!screenStream) return;
       const activeTag = document.activeElement?.tagName;
-      if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+      if (
+        activeTag === "INPUT" ||
+        activeTag === "TEXTAREA" ||
+        activeTag === "SELECT"
+      ) {
         return;
       }
       if (e.key.toLowerCase() === "f") {
