@@ -10,66 +10,97 @@ function VideoMaterial({ stream }) {
   useEffect(() => {
     if (!stream || !matRef.current) return;
 
+    // Guard: make sure the stream actually has live video tracks before we
+    // create a VideoTexture. An ended / empty stream causes the WebGL error:
+    // "INVALID_VALUE: texImage2D: no video"
+    const videoTracks = stream.getVideoTracks();
+    if (!videoTracks.length || videoTracks[0].readyState === "ended") return;
+
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
     video.srcObject = stream;
 
-    const tex = new VideoTexture(video);
-    tex.minFilter = LinearFilter;
-    tex.magFilter = LinearFilter;
-    tex.colorSpace = SRGBColorSpace;
+    let tex = null;
+    let rafId = null;
 
-    matRef.current.map = tex;
-    matRef.current.needsUpdate = true;
+    const attachTexture = () => {
+      if (!matRef.current) return;
 
-    // Play as soon as enough data is available so the texture gets real frames.
-    // Calling play() before 'canplay' fires is a common reason VideoTexture
-    // stays black — the video pipeline hasn't decoded any frames yet.
-    const tryPlay = () => {
-      video.play().catch(() => {
-        // Autoplay blocked — retry on the next user gesture
-        const retry = () => video.play().catch(() => {});
-        document.addEventListener("click", retry, {
-          once: true,
-          capture: true,
-        });
-        document.addEventListener("keydown", retry, {
-          once: true,
-          capture: true,
-        });
-      });
+      tex = new VideoTexture(video);
+      tex.minFilter = LinearFilter;
+      tex.magFilter = LinearFilter;
+      tex.colorSpace = SRGBColorSpace;
+
+      matRef.current.map = tex;
+      matRef.current.needsUpdate = true;
+
+      // Pump texture updates until the video is genuinely playing.
+      // Without this, R3F's VideoTexture update doesn't fire until the
+      // first decoded frame arrives — the mesh stays black for seconds.
+      const pumpTexture = () => {
+        if (!matRef.current || !tex) return;
+        tex.needsUpdate = true;
+        matRef.current.needsUpdate = true;
+        // Keep pumping while the video hasn't started playing yet
+        if (video.paused || video.readyState < 2) {
+          rafId = requestAnimationFrame(pumpTexture);
+        }
+      };
+      rafId = requestAnimationFrame(pumpTexture);
     };
 
+    const tryPlay = () => {
+      video
+        .play()
+        .then(() => {
+          // Video is now playing — safe to create the texture
+          attachTexture();
+        })
+        .catch(() => {
+          // Autoplay blocked — retry on next user gesture
+          const retry = () => {
+            video
+              .play()
+              .then(attachTexture)
+              .catch(() => {});
+          };
+          document.addEventListener("click", retry, {
+            once: true,
+            capture: true,
+          });
+          document.addEventListener("keydown", retry, {
+            once: true,
+            capture: true,
+          });
+        });
+    };
+
+    // Wait for the video to have decoded frame data before playing
     if (video.readyState >= 2) {
-      // Already have data (e.g. local sharer's own mesh)
       tryPlay();
     } else {
       video.addEventListener("canplay", tryPlay, { once: true });
     }
 
-    // Force texture refresh every animation frame until the video is playing.
-    // R3F's built-in VideoTexture update only fires after the first decoded
-    // frame is available — without this pump the mesh can stay black for
-    // several seconds on the receiving side.
-    let rafId;
-    const pumpTexture = () => {
-      if (!matRef.current) return;
-      tex.needsUpdate = true;
-      matRef.current.needsUpdate = true;
-      if (video.paused || video.readyState < 2) {
-        rafId = requestAnimationFrame(pumpTexture);
-      }
+    // If the track ends (sharer stops), clean up immediately
+    const onTrackEnded = () => {
+      video.pause();
+      video.srcObject = null;
     };
-    rafId = requestAnimationFrame(pumpTexture);
+    videoTracks[0].addEventListener("ended", onTrackEnded);
 
     return () => {
       cancelAnimationFrame(rafId);
       video.removeEventListener("canplay", tryPlay);
+      videoTracks[0].removeEventListener("ended", onTrackEnded);
       video.pause();
       video.srcObject = null;
-      tex.dispose();
+      if (tex) {
+        tex.dispose();
+        tex = null;
+      }
       if (matRef.current) {
         matRef.current.map = null;
         matRef.current.needsUpdate = true;
@@ -146,6 +177,13 @@ export default function ScreenMesh({ position = [0, 1.8, -7.4] }) {
   const { screenStream } = useRoom();
   const [fullscreen, setFullscreen] = useState(false);
   const isActive = !!screenStream;
+
+  // Close fullscreen automatically when the stream goes away
+  useEffect(() => {
+    if (!screenStream && fullscreen) {
+      setFullscreen(false);
+    }
+  }, [screenStream, fullscreen]);
 
   // F key toggles fullscreen
   useEffect(() => {

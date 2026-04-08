@@ -522,7 +522,14 @@ const MeetingInterface = () => {
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
-  } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
+  } = usePeer({
+    roomCode,
+    user,
+    socket,
+    micStreamRef,
+    screenStreamRef,
+    onRemoteScreenStream: (stream) => setScreenStream(stream),
+  });
 
   const handleNetworkScreenStop = useCallback(() => {
     stopScreenCalls();

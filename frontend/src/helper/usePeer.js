@@ -7,6 +7,8 @@ export const usePeer = ({
   socket,
   micStreamRef,
   screenStreamRef,
+  // NEW: callback so the room context can set/clear screenStream for viewers
+  onRemoteScreenStream,
 }) => {
   const peerRef = useRef(null);
   // callsRef stores ONLY outgoing calls we initiated.
@@ -24,6 +26,13 @@ export const usePeer = ({
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
   const userAvatar = user?.avatar ?? "boy";
+
+  // Keep a stable ref so the peer.on("call") handler always uses the latest
+  // callback without needing to be re-registered.
+  const onRemoteScreenStreamRef = useRef(onRemoteScreenStream);
+  useEffect(() => {
+    onRemoteScreenStreamRef.current = onRemoteScreenStream;
+  }, [onRemoteScreenStream]);
 
   // ── Silent stream helper ───────────────────────────────────────────────────
   // Returns a MediaStream with one silent audio track.
@@ -85,7 +94,28 @@ export const usePeer = ({
 
   const addStream = useCallback(
     (peerId, stream, type, uname) => {
-      if (type === "mic") playRemoteAudio(peerId, stream);
+      if (type === "mic") {
+        playRemoteAudio(peerId, stream);
+      }
+
+      if (type === "screen") {
+        // Route the incoming screen stream to the room context so ScreenMesh
+        // and any other consumers can reactively display it without a refresh.
+        onRemoteScreenStreamRef.current?.(stream);
+
+        // When the remote track ends (sharer stopped), clear the screen stream.
+        const [track] = stream.getVideoTracks();
+        if (track) {
+          track.addEventListener(
+            "ended",
+            () => {
+              onRemoteScreenStreamRef.current?.(null);
+            },
+            { once: true },
+          );
+        }
+      }
+
       setRemoteStreams((prev) => {
         const existing = prev.find(
           (s) => s.peerId === peerId && s.type === type,
@@ -104,6 +134,12 @@ export const usePeer = ({
   const removeStreamByType = useCallback(
     (peerId, type) => {
       if (type === "mic") stopRemoteAudio(peerId);
+
+      if (type === "screen") {
+        // Clear the room context screen stream when the call closes
+        onRemoteScreenStreamRef.current?.(null);
+      }
+
       setRemoteStreams((prev) => {
         const next = prev.filter(
           (s) => !(s.peerId === peerId && s.type === type),
@@ -117,7 +153,15 @@ export const usePeer = ({
   const removeStreams = useCallback(
     (peerId) => {
       stopRemoteAudio(peerId);
+
+      // If the disconnecting peer was sharing their screen, clear it
       setRemoteStreams((prev) => {
+        const hadScreen = prev.some(
+          (s) => s.peerId === peerId && s.type === "screen",
+        );
+        if (hadScreen) {
+          onRemoteScreenStreamRef.current?.(null);
+        }
         const next = prev.filter((s) => s.peerId !== peerId);
         return next.length === prev.length ? prev : next;
       });
