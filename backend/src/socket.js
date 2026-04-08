@@ -2,7 +2,7 @@ import { pool } from "./config/database.js";
 import { endClassroom } from "./services/classroom.service.js";
 
 const rooms = {};
-const roomPolls = {};
+const roomPolls = {}; // key: roomCode, value: {pollId, totalExpected, responses:{yes,no}, answered:Set, timeout}
 const roomScreenShare = {};
 const roomIdCache = new Map();
 const ROOM_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -13,10 +13,9 @@ const getRoomIdByCode = async (roomCode) => {
     return cached.id;
   }
 
-  const roomRes = await pool.query(
-    "SELECT id FROM classrooms WHERE room_code = $1",
-    [roomCode],
-  );
+  const roomRes = await pool.query("SELECT id FROM classrooms WHERE room_code = $1", [
+    roomCode,
+  ]);
   const roomId = roomRes.rows[0]?.id;
   if (roomId) {
     roomIdCache.set(roomCode, { id: roomId, cachedAt: Date.now() });
@@ -27,9 +26,6 @@ const getRoomIdByCode = async (roomCode) => {
 export const initSocket = (io) => {
   io.on("connection", (socket) => {
     socket.on("join-room", ({ roomCode, user, peerId }) => {
-      socket.currentRoomCode = roomCode;
-      socket.currentPeerId = peerId;
-
       socket.join(roomCode);
       if (!rooms[roomCode]) rooms[roomCode] = [];
       rooms[roomCode] = rooms[roomCode].filter((p) => p.id !== user.id);
@@ -351,14 +347,6 @@ export const initSocket = (io) => {
         });
       },
     );
-
-    socket.on("stop-screen-share", () => {
-      const roomCode = socket.currentRoomCode;
-      const peerId = socket.currentPeerId;
-      if (!roomCode || !peerId) return;
-
-      socket.to(roomCode).emit("peer-screen-stopped", { peerId });
-    });
 
     // Emote sync
     socket.on("emote", ({ roomCode, userId, emote }) => {
