@@ -521,8 +521,6 @@ const MeetingInterface = () => {
     broadcastMic,
     broadcastScreen,
     stopMicCalls,
-    muteMic,
-    replaceMicTrack,
     stopScreenCalls,
   } = usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
@@ -725,21 +723,15 @@ const MeetingInterface = () => {
 
   const handleMicToggle = useCallback(async () => {
     const nextMic = !micOn;
-
     if (nextMic) {
-      // Turn mic ON: get real stream, replace the silent track in all existing
-      // calls. If a peer has no call yet, broadcastMic will dial them.
       const stream = await startMic();
-      if (stream) {
-        broadcastMic(stream); // uses replaceTrack internally for existing calls
-      }
+      if (stream) broadcastMic(stream);
     } else {
-      // Turn mic OFF: stop the local mic track but keep all peer connections
-      // alive by swapping in a silent track. This preserves incoming audio.
-      stopMic(); // stops local mic hardware
-      muteMic(); // replaces sent track with silence — does NOT close calls
+      // Close outgoing mic calls first so remote peers' incoming call close
+      // handlers fire and they immediately remove our stream from their UI.
+      stopMicCalls();
+      stopMic();
     }
-
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
     setParticipants((prev) =>
       prev.map((p) => (p.id === user.id ? { ...p, mic: nextMic } : p)),
@@ -747,9 +739,9 @@ const MeetingInterface = () => {
   }, [
     micOn,
     startMic,
-    stopMic,
     broadcastMic,
-    muteMic,
+    stopMicCalls,
+    stopMic,
     roomCode,
     user.id,
     setParticipants,
