@@ -122,7 +122,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
         )}
         {roomName && (
           <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            Â· {roomName}
+            · {roomName}
           </span>
         )}
       </div>
@@ -429,7 +429,7 @@ const MeetingChatPanel = memo(function MeetingChatPanel({
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSend()}
-          placeholder="Type a messageâ€¦"
+          placeholder="Type a message…"
           className="chat-input"
         />
         <button
@@ -516,13 +516,7 @@ const MeetingInterface = () => {
     startScreen,
     stopScreen,
   } = useMedia();
-  const {
-    remoteStreams,
-    broadcastMic,
-    stopMicCalls,
-    broadcastScreen,
-    stopScreenCalls,
-  } =
+  const { remoteStreams, broadcastMic, broadcastScreen, stopScreenCalls } =
     usePeer({ roomCode, user, socket, micStreamRef, screenStreamRef });
 
   const handleNetworkScreenStop = useCallback(() => {
@@ -725,7 +719,6 @@ const MeetingInterface = () => {
       if (stream) broadcastMic(stream);
     } else {
       stopMic();
-      stopMicCalls();
     }
     socket.emit("mic-status", { roomCode, userId: user.id, mic: nextMic });
     setParticipants((prev) =>
@@ -736,7 +729,6 @@ const MeetingInterface = () => {
     startMic,
     broadcastMic,
     stopMic,
-    stopMicCalls,
     roomCode,
     user.id,
     setParticipants,
