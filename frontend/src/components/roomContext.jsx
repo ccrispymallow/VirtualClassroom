@@ -70,7 +70,9 @@ export const RoomProvider = ({ children }) => {
         return { ...prev, [userId]: position };
       });
       if (yaw !== undefined) {
-        setPeerYaws((prev) => (prev[userId] === yaw ? prev : { ...prev, [userId]: yaw }));
+        setPeerYaws((prev) =>
+          prev[userId] === yaw ? prev : { ...prev, [userId]: yaw },
+        );
       }
     };
 
@@ -123,23 +125,36 @@ export const RoomProvider = ({ children }) => {
       }
     };
 
+    // When the sharer stops, the server emits screen-share-update { active: false }.
+    // Clear screenStream so ScreenMesh reactively switches back to the idle state
+    // without anyone needing to refresh.
+    const handleScreenShareUpdate = ({ active }) => {
+      if (!active) {
+        setScreenStream(null);
+      }
+    };
+
     socket.on("peer-moved", handlePeerMoved);
     socket.on("participants-update", handleParticipantsUpdate);
     socket.on("peer-moving", handlePeerMoving);
     socket.on("sit-update", handlePeerSitting);
+    socket.on("screen-share-update", handleScreenShareUpdate);
 
     return () => {
       socket.off("peer-moved", handlePeerMoved);
       socket.off("participants-update", handleParticipantsUpdate);
       socket.off("peer-moving", handlePeerMoving);
       socket.off("sit-update", handlePeerSitting);
+      socket.off("screen-share-update", handleScreenShareUpdate);
     };
   }, []);
 
   useEffect(() => {
     if (!socket) return;
     socket.on("peer-emote", ({ userId, emote }) => {
-      setPeerEmotes((prev) => (prev[userId] === emote ? prev : { ...prev, [userId]: emote }));
+      setPeerEmotes((prev) =>
+        prev[userId] === emote ? prev : { ...prev, [userId]: emote },
+      );
     });
     socket.on("receive-message", (msg) => {
       setChatMessages((prev) => [...prev, msg]);
@@ -195,11 +210,7 @@ export const RoomProvider = ({ children }) => {
     ],
   );
 
-  return (
-    <RoomContext.Provider value={value}>
-      {children}
-    </RoomContext.Provider>
-  );
+  return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;
 };
 
 export const useRoom = () => useContext(RoomContext);
