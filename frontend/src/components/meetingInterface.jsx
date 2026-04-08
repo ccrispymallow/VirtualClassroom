@@ -769,10 +769,6 @@ const MeetingInterface = () => {
       setScreenStream(null);
       socket.emit("screen-share-stop", { roomCode, userId: user.id });
     } else {
-      if (remoteScreen) {
-        alert("Someone is already sharing their screen.");
-        return;
-      }
       const stream = await startScreen(handleNetworkScreenStop);
       if (!stream) return;
       const approved = await new Promise((resolve) => {
@@ -781,9 +777,6 @@ const MeetingInterface = () => {
         socket.emit("screen-share-start", { roomCode, userId: user.id });
       });
       if (approved) {
-        // ✅ Set the stream on the 3D mesh immediately — don't wait for the
-        // screenOn state to propagate through the useEffect, which would miss
-        // the first few frames and leave the mesh blank for other peers.
         setScreenStream(stream);
         broadcastScreen(stream);
       } else {
@@ -793,7 +786,7 @@ const MeetingInterface = () => {
     }
   }, [
     screenOn,
-    remoteScreen,
+    // remoteScreen removed
     stopScreen,
     startScreen,
     broadcastScreen,
