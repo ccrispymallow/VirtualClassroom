@@ -245,6 +245,7 @@ export const usePeer = ({
       secure: !isLocal,
       // Increase ping interval — Safari aggressively closes idle WS connections
       pingInterval: 5000,
+      config: { iceServers },
     };
 
     let destroyed = false; // prevents stale retries after unmount
