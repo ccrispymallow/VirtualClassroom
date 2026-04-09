@@ -598,18 +598,22 @@ const MeetingInterface = () => {
 
   useEffect(() => {
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
-      if (
-        active &&
-        String(sharingUserId) !== String(user.id) &&
-        screenOnRef.current
-      ) {
-        stopScreen(handleNetworkScreenStop);
+      if (active) {
+        // Someone else started sharing, stop our own screen if we're sharing
+        if (String(sharingUserId) !== String(user.id) && screenOnRef.current) {
+          stopScreen(handleNetworkScreenStop);
+        }
+      } else {
+        // Someone (possibly us) stopped sharing - if it's not us, clear the remote screen
+        if (String(sharingUserId) !== String(user.id)) {
+          setScreenStream(null);
+        }
       }
     });
     return () => {
       socket.off("screen-share-update");
     };
-  }, [stopScreen, handleNetworkScreenStop, user.id]);
+  }, [stopScreen, handleNetworkScreenStop, user.id, setScreenStream]);
 
   useEffect(() => {
     const handleRoomEnded = ({ message }) => {
@@ -801,17 +805,48 @@ const MeetingInterface = () => {
       "Are you sure you want to leave the meeting?",
     );
     if (confirmed) {
+      // Stop mic and screen before leaving
+      if (micOn) {
+        stopMicCalls();
+        stopMic();
+      }
+      if (screenOn) {
+        stopScreenCalls();
+        stopScreen(handleNetworkScreenStop);
+      }
       socket.emit("leave-room", { roomCode, userId: user.id });
       localStorage.removeItem("currentRoom");
       navigate("/homepage");
     }
-  }, [roomCode, user.id, navigate]);
+  }, [
+    roomCode,
+    user.id,
+    navigate,
+    micOn,
+    screenOn,
+    stopMicCalls,
+    stopMic,
+    stopScreenCalls,
+    stopScreen,
+    handleNetworkScreenStop,
+  ]);
 
   const handleEndForAll = useCallback(async () => {
     const confirmed = window.confirm(
       "Are you sure you want to end the meeting for everyone?",
     );
     if (!confirmed) return;
+
+    // Stop mic and screen before ending for all
+    if (micOn) {
+      stopMicCalls();
+      stopMic();
+    }
+    if (screenOn) {
+      stopScreenCalls();
+      stopScreen(handleNetworkScreenStop);
+    }
+
     const roomId = room.id;
     if (roomId) {
       try {
@@ -832,7 +867,18 @@ const MeetingInterface = () => {
       }
     }
     socket.emit("end-room", { roomCode, userId: user.id });
-  }, [room.id, roomCode, user.id]);
+  }, [
+    room.id,
+    roomCode,
+    user.id,
+    micOn,
+    screenOn,
+    stopMicCalls,
+    stopMic,
+    stopScreenCalls,
+    stopScreen,
+    handleNetworkScreenStop,
+  ]);
 
   const handleEmote = useCallback(
     (emoteKey) => {
