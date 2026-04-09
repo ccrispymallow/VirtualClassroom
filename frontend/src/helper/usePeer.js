@@ -215,6 +215,29 @@ export const usePeer = ({
       !import.meta.env.VITE_PEER_HOST ||
       import.meta.env.VITE_PEER_HOST === "localhost";
 
+    // ICE servers: always include STUN; add free TURN for cross-network/Safari.
+    // Without TURN, Safari and peers behind strict NAT will fail to connect.
+    const iceServers = [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      // Free public TURN — replace with your own Coturn/Metered for production
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443?transport=tcp",
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+    ];
+
     const peerConfig = {
       host: import.meta.env.VITE_PEER_HOST || "localhost",
       port: isLocal ? 9000 : 443,
