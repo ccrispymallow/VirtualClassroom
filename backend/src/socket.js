@@ -70,9 +70,11 @@ export const initSocket = (io) => {
 
     socket.on("screen-share-stop", ({ roomCode, userId }) => {
       const normalizedUserId = String(userId);
+      // Only allow stopping screen share if this user is actually the one sharing
       if (String(roomScreenShare[roomCode]) === normalizedUserId) {
         delete roomScreenShare[roomCode];
       }
+      // Always broadcast the stop so all clients know the screen share is gone
       io.to(roomCode).emit("screen-share-update", {
         userId: normalizedUserId,
         active: false,
