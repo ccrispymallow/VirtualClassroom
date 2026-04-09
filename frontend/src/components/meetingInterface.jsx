@@ -11,6 +11,7 @@ import { ImPhoneHangUp } from "react-icons/im";
 import { BsMicFill, BsMicMuteFill, BsChatFill, BsCopy } from "react-icons/bs";
 import { LuScreenShare } from "react-icons/lu";
 import { MdEmojiEmotions } from "react-icons/md";
+import { HiSpeakerWave, HiSpeakerXMark } from "react-icons/hi2";
 import { useParams, useNavigate } from "react-router-dom";
 import BoardNotifications from "./boardNotification";
 import "../App.css";
@@ -147,6 +148,7 @@ const MeetingTopBar = memo(function MeetingTopBar({
 const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
   micOn,
   screenOn,
+  receiveAudioOn,
   isInstructor,
   isPollPanelOpen,
   boxesParticipants,
@@ -157,6 +159,7 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
   raisedHandCount,
   onMicToggle,
   onScreenToggle,
+  onReceiveAudioToggle,
   onTogglePollPanel,
   onToggleParticipants,
   onToggleChat,
@@ -167,14 +170,40 @@ const MeetingBottomToolbar = memo(function MeetingBottomToolbar({
   return (
     <div className="meeting-bottom-bar">
       <div className="toolbar-container">
+        {/* ── Send: broadcast your mic ── */}
         <button
           type="button"
           onClick={onMicToggle}
           className={`toolbar-btn ${micOn ? "active-blue" : ""}`}
+          title={
+            micOn
+              ? "Mute microphone (stop sending)"
+              : "Unmute microphone (start sending)"
+          }
         >
           {micOn ? <BsMicFill size={20} /> : <BsMicMuteFill size={20} />}
           <span className="label">Mic</span>
         </button>
+
+        {/* ── Receive: play remote audio ── */}
+        <button
+          type="button"
+          onClick={onReceiveAudioToggle}
+          className={`toolbar-btn ${receiveAudioOn ? "active-blue" : ""}`}
+          title={
+            receiveAudioOn
+              ? "Mute incoming audio (stop receiving)"
+              : "Unmute incoming audio (start receiving)"
+          }
+        >
+          {receiveAudioOn ? (
+            <HiSpeakerWave size={20} />
+          ) : (
+            <HiSpeakerXMark size={20} />
+          )}
+          <span className="label">{receiveAudioOn ? "Audio" : "Muted"}</span>
+        </button>
+
         <button
           type="button"
           onClick={onScreenToggle}
@@ -516,12 +545,16 @@ const MeetingInterface = () => {
     startScreen,
     stopScreen,
   } = useMedia();
+
   const {
     remoteStreams,
     broadcastMic,
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
+    // NEW: receive audio controls
+    receiveAudioOn,
+    toggleReceiveAudio,
   } = usePeer({
     roomCode,
     user,
@@ -573,16 +606,12 @@ const MeetingInterface = () => {
     showChatRef.current = showChat;
   }, [showChat]);
 
-  // Sync remote screen to the 3D screen mesh.
-  // Local screen is set/cleared directly in handleScreenToggle so we don't
-  // depend on the async screenOn state update racing with broadcastScreen().
   useEffect(() => {
     if (remoteScreen?.stream) {
       setScreenStream((prev) =>
         prev === remoteScreen.stream ? prev : remoteScreen.stream,
       );
     } else if (!screenOn) {
-      // Only clear when there's no remote share AND we're not sharing locally.
       setScreenStream((prev) => (prev === null ? prev : null));
     }
   }, [remoteScreen, screenOn, setScreenStream]);
@@ -599,12 +628,10 @@ const MeetingInterface = () => {
   useEffect(() => {
     socket.on("screen-share-update", ({ userId: sharingUserId, active }) => {
       if (active) {
-        // Someone else started sharing, stop our own screen if we're sharing
         if (String(sharingUserId) !== String(user.id) && screenOnRef.current) {
           stopScreen(handleNetworkScreenStop);
         }
       } else {
-        // Someone (possibly us) stopped sharing - if it's not us, clear the remote screen
         if (String(sharingUserId) !== String(user.id)) {
           setScreenStream(null);
         }
@@ -747,8 +774,6 @@ const MeetingInterface = () => {
       const stream = await startMic();
       if (stream) broadcastMic(stream);
     } else {
-      // Close outgoing mic calls first so remote peers' incoming call close
-      // handlers fire and they immediately remove our stream from their UI.
       stopMicCalls();
       stopMic();
     }
@@ -790,7 +815,6 @@ const MeetingInterface = () => {
     }
   }, [
     screenOn,
-    // remoteScreen removed
     stopScreen,
     startScreen,
     broadcastScreen,
@@ -805,7 +829,6 @@ const MeetingInterface = () => {
       "Are you sure you want to leave the meeting?",
     );
     if (confirmed) {
-      // Stop mic and screen before leaving
       if (micOn) {
         stopMicCalls();
         stopMic();
@@ -836,8 +859,6 @@ const MeetingInterface = () => {
       "Are you sure you want to end the meeting for everyone?",
     );
     if (!confirmed) return;
-
-    // Stop mic and screen before ending for all
     if (micOn) {
       stopMicCalls();
       stopMic();
@@ -846,7 +867,6 @@ const MeetingInterface = () => {
       stopScreenCalls();
       stopScreen(handleNetworkScreenStop);
     }
-
     const roomId = room.id;
     if (roomId) {
       try {
@@ -1166,6 +1186,7 @@ const MeetingInterface = () => {
       <MeetingBottomToolbar
         micOn={micOn}
         screenOn={screenOn}
+        receiveAudioOn={receiveAudioOn}
         isInstructor={isInstructor}
         isPollPanelOpen={isPollPanelOpen}
         boxesParticipants={boxes.participants}
@@ -1176,6 +1197,7 @@ const MeetingInterface = () => {
         raisedHandCount={raisedHandCount}
         onMicToggle={handleMicToggle}
         onScreenToggle={handleScreenToggle}
+        onReceiveAudioToggle={toggleReceiveAudio}
         onTogglePollPanel={onTogglePollPanel}
         onToggleParticipants={onToggleParticipants}
         onToggleChat={onToggleChat}

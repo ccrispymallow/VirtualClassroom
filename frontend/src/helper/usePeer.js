@@ -22,6 +22,11 @@ export const usePeer = ({
   // We reuse one context instead of creating a new one per incoming call.
   const silentCtxRef = useRef(null);
 
+  // ── Receive-audio toggle ───────────────────────────────────────────────────
+  // Tracks whether remote audio playback is enabled. Default ON.
+  const [receiveAudioOn, setReceiveAudioOn] = useState(true);
+  const receiveAudioOnRef = useRef(true);
+
   const userId = user?.id ?? "";
   const username = user?.username ?? "";
   const userRole = user?.role ?? "";
@@ -35,10 +40,6 @@ export const usePeer = ({
   }, [onRemoteScreenStream]);
 
   // ── Silent stream helper ───────────────────────────────────────────────────
-  // Returns a MediaStream with one silent audio track.
-  // WebRTC SDP negotiation requires at least one real track — an empty
-  // MediaStream() produces an SDP with no media section, causing
-  // "Negotiation failed" errors on Safari / Firefox / cross-OS pairs.
   const getSilentStream = useCallback(() => {
     if (!silentCtxRef.current || silentCtxRef.current.state === "closed") {
       silentCtxRef.current = new AudioContext();
@@ -51,7 +52,6 @@ export const usePeer = ({
     osc.connect(gain);
     gain.connect(dest);
     osc.start();
-    // ✅ Stop after 1s — the track stays alive but the oscillator doesn't leak
     osc.stop(ctx.currentTime + 1);
     return dest.stream;
   }, []);
@@ -65,11 +65,14 @@ export const usePeer = ({
       audioElementsRef.current[peerId] = audio;
     }
     const audio = audioElementsRef.current[peerId];
-    // Guard: don't reassign same stream (avoids interrupted-play DOMException)
-    if (audio.srcObject === stream) return;
+    if (audio.srcObject === stream) {
+      // Stream already set — just respect the current mute state
+      audio.muted = !receiveAudioOnRef.current;
+      return;
+    }
     audio.srcObject = stream;
+    audio.muted = !receiveAudioOnRef.current;
     audio.play().catch(() => {
-      // Autoplay blocked — retry silently on next user interaction
       const retry = () => {
         audio.play().catch(() => {});
       };
@@ -90,6 +93,18 @@ export const usePeer = ({
     }
   }, []);
 
+  // ── Public: toggle receive audio ──────────────────────────────────────────
+  // Mutes / unmutes all existing remote audio elements immediately,
+  // and records the preference so future elements are created correctly.
+  const toggleReceiveAudio = useCallback(() => {
+    const next = !receiveAudioOnRef.current;
+    receiveAudioOnRef.current = next;
+    setReceiveAudioOn(next);
+    Object.values(audioElementsRef.current).forEach((audio) => {
+      audio.muted = !next;
+    });
+  }, []);
+
   // ── Stream state ───────────────────────────────────────────────────────────
 
   const addStream = useCallback(
@@ -99,11 +114,7 @@ export const usePeer = ({
       }
 
       if (type === "screen") {
-        // Route the incoming screen stream to the room context so ScreenMesh
-        // and any other consumers can reactively display it without a refresh.
         onRemoteScreenStreamRef.current?.(stream);
-
-        // When the remote track ends (sharer stopped), clear the screen stream.
         const [track] = stream.getVideoTracks();
         if (track) {
           track.addEventListener(
@@ -134,12 +145,9 @@ export const usePeer = ({
   const removeStreamByType = useCallback(
     (peerId, type) => {
       if (type === "mic") stopRemoteAudio(peerId);
-
       if (type === "screen") {
-        // Clear the room context screen stream when the call closes
         onRemoteScreenStreamRef.current?.(null);
       }
-
       setRemoteStreams((prev) => {
         const next = prev.filter(
           (s) => !(s.peerId === peerId && s.type === type),
@@ -153,8 +161,6 @@ export const usePeer = ({
   const removeStreams = useCallback(
     (peerId) => {
       stopRemoteAudio(peerId);
-
-      // If the disconnecting peer was sharing their screen, clear it
       setRemoteStreams((prev) => {
         const hadScreen = prev.some(
           (s) => s.peerId === peerId && s.type === "screen",
@@ -194,8 +200,6 @@ export const usePeer = ({
     [addStream],
   );
 
-  // Stable ref so reconnect/socket handlers always use the latest callPeer
-  // without triggering effect re-runs.
   const callPeerRef = useRef(callPeer);
   useEffect(() => {
     callPeerRef.current = callPeer;
@@ -215,12 +219,9 @@ export const usePeer = ({
       !import.meta.env.VITE_PEER_HOST ||
       import.meta.env.VITE_PEER_HOST === "localhost";
 
-    // ICE servers: always include STUN; add free TURN for cross-network/Safari.
-    // Without TURN, Safari and peers behind strict NAT will fail to connect.
     const iceServers = [
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
-      // Free public TURN — replace with your own Coturn/Metered for production
       {
         urls: "turn:openrelay.metered.ca:80",
         username: "openrelayproject",
@@ -243,14 +244,13 @@ export const usePeer = ({
       port: isLocal ? 9000 : 443,
       path: "/peerjs",
       secure: !isLocal,
-      // Increase ping interval — Safari aggressively closes idle WS connections
       pingInterval: 5000,
       config: { iceServers },
     };
 
-    let destroyed = false; // prevents stale retries after unmount
+    let destroyed = false;
     let reconnectTimer = null;
-    let reconnectDelay = 2000; // exponential back-off: 2s → 4s → … → 30s
+    let reconnectDelay = 2000;
 
     const setupPeer = () => {
       if (destroyed) return;
@@ -259,7 +259,7 @@ export const usePeer = ({
       peerRef.current = peer;
 
       peer.on("open", (peerId) => {
-        reconnectDelay = 2000; // reset back-off on successful open
+        reconnectDelay = 2000;
         socket.emit("join-room", {
           roomCode,
           user: { id: userId, username, role: userRole, avatar: userAvatar },
@@ -268,7 +268,6 @@ export const usePeer = ({
       });
 
       peer.on("call", (call) => {
-        // ✅ Check if the mic stream's tracks are still live before using it
         const micStream = micStreamRef.current;
         const micIsLive =
           micStream &&
@@ -294,8 +293,6 @@ export const usePeer = ({
 
       peer.on("error", (err) => {
         console.error("PeerJS error:", err);
-        // These types mean the WS to the PeerJS signalling server was lost.
-        // Tear down and reconnect with exponential back-off.
         const retriable =
           err.type === "network" ||
           err.type === "server-error" ||
@@ -311,8 +308,6 @@ export const usePeer = ({
         }
       });
 
-      // "disconnected" fires when the WS drops but the Peer object still lives.
-      // peer.reconnect() is cheaper than a full teardown/rebuild.
       peer.on("disconnected", () => {
         if (!destroyed && !peer.destroyed) {
           peer.reconnect();
@@ -363,7 +358,6 @@ export const usePeer = ({
       peerRef.current?.destroy();
       peerRef.current = null;
       callsRef.current = {};
-      // Clean up the silent AudioContext if it was created
       if (silentCtxRef.current && silentCtxRef.current.state !== "closed") {
         silentCtxRef.current.close();
         silentCtxRef.current = null;
@@ -428,5 +422,8 @@ export const usePeer = ({
     broadcastScreen,
     stopMicCalls,
     stopScreenCalls,
+    // NEW
+    receiveAudioOn,
+    toggleReceiveAudio,
   };
 };
