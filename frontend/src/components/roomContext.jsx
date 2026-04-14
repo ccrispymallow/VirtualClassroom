@@ -34,7 +34,7 @@ const areParticipantsEqual = (prev, next) => {
 export const RoomProvider = ({ children }) => {
   const [participants, setParticipants] = useState([]);
   const [screenStream, setScreenStream] = useState(null);
-  const [avatarPosition, setAvatarPosition] = useState([0, 0, 0]);
+  const [avatarPosition, setAvatarPosition] = useState([0, 0, 7]);
   const [peerPositions, setPeerPositions] = useState({});
   const [peerMoving, setPeerMoving] = useState({});
   const [peerSitting, setPeerSitting] = useState({});
@@ -49,7 +49,7 @@ export const RoomProvider = ({ children }) => {
   const keysRef = useRef({});
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
-  const posRef = useRef([0, 0, 0]);
+  const posRef = useRef([0, 0, 7]);
 
   useEffect(() => {
     keysRef.current = {};

@@ -1017,7 +1017,7 @@ export default function ClassBoard({
   return (
     <mesh ref={meshRef} position={position} rotation={rotation}>
       <planeGeometry args={[5, 3]} />
-      <meshStandardMaterial color="var(--surface2)" />
+      <meshStandardMaterial color="#e2e8f0" />
       <Html
         transform
         prepend

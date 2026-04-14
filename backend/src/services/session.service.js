@@ -2,8 +2,8 @@ import { pool } from "../config/database.js";
 
 export const createSession = async ({ room_id, start_time }) => {
   const result = await pool.query(
-    `INSERT INTO sessions (room_id, start_time, status)
-     VALUES ($1, $2, 'live')
+    `INSERT INTO sessions (room_id, start_time)
+     VALUES ($1, $2)
      RETURNING *`,
     [room_id, start_time || new Date()],
   );
@@ -34,7 +34,7 @@ export const getSessionsByRoom = async (room_id) => {
 export const endSession = async (session_id) => {
   const result = await pool.query(
     `UPDATE sessions
-     SET status = 'ended', end_time = NOW()
+     SET end_time = NOW()
      WHERE id = $1
      RETURNING *`,
     [session_id],
@@ -45,7 +45,7 @@ export const endSession = async (session_id) => {
 export const endAllLiveSessionsForRoom = async (room_id) => {
   const result = await pool.query(
     `UPDATE sessions
-     SET status = 'ended', end_time = NOW()
+     SET end_time = NOW()
      WHERE room_id = $1 AND end_time IS NULL
      RETURNING *`,
     [room_id],
