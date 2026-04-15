@@ -26,6 +26,17 @@ const SPAWN_SLOTS = [
   [-1, 0, 2],
 ];
 
+function parseStoredJson(key, fallback = {}) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const AvatarModel = memo(function AvatarModel({
   position,
   yaw = 0,
@@ -130,7 +141,7 @@ export default function Avatar() {
     setNearChair,
   } = useRoom();
 
-  const user = JSON.parse(localStorage.getItem("userSession") || "{}");
+  const user = parseStoredJson("userSession");
   const lastEmitRef = useRef(0);
   const lastSentRef = useRef({ x: null, y: null, z: null, yaw: null });
   const initializedRef = useRef(false);

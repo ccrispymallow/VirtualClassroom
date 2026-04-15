@@ -1,16 +1,16 @@
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { Suspense, lazy, useMemo } from "react";
+import { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { Environment, Sky } from "@react-three/drei";
 import { RoomProvider, useRoom } from "../components/roomContext";
+import Avatar from "../components/avatar";
+import Classroom from "../components/classroom";
+import BoardMesh from "../components/boardMesh";
+import ScreenMesh from "../components/screenMesh";
+import FollowCamera from "../components/followCamera";
 import "../App.css"; // Ensures your global styles are loaded
 
 const MeetingInterface = lazy(() => import("../components/meetingInterface"));
-const Avatar = lazy(() => import("../components/avatar"));
-const Classroom = lazy(() => import("../components/classroom"));
-const BoardMesh = lazy(() => import("../components/boardMesh"));
-const ScreenMesh = lazy(() => import("../components/screenMesh"));
-const FollowCamera = lazy(() => import("../components/followCamera"));
 
 function SitPrompt() {
   const { isSitting, nearChair } = useRoom();
@@ -47,11 +47,25 @@ function SitPrompt() {
 
 export default function MainEngine() {
   const cameraConfig = useMemo(() => ({ position: [0, 1.6, 7] }), []);
+  const [canvasVersion, setCanvasVersion] = useState(0);
+
+  const handleCanvasCreated = useCallback(({ gl }) => {
+    const canvas = gl.domElement;
+    const onContextLost = (event) => {
+      // Prevent the browser from permanently discarding the context and
+      // remount the R3F canvas so first-join context drops recover automatically.
+      event.preventDefault();
+      setCanvasVersion((prev) => prev + 1);
+    };
+
+    canvas.addEventListener("webglcontextlost", onContextLost, { once: true });
+  }, []);
 
   return (
     <RoomProvider>
       <div style={{ width: "100vw", height: "100vh" }}>
         <Canvas
+          key={canvasVersion}
           camera={cameraConfig}
           dpr={1}
           gl={{ antialias: false, shadowMap: { type: THREE.PCFShadowMap } }}
@@ -60,6 +74,7 @@ export default function MainEngine() {
           flat
           tabIndex={0}
           style={{ outline: "none" }}
+          onCreated={handleCanvasCreated}
         >
           <color attach="background" args={["#c7d8ef"]} />
           <hemisphereLight

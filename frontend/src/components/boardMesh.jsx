@@ -316,6 +316,17 @@ const fileIcon = (type) => {
 
 const buildFileUrl = (relativeUrl) => `${BACKEND_URL}${relativeUrl}`;
 
+function parseStoredJson(key, fallback = {}) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const downloadFile = async (file) => {
   const fullUrl = buildFileUrl(file.url);
   try {
@@ -993,14 +1004,8 @@ export default function ClassBoard({
   const boardPos = useMemo(() => new THREE.Vector3(...position), [position]);
   const avatarVec = useMemo(() => new THREE.Vector3(), []);
 
-  const user = useMemo(
-    () => JSON.parse(localStorage.getItem("userSession") || "{}"),
-    [],
-  );
-  const room = useMemo(
-    () => JSON.parse(localStorage.getItem("currentRoom") || "{}"),
-    [],
-  );
+  const user = useMemo(() => parseStoredJson("userSession"), []);
+  const room = useMemo(() => parseStoredJson("currentRoom"), []);
   const roomId = room.id || room.room_id || room.room_code;
   const isInstructor = user.role === "instructor";
 
