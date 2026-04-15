@@ -87,7 +87,7 @@ export default function MainEngine() {
             <Classroom />
             <Avatar />
             <BoardMesh position={[-4, 2, -2.25]} />
-            <ScreenMesh position={[0, 2, 4.5]} />
+            <ScreenMesh position={[0, 1.8, 4.5]} />
             <FollowCamera />
           </Suspense>
         </Canvas>
