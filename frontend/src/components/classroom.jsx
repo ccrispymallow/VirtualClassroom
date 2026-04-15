@@ -6,7 +6,7 @@ const LEFT_COL_1_X = -2.7;
 const LEFT_COL_2_X = -0.9;
 const RIGHT_COL_1_X = 1.1;
 const RIGHT_COL_2_X = 2.8;
-const SEAT_Y = -0.23;
+const SEAT_Y = -0.55;
 const ROW_Z_POSITIONS = [
   0.1, -2.2, -4.6, -6.9, -9.2, -11.5, -13.8, -16.2, -18.7, -20.9,
 ];
