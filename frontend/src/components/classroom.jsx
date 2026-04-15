@@ -161,9 +161,9 @@ export default function Classroom() {
 
         if (isGlass) {
           material.transparent = true;
-          material.opacity = 0.4;
-          material.roughness = 0.08;
-          material.metalness = 0.18;
+          material.opacity = 2;
+          material.roughness = 0.01;
+          material.metalness = 0.3;
           material.envMapIntensity = 1.3;
           material.color = material.color || new THREE.Color(0.9, 0.95, 1);
         } else if (isFloor) {
