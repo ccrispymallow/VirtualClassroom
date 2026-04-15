@@ -2,7 +2,6 @@ import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 
-// ─── Chair positions ──────────────────────────────────────────────────────────
 const LEFT_COL_1_X = -2.7;
 const LEFT_COL_2_X = -0.9;
 const RIGHT_COL_1_X = 1.1;
@@ -24,25 +23,65 @@ export const CHAIR_SNAP_RADIUS = 1.5;
 
 export const FURNITURE_BOXES = [
   { id: "teacher-desk-F", minX: -0.8, maxX: 0.8, minZ: 2.9, maxZ: 3.9 },
-  { id: "teacher-desk-L", minX: 0.2, maxX: 1.9, minZ: -23.5, maxZ: -22.4 },
-  { id: "teacher-desk-R", minX: -2.2, maxX: -0.5, minZ: -23.5, maxZ: -22.4 },
-  { id: "wall-left", minX: -5.0, maxX: -4.0, minZ: -26, maxZ: 5.0 },
-  { id: "wall-right", minX: 3.9, maxX: 4.8, minZ: -26, maxZ: 5.0 },
+  { id: "teacher-desk-L", minX: 0.2, maxX: 1.9, minZ: -22.5, maxZ: -21.4 },
+  { id: "teacher-desk-R", minX: -2.2, maxX: -0.5, minZ: -22.5, maxZ: -21.4 },
+  { id: "wall-left", minX: -3.8, maxX: -4.0, minZ: -26, maxZ: 5.0 },
+  { id: "wall-right", minX: 3.7, maxX: 4.8, minZ: -26, maxZ: 5.0 },
   { id: "wall-top", minX: -5.0, maxX: 3.9, minZ: 5.0, maxZ: 6.0 },
-  { id: "wall-bottom", minX: -4.0, maxX: 3.9, minZ: -26, maxZ: -25 },
+  { id: "wall-bottom", minX: -4.0, maxX: 3.9, minZ: -26, maxZ: -24 },
 ];
 
 const AVATAR_RADIUS = 0.2;
 
-function createNormalMap(size = 128) {
+const DEBUG_BOXES = false;
+
+function DebugBoxes() {
+  if (!DEBUG_BOXES) return null;
+
+  const colorMap = {
+    "teacher-desk-F": "#ff4444",
+    "teacher-desk-L": "#ff4444",
+    "teacher-desk-R": "#ff4444",
+    "wall-left": "green",
+    "wall-right": "#4488ff",
+    "wall-top": "#4488ff",
+    "wall-bottom": "#4488ff",
+  };
+
+  return (
+    <>
+      {FURNITURE_BOXES.map((box) => {
+        const width = box.maxX - box.minX;
+        const depth = box.maxZ - box.minZ;
+        const height = 2.0;
+        const cx = (box.minX + box.maxX) / 2;
+        const cz = (box.minZ + box.maxZ) / 2;
+        const color = colorMap[box.id] ?? "#ffaa00";
+
+        return (
+          <mesh key={box.id} position={[cx, height / 2, cz]}>
+            <boxGeometry args={[width, height, depth]} />
+            <meshBasicMaterial
+              color={color}
+              wireframe={true}
+              transparent={true}
+              opacity={0.8}
+            />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+function createNormalMap(size = 64) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
-  const image = ctx.createImageData(size, size);
   const heightData = new Uint8Array(size * size);
 
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       const noise =
         128 +
         Math.round(
@@ -50,11 +89,6 @@ function createNormalMap(size = 128) {
             Math.cos(x * 0.2 - y * 0.2) * 4 +
             (Math.random() * 12 - 6),
         );
-      const index = (y * size + x) * 4;
-      image.data[index] = noise;
-      image.data[index + 1] = noise;
-      image.data[index + 2] = noise;
-      image.data[index + 3] = 255;
       heightData[y * size + x] = noise;
     }
   }
@@ -66,23 +100,16 @@ function createNormalMap(size = 128) {
     return heightData[yi * size + xi] / 255;
   };
 
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const left = sample(x - 1, y);
-      const right = sample(x + 1, y);
-      const top = sample(x, y - 1);
-      const bottom = sample(x, y + 1);
-      const dx = right - left;
-      const dy = bottom - top;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = sample(x + 1, y) - sample(x - 1, y);
+      const dy = sample(x, y + 1) - sample(x, y - 1);
       const dz = 1.0;
       const len = 1.0 / Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const nx = dx * len;
-      const ny = dy * len;
-      const nz = dz * len;
       const idx = (y * size + x) * 4;
-      normalImage.data[idx] = Math.round((nx * 0.5 + 0.5) * 255);
-      normalImage.data[idx + 1] = Math.round((ny * 0.5 + 0.5) * 255);
-      normalImage.data[idx + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+      normalImage.data[idx] = Math.round((dx * len * 0.5 + 0.5) * 255);
+      normalImage.data[idx + 1] = Math.round((dy * len * 0.5 + 0.5) * 255);
+      normalImage.data[idx + 2] = Math.round((dz * len * 0.5 + 0.5) * 255);
       normalImage.data[idx + 3] = 255;
     }
   }
@@ -117,6 +144,7 @@ export default function Classroom() {
   useEffect(() => {
     scene.traverse((child) => {
       if (!child.isMesh) return;
+
       const applyMaterial = (material) => {
         if (!material || material.isShadowMaterial) return;
 
@@ -169,11 +197,14 @@ export default function Classroom() {
   }, [scene, normalMap]);
 
   return (
-    <primitive
-      object={scene}
-      position={[0, -0.18, 0]}
-      scale={[0.95, 0.95, 0.95]}
-    />
+    <>
+      <primitive
+        object={scene}
+        position={[0, -0.18, 0]}
+        scale={[0.95, 0.95, 0.95]}
+      />
+      <DebugBoxes />
+    </>
   );
 }
 
