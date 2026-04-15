@@ -62,7 +62,11 @@ export default function MainEngine() {
           style={{ outline: "none" }}
         >
           <color attach="background" args={["#c7d8ef"]} />
-          <hemisphereLight skyColor="#ffffff" groundColor="#a3b9d3" intensity={0.3} />
+          <hemisphereLight
+            skyColor="#ffffff"
+            groundColor="#a3b9d3"
+            intensity={0.3}
+          />
           <ambientLight intensity={0.5} />
           <directionalLight position={[6, 12, 6]} intensity={0.95} />
           <directionalLight position={[-4, 5, -3]} intensity={0.35} />

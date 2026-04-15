@@ -46,8 +46,8 @@ function createNormalMap(size = 128) {
       const noise =
         128 +
         Math.round(
-          Math.sin((x * 0.3) + y * 0.2) * 8 +
-            Math.cos((x * 0.2) - y * 0.2) * 4 +
+          Math.sin(x * 0.3 + y * 0.2) * 8 +
+            Math.cos(x * 0.2 - y * 0.2) * 4 +
             (Math.random() * 12 - 6),
         );
       const index = (y * size + x) * 4;
@@ -122,8 +122,14 @@ export default function Classroom() {
 
         const name = material.name?.toLowerCase() || "";
         const isGlass = name.includes("glass") || name.includes("window");
-        const isFloor = name.includes("floor") || name.includes("ground") || name.includes("tile");
-        const isWall = name.includes("wall") || name.includes("ceiling") || name.includes("board");
+        const isFloor =
+          name.includes("floor") ||
+          name.includes("ground") ||
+          name.includes("tile");
+        const isWall =
+          name.includes("wall") ||
+          name.includes("ceiling") ||
+          name.includes("board");
 
         if (isGlass) {
           material.transparent = true;
@@ -139,8 +145,11 @@ export default function Classroom() {
           material.normalMap = normalMap;
           material.normalScale = new THREE.Vector2(0.12, 0.12);
         } else {
-          material.roughness = Math.min(1, Math.max(0.22, (material.roughness ?? 0.85)));
-          material.metalness = Math.min(0.2, (material.metalness ?? 0));
+          material.roughness = Math.min(
+            1,
+            Math.max(0.22, material.roughness ?? 0.85),
+          );
+          material.metalness = Math.min(0.2, material.metalness ?? 0);
           material.envMapIntensity = 0.7;
           if (!isWall) {
             material.normalMap = normalMap;
